@@ -1,0 +1,14 @@
+info:
+  name: Origin Object
+  type: folder
+  seq: 3
+
+docs:
+  content: |-
+    **This object will become available when [Conversation-Based Pricing](https://developers.facebook.com/docs/whatsapp/pricing/conversationpricing) launches in a future update.**
+    The **`origin`** object describes where a conversation has originated from. The following fields are specified within the origin object:
+
+    | Field                        | Description                      |
+    |------------------------------|----------------------------------|
+    | **`type`**<br/>type: string  | Indicates where a conversation has started. This can also be referred to as a conversation entry point. Currently, the available options are:<ul><li>**`business_initiated`**: indicates that the conversation started by a business sending the first message to a user. This applies any time it has been more than 24 hours since the last user message.</li><li>**`user_initiated`**: indicates that the conversation started by a business replying to a user message. This applies only when the business reply is within 24 hours of the last user message.</li><li>**`referral_conversion`**: indicates that the conversation originated from a [free entry point](https://developers.facebook.com/docs/whatsapp/pricing/conversationpricing#free-entry-points). These conversations are always user-initiated.</li></ul>|
+  type: text/markdown

@@ -1,0 +1,68 @@
+info:
+  name: Received Product Enquiry Message
+  type: http
+  seq: 21
+
+http:
+  method: VIEW
+  url: http://
+  body:
+    type: json
+    data: |-
+      {
+          "object": "whatsapp_business_account",
+          "entry": [
+              {
+                  "id": "ID",
+                  "changes": [
+                      {
+                          "value": {
+                              "messaging_product": "whatsapp",
+                              "metadata": {
+                                  "display_phone_number": "PHONE_NUMBER",
+                                  "phone_number_id": "PHONE_NUMBER_ID"
+                              },
+                              "contacts": [
+                                  {
+                                      "profile": {
+                                          "name": "NAME"
+                                      },
+                                      "wa_id": "PHONE_NUMBER_ID"
+                                  }
+                              ],
+                              "messages": [
+                                  {
+                                      "from": "PHONE_NUMBER",
+                                      "id": "wamid.ID",
+                                      "text": {
+                                          "body": "MESSAGE_TEXT"
+                                      },
+                                      "context": {
+                                          "from": "PHONE_NUMBER",
+                                          "id": "wamid.ID",
+                                          "referred_product": {
+                                              "catalog_id": "CATALOG_ID",
+                                              "product_retailer_id": "PRODUCT_ID"
+                                          }
+                                      },
+                                      "timestamp": "TIMESTAMP",
+                                      "type": "text"
+                                  }
+                              ]
+                          },
+                          "field": "messages"
+                      }
+                  ]
+              }
+          ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: A Product Enquiry Message is received when a user is asking for more information about a specific product. These can be received as in two scenarios:<ol><li>When a customer replies to Single or Multi-Product Messages</li><li>When a customer accesses a business’ catalog through another entry point, navigates to a **Product Details Page**, and clicks **Message Business about this Product**.</li></ol>

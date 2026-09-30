@@ -1,0 +1,15 @@
+info:
+  name: Context Object
+  type: folder
+  seq: 9
+
+docs:
+  content: |-
+    | Field                 | Description                      |
+    |----------------------------|----------------------------------|
+    | **`forwarded`**            | **Added to Webhooks if message was forwarded.**<br/>Set to **`true`** if the received message has been forwarded.         |
+    | **`frequently_forwarded`** | **Added to Webhooks if message has been frequently forwarded.**<br/>Set to **`true`** if the received message has been forwarded more than five times.         |
+    | **`from`**               | **Added to Webhooks if message is an inbound reply to a sent message.**<br/>The WhatsApp ID of the sender of the sent message.         |
+    | **`id`**                | **Optional**<br/>The message ID for the sent message for an inbound reply. |
+    | **`referred_product`** | **Required for Product Enquiry Messages**.<br/><br/>Specifies the product the user is requesting information about. For more information, see [Receive Response From Customers](https://developers.facebook.com/docs/whatsapp/on-premises/guides/commerce-guides/receive-responses-from-customers).<br/><br/>The **`referred_product`** object contains the following fields:<ul><li>**`catalog_id`**: Unique identifier of the Meta catalog linked to the WhatsApp Business Account.</li><li>**`product_retailer_id`**: Unique identifier of the product in a catalog.</li></ul> |
+  type: text/markdown

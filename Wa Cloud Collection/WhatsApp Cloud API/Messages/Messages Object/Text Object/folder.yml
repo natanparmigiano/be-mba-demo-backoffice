@@ -1,0 +1,19 @@
+info:
+  name: Text Object
+  type: folder
+  seq: 1
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    A **`Text Object`** consists of the following fields and formatting options:
+
+    #### Fields
+
+    | Name           |  Description |
+    |----------------|--------------|
+    | **`body`**     | **Required for text messages**.<br/>The text of the text message that can contain URLs and supports formatting. To view available formatting options, see [Text Object Formatting Options](https://developers.facebook.com/docs/whatsapp/api/messages#formatting). <br/><br/>If you include URLs in your text **and** want to include a preview box in text messages (`"preview_url": true`), ensure it starts with `http://` or `https://`. You must include a hostname, since IP addresses are not matched.<br/><br/>Maximum length: 4096 characters. |
+    |**`preview_url`**<br/>type: `Boolean`| **Optional**.<br/>By default, WhatsApp recognizes URLs and makes them clickable, but you can also include a preview box with more information about the link. Set this field to `true` if you want to include a URL preview box.<br/><br/>The majority of the time when you send a URL, whether with a preview or not, the receiver of the message will see a URL that they can click on.<br/><br/>URL previews are only rendered after one of the following has occurred:<ul><li>The business has sent a message template to the user.</li><li>The user initiates a conversation with a "click to chat" link.</li><li>The user adds the business phone number to their address book and initiates a conversation.</li></ul><br/>**Default**: `false`|
+  type: text/markdown

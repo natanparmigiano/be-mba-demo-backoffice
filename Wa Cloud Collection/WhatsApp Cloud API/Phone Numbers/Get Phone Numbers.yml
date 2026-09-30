@@ -1,0 +1,62 @@
+info:
+  name: Get Phone Numbers
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/phone_numbers
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Get Phone Numbers
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/phone_numbers
+      method: GET
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "data": [
+                  {
+                      "verified_name": "Jasper's Market",
+                      "display_phone_number": "+1 631-555-5555",
+                      "id": "1906385232743451",
+                      "quality_rating": "GREEN"
+                  },
+                  {
+                      "verified_name": "Jasper's Ice Cream",
+                      "display_phone_number": "+1 631-555-5556",
+                      "id": "1913623884432103",
+                      "quality_rating": "NA"
+                  }
+              ]
+          }
+
+docs: |-
+  This API returns all phone numbers in a WhatsApp Business Account specified by the **`{{WABA-ID}}`** value. Get the **`id`** value for the phone number you want to use to send messages with WhatsApp Business Cloud API.
+
+  #### Response Parameters
+
+  | Name                  | Description                 |
+  |-----------------------|-----------------------------|
+  | **`verified_name`**         | The verified name associated with the phone number.  |
+  | **`display_phone_number`**  | The string representation of the phone number.       |
+  | **`id`**                    | The ID associated with the phone number.                            |
+  | **`quality_rating`**        | The quality rating of the phone number based on how messages have been received by recipients in recent days. Valid values are: <br/><ul><li>**`Green`**: High Quality</li><li>**`Yellow`**: Medium Quality</li><li>**`Red`**: Low Quality</li><li>**`NA`**: Quality has not been determined</li></ul>  <br/>For more information relating to quality rating, see [About WhatsApp Business Account Message Quality Rating](https://www.facebook.com/business/help/896873687365001).                     |

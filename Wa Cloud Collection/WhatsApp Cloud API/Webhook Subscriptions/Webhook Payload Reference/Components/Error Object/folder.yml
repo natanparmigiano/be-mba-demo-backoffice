@@ -1,0 +1,12 @@
+info:
+  name: Error Object
+  type: folder
+  seq: 16
+
+docs:
+  content: |-
+    | Field                 | Description                      |
+    |-----------------------|----------------------------------|
+    | **`code`**            | The error code. |
+    | **`title`**           | The error title.|
+  type: text/markdown

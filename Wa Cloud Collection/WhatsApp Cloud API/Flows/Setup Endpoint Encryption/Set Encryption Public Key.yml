@@ -1,0 +1,55 @@
+info:
+  name: Set Encryption Public Key
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/whatsapp_business_encryption
+  body:
+    type: multipart-form
+    data:
+      - name: business_public_key
+        type: text
+        value: |-
+          -----BEGIN PUBLIC KEY-----
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKC
+          ...
+          8QIDAQAB
+          -----END PUBLIC KEY-----
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Set Encryption Public Key
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/whatsapp_business_encryption
+      method: POST
+      body:
+        type: multipart-form
+        data:
+          - name: business_public_key
+            type: text
+            value: |-
+              -----BEGIN PUBLIC KEY-----
+              MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKC
+              ...
+              8QIDAQAB
+              -----END PUBLIC KEY-----
+    response:
+      status: 200
+      statusText: OK
+      body:
+        type: text
+        data: |-
+          {
+              "success": true
+          }
+
+docs: Sets the public key that is used for encrypting the data channel requests

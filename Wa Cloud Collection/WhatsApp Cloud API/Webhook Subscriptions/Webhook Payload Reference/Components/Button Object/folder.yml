@@ -1,0 +1,12 @@
+info:
+  name: Button Object
+  type: folder
+  seq: 17
+
+docs:
+  content: |-
+    | Field                 | Description                      |
+    |-----------------------|----------------------------------|
+    | **`payload`**         | The developer-defined payload for the button when a business account sends interactive messages. |
+    | **`text`**            | The button text.|
+  type: text/markdown

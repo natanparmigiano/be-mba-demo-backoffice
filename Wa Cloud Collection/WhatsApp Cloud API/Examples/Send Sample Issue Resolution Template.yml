@@ -1,0 +1,127 @@
+info:
+  name: Send Sample Issue Resolution Template
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+  body:
+    type: json
+    data: |-
+      {
+         "messaging_product": "whatsapp",
+         "to": "{{Recipient-Phone-Number}}",
+         "type": "template",
+         "template": {
+             "name": "sample_issue_resolution",
+             "language": {
+                 "code": "en_US",
+                 "policy": "deterministic"
+             },
+             "components": [
+                 {
+                     "type": "body",
+                     "parameters": [
+                         {
+                             "type": "text",
+                             "text": "*Mr. Jones*"
+                         }
+                     ]
+                 },
+                 {
+                     "type": "button",
+                     "sub_type": "quick_reply",
+                     "index": 0,
+                     "parameters": [
+                         {
+                             "type": "text",
+                             "text": "Yes"
+                         }
+                     ]
+                 },
+                 {
+                     "type": "button",
+                     "sub_type": "quick_reply",
+                     "index": 1,
+                     "parameters": [
+                         {
+                             "type": "text",
+                             "text": "No"
+                         }
+                     ]
+                 }
+             ]
+         }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Send Sample Issue Resolution Template
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+             "messaging_product": "whatsapp",
+             "to": "{{Recipient-Phone-Number}}",
+             "type": "template",
+             "template": {
+                 "name": "sample_issue_resolution",
+                 "language": {
+                     "code": "en_US",
+                     "policy": "deterministic"
+                 },
+                 "components": [
+                     {
+                         "type": "body",
+                         "parameters": [
+                             {
+                                 "type": "text",
+                                 "text": "*Mr. Jones*"
+                             }
+                         ]
+                     },
+                     {
+                         "type": "button",
+                         "sub_type": "quick_reply",
+                         "index": 0,
+                         "parameters": [
+                             {
+                                 "type": "text",
+                                 "text": "Yes"
+                             }
+                         ]
+                     },
+                     {
+                         "type": "button",
+                         "sub_type": "quick_reply",
+                         "index": 1,
+                         "parameters": [
+                             {
+                                 "type": "text",
+                                 "text": "No"
+                             }
+                         ]
+                     }
+                 ]
+             }
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: ""

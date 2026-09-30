@@ -1,0 +1,95 @@
+info:
+  name: Send Reply with Reaction Message
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+          "messaging_product": "whatsapp",
+          "recipient_type": "individual",
+          "to": "{{Recipient-Phone-Number}}",
+          "type": "reaction",
+          "reaction": {
+              "message_id": "<WAM_ID>",
+              "emoji": "<EMOJI>"
+          }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Send Reply with Reaction Message
+    request:
+      url: https://graph.facebook.com/v14.0/{{Phone-Number-ID}}/messages
+      method: POST
+      headers:
+        - name: Content-Type
+          value: application/json
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+      body:
+        type: json
+        data: |
+          {
+              "messaging_product": "whatsapp",
+              "recipient_type": "individual",
+              "to": "{{Recipient-Phone-Number}}",
+              "type": "reaction",
+              "reaction": {
+                  "message_id": "wamid.HBgLM...",
+                  "emoji": "\uD83D\uDE00"
+              }
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "contacts": [
+                  {
+                      "input": "<PHONE_NUMBER>",
+                      "wa_id": "<WHATSAPP_ID>"
+                  }
+              ],
+              "messages": [
+                  {
+                      "id": "wamid.HBgLM..."
+                  }
+              ]
+          }
+
+docs: |-
+  To send reaction messages, make a **POST** call to `/PHONE_NUMBER_ID/messages` and attach a message object with `type = reaction`. Then, add a **`reaction`** object.
+
+
+  ### Parameters
+
+  | Name | Description |
+  | --- | --- |
+  | **`messaging_product`** | **Required**.<br/>Always set this value to `"whatsapp"`. |
+  | **`recipient_type`** | **Optional**.<br/> Currently, you can only send messages to individuals. Set this value to `"individual"`. <br/><br/>**Default**: `individual` |
+  | **`to`** | **Required**. <br/> WhatsApp ID or phone number for the person you want to send a message to.<br></br>See [Phone Numbers, Formatting](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/phone-numbers#formatting) for more information. |
+  | **`type`** | **Required**.<br/> To send a reply with a reaction, set this string value to `"reaction"`. |
+  | **`reaction`** | **Required**. <br/> The [reaction object](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/messages#reaction-object) you are using for your reply. |
+
+  If the previous message is more than 30 days old or doesn't correspond to any message in the conversation, the reaction message will not be delivered and you will receive a Webhook with the code `131009`.

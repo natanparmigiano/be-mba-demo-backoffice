@@ -1,0 +1,20 @@
+info:
+  name: Header Object
+  type: folder
+  seq: 1
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    ##### Fields
+
+    | Name                 | Description              |
+    |----------------------|--------------------------|
+    | **`type`**      | **Required**.<br/>The header type you would like to use. Supported values are:<ul><li>`text`: Used for List Messages, Reply Buttons, and Multi-Product Messages.</li><li>`video`: Used for Reply Buttons.</li><li>`image`: Used for Reply Buttons.</li><li>`document`: Used for Reply Buttons.</li></ul>|
+    | **`text`**      | **Required if `type` is set to `text`**.<br/>The text for the header. Formatting allows emojis, but not markdown.<br/><br/>Maximum length: 60 characters.|
+    | **`video`**      | **Required if `type` is set to `video`**.<br/>Contains the **`media`** object for this video.|
+    | **`image`**      | **Required if `type` is set to `image`**.<br/>Contains the **`media`** object for this image.|
+    | **`document`**      | **Required if `type` is set to `document`**.<br/>Contains the **`media`** object for this document.|
+  type: text/markdown

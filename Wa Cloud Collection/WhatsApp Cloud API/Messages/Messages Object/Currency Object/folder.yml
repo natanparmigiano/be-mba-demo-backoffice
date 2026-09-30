@@ -1,0 +1,20 @@
+info:
+  name: Currency Object
+  type: folder
+  seq: 8
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    The `Currency Object` contains the following fields:
+
+    #### Fields
+
+    | Name                 | Description              |
+    |----------------------|--------------------------|
+    | **`fallback_value`** |**Required**. <br/> The default text if localization fails. <br/> |
+    | **`code`**           |**Required**. <br/> The currency code as defined in [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217#Active_codes). <br/> |
+    | **`amount_1000`**           |**Required**. <br/> The amount multiplied by 1000. <br/> |
+  type: text/markdown

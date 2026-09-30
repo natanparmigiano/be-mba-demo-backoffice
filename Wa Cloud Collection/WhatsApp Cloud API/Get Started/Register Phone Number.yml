@@ -1,0 +1,67 @@
+info:
+  name: Register Phone Number
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/register
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+          "messaging_product": "whatsapp",
+          "pin": "6-digit-pin"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Register Phone Number
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/register
+      method: POST
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "pin": "6-digit-pin"
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "success": "true"
+          }
+
+docs: |-
+  With your phone number’s ID in hand, you can register it. In the registration API call, you perform two actions at the same time:
+
+  1.  Register the phone.
+  2.  Enable [two-step verification](https://faq.whatsapp.com/general/verification/about-two-step-verification) by setting a 6-digit registration code — you must set this code on your end. Save and memorize this code as it can be requested later. **Setting up two-factor authentication is a requirement to use the Cloud API.**
+      
+
+  **Embedded Signup Users**
+
+  A phone number **must** be registered within 14 days after going through the Embedded Signup flow. If the phone number is not registered during that window, the phone number must go through the Embedded Signup flow again prior to registration.

@@ -1,0 +1,80 @@
+info:
+  name: Upload Image
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/media
+  body:
+    type: multipart-form
+    data:
+      - name: messaging_product
+        type: text
+        value: whatsapp
+      - name: file
+        type: file
+        value:
+          - /Users/Sample.jpg
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Upload Image (form-data)
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/media
+      method: POST
+      body:
+        type: multipart-form
+        data:
+          - name: messaging_product
+            type: text
+            value: whatsapp
+          - name: file
+            type: file
+            value:
+              - /Users/Sample.jpg
+    response:
+      body:
+        type: text
+        data: |-
+          {
+              "id": "<MEDIA_ID>"
+          }
+  - name: Upload Image JSON
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/media
+      method: POST
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              
+              "file": "@/local/path/file.jpg;type=image/jpeg",
+              "messaging_product": "whatsapp"
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "id": "4490709327384033"
+          }
+
+docs: This request uploads an image as .jpeg. The parameters are specified as **form-data** in the request **body**.

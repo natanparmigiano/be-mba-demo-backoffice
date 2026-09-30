@@ -1,0 +1,12 @@
+info:
+  name: Entry Object
+  type: folder
+  seq: 1
+
+docs:
+  content: |-
+    | Field                   | Description                      |
+    |--------------------|----------------------------------|
+    | **`id`**           | The ID of Whatsapp Business Accounts this Webhook belongs to. |
+    | **`changes`**      | Changes that triggered the Webhooks call. This field contains an array of change objects. |
+  type: text/markdown

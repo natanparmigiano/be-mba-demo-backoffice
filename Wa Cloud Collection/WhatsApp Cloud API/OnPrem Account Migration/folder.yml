@@ -1,0 +1,18 @@
+info:
+  name: OnPrem Account Migration
+  type: folder
+  seq: 19
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    Use the **`/{{Phone-Number-ID}}/register`** endpoint to migrate your WhatsApp Business Accounts from your current on-premise deployment to the new Cloud-Based API. 
+
+    #### Reminders
+
+    * To use this endpoint, you need to authenticate yourself with a system user access token with the **`whatsapp_business_management`** permission.
+
+    * If you need to find your phone number ID, see [Get Phone Number ID](#c72d9c17-554d-4ae1-8f9e-b28a94010b28).
+  type: text/markdown

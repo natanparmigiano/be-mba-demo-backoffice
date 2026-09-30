@@ -1,0 +1,171 @@
+info:
+  name: Create template w/ text header, text body, text footer, and 2 quick reply buttons
+  type: http
+  seq: 9
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/message_templates
+  body:
+    type: json
+    data: |-
+      {
+          "name": "seasonal_promotion_text_only",
+          "language": "en",
+          "category": "MARKETING",
+          "components": [
+              {
+                  "type": "HEADER",
+                  "format": "TEXT",
+                  "text": "Our {{1}} is on!",
+                  "example": {
+                      "header_text": [
+                          "Summer Sale"
+                      ]
+                  }
+              },
+              {
+                  "type": "BODY",
+                  "text": "Shop now through {{1}} and use code {{2}} to get {{3}} off of all merchandise.",
+                  "example": {
+                      "body_text": [
+                          [
+                              "the end of August","25OFF","25%"
+                          ]
+                      ]
+                  }
+              },
+              {
+                  "type": "FOOTER",
+                  "text": "Use the buttons below to manage your marketing subscriptions"
+              },
+              {
+                  "type":"BUTTONS",
+                  "buttons": [
+                      {
+                          "type": "QUICK_REPLY",
+                          "text": "Unsubcribe from Promos"
+                      },
+                      {
+                          "type":"QUICK_REPLY",
+                          "text": "Unsubscribe from All"
+                      }
+                  ]
+              }
+          ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Example response
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/message_templates
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "name": "seasonal_promotion_text_only",
+            "language": "en",
+            "category": "MARKETING",
+            "components": [
+              {
+                "type": "HEADER",
+                "format": "TEXT",
+                "text": "Our {{1}} is on!",
+                "example": {
+                  "header_text": [
+                    "Summer Sale"
+                  ]
+                }
+              },
+              {
+                "type": "BODY",
+                "text": "Shop now through {{1}} and use code {{2}} to get {{3}} off of all merchandise.",
+                "example": {
+                  "body_text": [
+                    [
+                      "the end of August","25OFF","25%"
+                    ]
+                  ]
+                }
+              },
+              {
+                "type": "FOOTER",
+                "text": "Use the buttons below to manage your marketing subscriptions"
+              },
+              {
+                "type":"BUTTONS",
+                "buttons": [
+                  {
+                    "type": "QUICK_REPLY",
+                    "text": "Unsubcribe from Promos"
+                  },
+                  {
+                    "type":"QUICK_REPLY",
+                    "text": "Unsubscribe from All"
+                  }
+                ]
+              }
+            ]
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json; charset=UTF-8
+        - name: Vary
+          value: Origin
+        - name: x-business-use-case-usage
+          value: '{"102290129340398":[{"type":"whatsapp_business_management","call_count":1,"total_cputime":1,"total_time":1,"estimated_time_to_regain_access":0}]}'
+        - name: x-fb-rlafr
+          value: "0"
+        - name: Access-Control-Allow-Origin
+          value: "*"
+        - name: facebook-api-version
+          value: v16.0
+        - name: Strict-Transport-Security
+          value: max-age=15552000; preload
+        - name: Pragma
+          value: no-cache
+        - name: Cache-Control
+          value: private, no-cache, no-store, must-revalidate
+        - name: Expires
+          value: Sat, 01 Jan 2000 00:00:00 GMT
+        - name: x-fb-request-id
+          value: AI_3T_tgo703qWCRyjGFo0Z
+        - name: x-fb-trace-id
+          value: GsPSVe222Tl
+        - name: x-fb-rev
+          value: "1007262384"
+        - name: X-FB-Debug
+          value: d9B0xsLYPaAGN0boQNCL6IKBUg7Y0ylgMRd9JiRdwb9d+wBe0TcvtpOvZ1RQ1s64QLIjemknt9ipTvNM5k7HVw==
+        - name: Date
+          value: Thu, 06 Apr 2023 21:34:33 GMT
+        - name: Alt-Svc
+          value: h3=":443"; ma=86400
+        - name: Connection
+          value: keep-alive
+        - name: Content-Length
+          value: "67"
+      body:
+        type: json
+        data: |-
+          {
+              "id": "1627019861106475",
+              "status": "PENDING",
+              "category": "MARKETING"
+          }
+
+docs: |-
+  - Guide: [Message Templates](https://developers.facebook.com/docs/whatsapp/business-management-api/message-templates)
+  - Guide: [How To Monitor Quality Signals](https://developers.facebook.com/docs/whatsapp/guides/how-to-monitor-quality-signals)
+  - Endpoint reference: [WhatsApp Business Account > Message Templates](https://developers.facebook.com/docs/graph-api/reference/whats-app-business-account/message_templates/)

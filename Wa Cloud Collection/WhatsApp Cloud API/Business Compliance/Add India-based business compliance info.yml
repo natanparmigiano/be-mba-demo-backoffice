@@ -1,0 +1,110 @@
+info:
+  name: Add India-based business compliance info
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/business_compliance_info
+  body:
+    type: json
+    data: |-
+      {
+          "messaging_product": "whatsapp",
+          "entity_name": "<ENTITY_NAME>",
+          "entity_type": "<ENTITY_TYPE>",
+          "is_registered": <IS_REGISTERED>,
+          "grievance_officer_details": {
+              "name": "<GRIEVANCE_OFFER_NAME>",
+              "email": "<GRIEVANCE_OFFER_EMAIL>",
+              "landline_number": "<GRIEVANCE_OFFER_LANDLINE_NUMBER>",
+              "mobile_number": "<GRIEVANCE_OFFER_MOBILE_NUMBER>"
+          },
+          "customer_care_details": {
+              "email": "<CUSTOMER_CARE_EMAIL>",
+              "landline_number": "<CUSTOMER_CARE_LANDLINE_NUMBER>",
+              "mobile_number": "<CUSTOMER_CARE_MOBILE_NUMBER>"
+          }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Sample response
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/business_compliance_info
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "entity_name": "Lucky Shrub",
+              "entity_type": "PARTNERSHIP",
+              "is_registered": true,
+              "grievance_officer_details": {
+                  "name": "Chandravati P.",
+                  "email": "chandravati@luckyshrub.com",
+                  "landline_number": "+913857614343",
+                  "mobile_number": "+913854559033"
+              },
+              "customer_care_details": {
+                  "email": "support@luckyshrub.com",
+                  "landline_number": "+913857614343",
+                  "mobile_number": "+913854559033"
+              }
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json; charset=UTF-8
+        - name: Vary
+          value: Origin
+        - name: cross-origin-resource-policy
+          value: cross-origin
+        - name: x-app-usage
+          value: '{"call_count":0,"total_cputime":0,"total_time":0}'
+        - name: x-fb-rlafr
+          value: "0"
+        - name: Access-Control-Allow-Origin
+          value: "*"
+        - name: facebook-api-version
+          value: v16.0
+        - name: Strict-Transport-Security
+          value: max-age=15552000; preload
+        - name: Pragma
+          value: no-cache
+        - name: Cache-Control
+          value: private, no-cache, no-store, must-revalidate
+        - name: Expires
+          value: Sat, 01 Jan 2000 00:00:00 GMT
+        - name: x-fb-request-id
+          value: AYkiln3WLsn7Xbi5rwRXGDE
+        - name: x-fb-trace-id
+          value: EBj3JL+cwpH
+        - name: x-fb-rev
+          value: "1007307139"
+        - name: X-FB-Debug
+          value: CXQbL4sps9oXN95xat+eZEsU9mvmrIEgU3NZPA9BNaecLZ1NLgIUO+lVMHfjT2mVIr4dA6IKONfIbhIp3SBQDw==
+        - name: Date
+          value: Thu, 13 Apr 2023 21:35:02 GMT
+        - name: Alt-Svc
+          value: h3=":443"; ma=86400
+        - name: Connection
+          value: keep-alive
+        - name: Content-Length
+          value: "16"
+      body:
+        type: json
+        data: |-
+          {
+              "success": true
+          }

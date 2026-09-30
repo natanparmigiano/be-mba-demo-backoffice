@@ -1,0 +1,105 @@
+info:
+  name: Get conversation analytics
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}?fields=conversation_analytics.start(1656661480).end(1674859480).granularity(MONTHLY).conversation_directions(["business_initiated"]).dimensions(["conversation_type", "conversation_direction"])
+  params:
+    - name: fields
+      value: conversation_analytics.start(1656661480).end(1674859480).granularity(MONTHLY).conversation_directions(["business_initiated"]).dimensions(["conversation_type", "conversation_direction"])
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Example response
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}?fields=analytics.start(1543543200).end(1544148000).granularity(DAY).phone_numbers([]).country_codes(["US", "BR"])
+      method: GET
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+      params:
+        - name: fields
+          value: analytics.start(1543543200).end(1544148000).granularity(DAY).phone_numbers([]).country_codes(["US", "BR"])
+          type: query
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "analytics": {
+                  "phone_numbers": [
+                      "16505550111",
+                      "16505550112",
+                      "16505550113"
+                  ],
+                  "country_codes": [
+                      "US",
+                      "BR"
+                  ],
+                  "granularity": "DAY",
+                  "data_points": [
+                      {
+                          "start": 1543543200,
+                          "end": 1543629600,
+                          "sent": 196093,
+                          "delivered": 179715
+                      },
+                      {
+                          "start": 1543629600,
+                          "end": 1543716000,
+                          "sent": 147649,
+                          "delivered": 139032
+                      },
+                      {
+                          "start": 1543716000,
+                          "end": 1543802400,
+                          "sent": 61988,
+                          "delivered": 58830
+                      },
+                      {
+                          "start": 1543802400,
+                          "end": 1543888800,
+                          "sent": 132465,
+                          "delivered": 124392
+                      },
+                      {
+                          "start": 1543888800,
+                          "end": 1543975200,
+                          "sent": 181002,
+                          "delivered": 167335
+                      },
+                      {
+                          "start": 1543975200,
+                          "end": 1544061600,
+                          "sent": 168687,
+                          "delivered": 157838
+                      },
+                      {
+                          "start": 1544061600,
+                          "end": 1544148000,
+                          "sent": 161832,
+                          "delivered": 152383
+                      }
+                  ]
+              },
+              "id": "952305634918047"
+          }
+
+docs: |-
+  - Guide: [Analytics](https://developers.facebook.com/docs/whatsapp/business-management-api/analytics)
+  - Endpoint reference: [WhatsApp Business Account > Analytics](https://developers.facebook.com/docs/graph-api/reference/waba-analytics/)

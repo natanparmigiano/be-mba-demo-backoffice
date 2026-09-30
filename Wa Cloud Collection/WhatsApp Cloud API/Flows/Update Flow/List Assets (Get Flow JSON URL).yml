@@ -1,0 +1,47 @@
+info:
+  name: List Assets (Get Flow JSON URL)
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: https://graph.facebook.com/{{Version}}/{{Flow-ID}}/assets
+  body:
+    type: multipart-form
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: List Assets
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Flow-ID}}/assets
+      method: GET
+    response:
+      status: 200
+      statusText: OK
+      body:
+        type: text
+        data: |-
+          {
+              "data": [
+                  {
+                      "name": "flow.json",
+                      "asset_type": "FLOW_JSON",
+                      "download_url": "https://scontent.xx.fbcdn.net/m1/v/t0.57323-24/An_Hq0jnfJ..."
+                  }
+              ],
+              "paging": {
+                  "cursors": {
+                      "before": "QVFIU...",
+                      "after": "QVFIU..."
+                  }
+              }
+          }
+
+docs: Returns all assets attached to the flow. Currently only FLOW_JSON asset is supported

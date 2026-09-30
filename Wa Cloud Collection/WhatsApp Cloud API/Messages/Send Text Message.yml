@@ -1,0 +1,88 @@
+info:
+  name: Send Text Message
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+          "messaging_product": "whatsapp",    
+          "recipient_type": "individual",
+          "to": "{{Recipient-Phone-Number}}",
+          "type": "text",
+          "text": {
+              "preview_url": false,
+              "body": "text-message-content"
+          }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Send Text Message
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+      method: POST
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",   
+              "recipient_type": "individual",
+              "to": "{{Recipient-Phone-Number}}",
+              "type": "text",
+              "text": {
+                  "preview_url": false,
+                  "body": "text-message-content"
+              }
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "contacts": [
+                  {
+                      "input": "48XXXXXXXXX",
+                      "wa_id": "48XXXXXXXXX "
+                  }
+              ],
+              "messages": [
+                  {
+                      "id": "wamid.gBGGSFcCNEOPAgkO_KJ55r4w_ww"
+                  }
+              ]
+          }
+
+docs: |-
+  To send a text message, make a **POST** call to **`/{{{Phone-Number-ID}}/messages`** and attach a message object with `type = "text"`. Then, add a `text object`.
+
+  For more information about the `Text Object` structure, see [Text object](#fa59d67b-dc6f-446a-a0fd-f97537afbd2e).
+
+  ## Response
+
+  A successful response includes an object with an identifier prefixed with **`wamid`**. Use the ID listed after **`wamid`** to track your message status.

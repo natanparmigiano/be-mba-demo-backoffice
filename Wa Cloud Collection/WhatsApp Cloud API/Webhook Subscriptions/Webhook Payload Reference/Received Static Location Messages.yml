@@ -1,0 +1,62 @@
+info:
+  name: Received Static Location Messages
+  type: http
+  seq: 8
+
+http:
+  method: VIEW
+  url: http://
+  body:
+    type: json
+    data: |-
+      {
+          "object": "whatsapp_business_account",
+          "entry": [
+              {
+                  "id": "<WHATSAPP_BUSINESS_ACCOUNT_ID>",
+                  "changes": [
+                      {
+                          "value": {
+                              "messaging_product": "whatsapp",
+                              "metadata": {
+                                  "display_phone_number": "<PHONE_NUMBER>",
+                                  "phone_number_id": "<PHONE_NUMBER_ID>"
+                              },
+                              "contacts": [
+                                  {
+                                      "profile": {
+                                          "name": "<NAME>"
+                                      },
+                                      "wa_id": "<WHATSAPP_ID>"
+                                  }
+                              ],
+                              "messages": [
+                                  {
+                                      "from": "PHONE_NUMBER",
+                                      "id": "wamid.ID",
+                                      "timestamp": "TIMESTAMP",
+                                      "location": {
+                                          "latitude": "<LOCATION_LATITUDE>",
+                                          "longitude": "<LOCATION_LONGITUDE>",
+                                          "name": "<LOCATION_NAME>",
+                                          "address": "<LOCATION_ADDRESS>",
+                                      }
+                                  }
+                              ]
+                          },
+                          "field": "messages"
+                      }
+                  ]
+              }
+          ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: The following is an example of a static location message you received from a customer.

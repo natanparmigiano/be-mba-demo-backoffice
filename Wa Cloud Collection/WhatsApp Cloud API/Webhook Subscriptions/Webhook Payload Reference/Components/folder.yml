@@ -1,0 +1,17 @@
+info:
+  name: Components
+  type: folder
+  seq: 1
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    The top level Webhooks array contains the following two fields:
+
+    | Field                   | Description                      |
+    |--------------------|----------------------------------|
+    | **`object`**       | All Webhook events for WhatsApp Cloud API belong under the **`whatsapp_business_account`** object. |
+    | **`entry`**        | An array of [entry objects](#818e8a3e-37b1-4bb6-8441-3291c02c0258). |
+  type: text/markdown

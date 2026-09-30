@@ -1,0 +1,11 @@
+info:
+  name: Typing indicators
+  type: folder
+  seq: 10
+
+request:
+  auth: inherit
+
+docs:
+  content: "Guide: [Typing indicators](https://developers.facebook.com/docs/whatsapp/cloud-api/typing-indicators)"
+  type: text/markdown

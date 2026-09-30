@@ -1,0 +1,123 @@
+info:
+  name: Send Sample Shipping Confirmation Template
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+  body:
+    type: json
+    data: |-
+      {
+          "messaging_product": "whatsapp",
+          "to": "{{Recipient-Phone-Number}}",
+          "type": "template",
+          "template": {
+             "name": "sample_shipping_confirmation",
+             "language": {
+                 "code": "en_US",
+                 "policy": "deterministic"
+             },
+             "components": [
+               {
+                 "type": "body",
+                 "parameters": [
+                     {
+                         "type": "text",
+                         "text": "2"
+                     }
+                 ]
+               }
+             ]
+          }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Send Sample Shipping Confirmation Template
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+      method: POST
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "recipient_type": "individual",
+              "to": "16315555555",
+              "type": "template",
+              "template": {
+                  "name": "template-name",
+                  "language": {
+                      "code": "language-and-locale-code"
+                  },
+                  "components": [
+                      {
+                          "type": "body",
+                          "parameters": [
+                              {
+                                  "type": "text",
+                                  "text": "text-string"
+                              },
+                              {
+                                  "type": "currency",
+                                  "currency": {
+                                      "fallback_value": "$100.99",
+                                      "code": "USD",
+                                      "amount_1000": 100990
+                                  }
+                              },
+                              {
+                                  "type": "date_time",
+                                  "date_time": {
+                                      "fallback_value": "February 25, 1977",
+                                      "day_of_week": 5,
+                                      "year": 1977,
+                                      "month": 2,
+                                      "day_of_month": 25,
+                                      "hour": 15,
+                                      "minute": 33,
+                                      "calendar": "GREGORIAN"
+                                  }
+                              }
+                          ]
+                      }
+                  ]
+              }
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "contacts": [
+                  {
+                      "input": "48XXXXXXXXX",
+                      "wa_id": "48XXXXXXXXX "
+                  }
+              ],
+              "messages": [
+                  {
+                      "id": "wamid.gBGGSFcCNEOPAgkO_KJ55r4w_ww"
+                  }
+              ]
+          }

@@ -1,0 +1,20 @@
+info:
+  name: Template Object
+  type: folder
+  seq: 4
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    The `Template Object` contains the following fields:
+
+    #### Fields
+
+    | Name             | Description              |
+    |------------------|--------------------------|
+    | **`name`**  |**Required**. <br/> The name of the template. |
+    | **`language`**  |**Required**. <br/> Specifies a [language object](https://documenter.getpostman.com/view/13382743/UVC5FTHT?fbclid=IwAR083mCseNzJm-JgxlIQbdF30hkAbEOHkbBaw9bA7-isGKU6uwtq1RJKc0o#d9272e38-c3db-458c-a23b-07953abc73a4). Specifies the language the template may be rendered in.<br/><br/>Only the **`deterministic`** language policy works with media template messages.|
+    | **`components`**  |**Optional**. <br/> An array of [components objects](https://documenter.getpostman.com/view/13382743/UVC5FTHT?fbclid=IwAR0V3m0B47q6rsaPsrwcWzb5FbNtQD7K8I1RulisTB4Mj-rB0AYiSkdc9lY#8225365a-acb8-48c7-8e57-079dfc532865) that contain the parameters of the message. |
+  type: text/markdown

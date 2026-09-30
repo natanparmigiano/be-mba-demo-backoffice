@@ -1,0 +1,68 @@
+info:
+  name: Migrate Flows
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/migrate_flows
+  body:
+    type: multipart-form
+    data:
+      - name: source_waba_id
+        type: text
+        value: <SOURCE_WABA_ID>
+        description: The ID of the source WABA from which the flows will be copied
+      - name: source_flow_names
+        type: text
+        value: '["appointment", "leadgen"]'
+        description: "[Optional] The names of the flows that will be copied from the source WABA. If not specified, all flows in the source WABA will be copied"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Migrate Flows
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/migrate_flows
+      method: POST
+      body:
+        type: multipart-form
+        data:
+          - name: source_waba_id
+            type: text
+            value: <SOURCE_WABA_ID>
+            description: The ID of the source WABA from which the flows will be copied
+          - name: source_flow_names
+            type: text
+            value: '["appointment", "leadgen"]'
+            description: "[Optional] The names of the flows that will be copied from the source WABA. If not specified, all flows in the source WABA will be copied"
+    response:
+      status: 200
+      statusText: OK
+      body:
+        type: text
+        data: |-
+          {
+              "migrated_flows": [
+                  {
+                      "source_id": "source-flow-1",
+                      "source_name": "appointment",
+                      "migrated_id": "dest-flow-1"
+                  }
+              ],
+              "failed_flows": [
+                  {
+                      "source_name": "leadgen",
+                      "error_code": "4233041",
+                      "error_message": "Flows Migration Error: Flow name not found in source WABA."
+                  }
+              ]
+          }
+
+docs: Creates a copy of existing flows from source WABA to destination WABA with the same names.

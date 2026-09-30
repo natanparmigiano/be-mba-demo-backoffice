@@ -1,0 +1,11 @@
+info:
+  name: Phone Numbers
+  type: folder
+  seq: 4
+
+request:
+  auth: inherit
+
+docs:
+  content: Some API calls listed in this document require you to know your phone number’s ID. For more information on how to get a list of phone numbers associated with your WhatsApp Business Account, see [Get All Phone Numbers](https://developers.facebook.com/docs/whatsapp/business-management-api/phone-numbers#all-phone-numbers). The API call response includes IDs for each of the phone numbers connected to your WhatsApp Business Account. Save the ID for the phone you want to use with any **`/{phone-number-ID}`** calls.
+  type: text/markdown

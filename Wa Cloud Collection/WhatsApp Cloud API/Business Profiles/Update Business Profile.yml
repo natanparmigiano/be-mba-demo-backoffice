@@ -1,0 +1,114 @@
+info:
+  name: Update Business Profile
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/whatsapp_business_profile
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+          "messaging_product": "whatsapp",
+          "address": "<business-address>",
+          "description": "<business-description>",
+          "vertical": "<business-industry>",
+          "about": "<profile-about-text>",
+          "email": "<business-email>",
+          "websites": [
+              "<https://website-1>",
+              "<https://website-2>"
+          ],
+          "profile_picture_handle": "<IMAGE_HANDLE_ID>"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Update Business Profile
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/whatsapp_business_profile
+      method: POST
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "address": "<business-address>",
+              "description": "<business-description>",
+              "vertical": "<business-industry>",
+              "about": "<profile-about-text>",
+              "email": "<business-email>",
+              "websites": [
+                  "<https://website-1>",
+                  "<https://website-2>"
+              ],
+              "profile_picture_handle": "4:VGVzdC5wbmc=:aW1hZ2UvanBlZw==:ARat4Mt-L09JON3f30SmDkdyPSuyBkDDYiB4TFXuXISjdgHoNp2b7j882_9Jzr2tPrdKxi92UygyVzTivJiOvmebMpZ6MIjTik3gTyI3ZCQAgQ:e:1659995302:2022308451254161:636685196:ARZf1ftR5N6-qSLtklU"
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "data": [
+                  {
+                      "business_profile": {
+                          "messaging_product": "whatsapp",
+                          "address": "<business-address>",
+                          "description": "<business-description>",
+                          "vertical": "<business-industry>",
+                          "about": "<profile-about-text>",
+                          "email": "<business-email>",
+                          "websites": [
+                              "https://website-1",
+                              "https://website-2"
+                          ],
+                          "profile_picture_url": "https://pps.whatsapp.net/...",
+                          "id": "<business-profile-id>"
+                      },
+                      "id": "<phone-number-id>"
+                  }
+              ]
+          }
+
+docs: |-
+  Update the business profile information such as the business description, email or address. To update your profile, make a **POST** call to **`/{{Phone-Number-ID}}/whatsapp_business_profile`**. In your request, you can include the parameters listed below.
+
+  It is recommended that you use **Resumable Upload - Create an Upload Session** to obtain an upload ID. Then use this upload ID in a call to **Resumable Upload - Upload File Data** to obtain the picture handle. This handle can be used for the **`profile_picture_handle`**.
+
+  ## Request Parameters
+
+  | Name                    | Description                          |
+  |-------------------------|--------------------------------------|
+  | **`messaging_product`** | **Required**.<br/>The messaging service used for the request. Always set the value to `"whatsapp"` if you are using WhatsApp for Business API.|
+  | **`address`**           | **Optional**.<br/>The address of the business. The maximum character limit for the string is 256. |
+  | **`description`** | **Optional**.<br/>The description of the business. The maximum character limit for the string is 256. |
+  | **`vertical`** | **Optional**. <br/>The industry type of the business. This can be either an empty string or one of the accepted values.<br/><br/>**Values**: `UNDEFINED`, `OTHER`, `AUTO`, `BEAUTY`, `APPAREL`, `EDU`, `ENTERTAIN`, `EVENT_PLAN`, `FINANCE`, `GROCERY`, `GOVT`, `HOTEL`, `HEALTH`, `NONPROFIT`, `PROF_SERVICES`, `RETAIL`, `TRAVEL`, `RESTAURANT`, or `NOT_A_BIZ`.|
+  | **`about`** | **Optional**. <br/>The text to display in business profile's About section. The max length for the string is 139 characters. The minimum length for the string is 1 character. <br/><br/>Rendered emojis are supported however their unicode values are not. Emoji unicode values must be Java- or JavaScript-escape encoded.|
+  | **`email`** | **Optional**. <br/>The contact email address (in valid email format) of the business. The maximum character limit for the string is 128 characters.|
+  | **`websites`** | **Optional**. <br/>The URLs associated with the business. For instance, a website, Facebook Page, or Instagram. You must include the http:// or https:// portion of the URL. There is a maximum of 2 websites with a maximum of 256 characters each. |
+  | **`profile_picture_handle`** | **Optional**. <br/>The handle of the profile picture generated from a call to **Resumable Upload - Upload File Data**. For more information, see [Resumable Upload API](https://developers.facebook.com/docs/graph-api/guides/upload).|
+
+  ## Delete Business Profile
+
+  To delete your business profile, you must [delete your phone number](https://developers.facebook.com/docs/whatsapp/phone-numbers#delete-phone-number-from-a-business-account).

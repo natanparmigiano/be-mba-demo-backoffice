@@ -1,0 +1,30 @@
+info:
+  name: Messages Object
+  type: folder
+  seq: 1
+
+docs:
+  content: |-
+    To send a message, you must first assemble a message object with the content you want to send. The **`Message Object`** contains the following fields used to create a message object:
+
+    #### Fields
+
+    | Name | Description |
+    |------|----------|
+    |**`messaging_product`** | **Required**. <br/> Messaging service used for the request. Always use `"whatsapp"`.|
+    |**`recipient_type`** | **Optional**. <br/> Currently, you can only send messages to individuals. Set this value to `"individual"`. <br/><br/>**Default**: `individual` |
+    |**`to`** | **Required**. <br/> WhatsApp ID or phone number for the person you want to send a message to.<br></br>See [Phone Numbers, Formatting](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/phone-numbers#formatting) for more information. |
+    |**`context`** | **Optional**. Only used for Cloud API. <br/>Used to mention a specific message you are replying to. The reply can be any message type currently supported by the Cloud API. |
+    |**`type`** | **Optional**. <br/>The type of message you want to send. <br/><br/>The supported options for beta users are: <ul><li>**text**: for text messages.</li><li>**template**: for template messages. Only text-based templates are supported.</li><li>**document**: for document messages.</li><li>**image**: for image messages.</li><li>**interactive**: for list and reply button messages.</li><li>**audio**: for audio messages.</li><li>**contacts**: for contacts messages.</li><li>**location**: for location messages.</li><li>**sticker**: for sticker messages.</li><li>**video**: for video messages.</li></ul><br/>**Default**: `text`|
+    |**`text`** | **Required for text messages**.<br/> A [text object](#fa59d67b-dc6f-446a-a0fd-f97537afbd2e). |
+    |**`audio`** | **Required when `type` is set to `audio`**.<br/> A [media object](#77f64012-481d-45d8-855f-e1620c6b2a5e) containing audio. |
+    |**`contact`** | **Required when `type` is set to `contacts`**.<br/> A [contacts object](#5bb1e554-402c-4278-bce4-657a9c4dc12f).|
+    |**`document`** | **Required when `type` is set to `document`**.<br/> A [media object](#77f64012-481d-45d8-855f-e1620c6b2a5e) containing a document.  |
+    |**`image`** | **Required when `type` is set to `image`**.<br/> A [media object](#77f64012-481d-45d8-855f-e1620c6b2a5e) containing an image.  |
+    |**`interactive`** | **Required when `type` is set to `interactive`**.<br/> An [interactive object](#68fe0550-aba5-4ee3-b79d-0846f3dddef1). This option is used to send List Messages and Reply Buttons.<br/><br/>The components of each interactive object generally follow a consistent pattern: **`header`**, **`body`**, **`footer`**, and **`action`**. |
+    |**`location`** | **Required when type `type` is set to `location`**.<br/> A [location object](#2ad90ff7-6fef-40a8-96cf-83f1144763c1).  |
+    |**`reaction`** | **Required when type `type` is set to `reaction`**. <br/> A [reaction object](). |
+    |**`sticker`** | **Required when `type` is set to `sticker`**.<br/> A [media object](#77f64012-481d-45d8-855f-e1620c6b2a5e) containing a sticker. Currently, we only support third-party static stickers. Static stickers must be 512x512 pixels and cannot exceed 100 KB. Animated stickers must be 512x512 pixels and cannot exceed 500 KB.|
+    |**`video`** | **Required when `type` is set to `video`**.<br/> A [media object](#77f64012-481d-45d8-855f-e1620c6b2a5e) containing a video.  |
+    |**`template`** | **Required when type is set to `template`**.<br/> A [template object](#fb5ad9b7-7991-443a-a1b5-97fdc5731673).  |
+  type: text/markdown

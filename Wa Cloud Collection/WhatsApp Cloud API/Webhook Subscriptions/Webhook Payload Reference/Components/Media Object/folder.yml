@@ -1,0 +1,20 @@
+info:
+  name: Media Object
+  type: folder
+  seq: 11
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    **`Media Object`** is used for audio, images, documents, videos and stickers.
+
+    | Field                 | Description                      |
+    |----------------------------|----------------------------------|
+    | **`caption`**         | **Added to Webhooks if it has been previously specified.**<br/>The caption that describes the media. |
+    | **`filename`**        | **Added to Webhooks for document messages.**<br/>The media's filename on the sender's device. |
+    | **`id`**              | The ID of the media. |
+    | **`mime_type`**       | The mime type of the media. |
+    | **`sha256`**          | The checksum of the media. |
+  type: text/markdown

@@ -1,0 +1,21 @@
+info:
+  name: name Object
+  type: folder
+  seq: 3
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    | Name | Description |
+    |---|---|
+    | **`formatted_name`** | **Required.**<br>Full name, as it normally appears. |
+    | **`first_name`** | **Optional**.<br>First name.|
+    | **`last_name`** | **Optional**.<br>Last name. |
+    | **`middle_name`** | **Optional**.<br>Middle name. |
+    | **`suffix`** | **Optional**.<br>Name suffix.|
+    | **`prefix`**| **Optional**.<br>Name prefix. |
+
+    * At least one of the optional parameters needs to be included along with the **`formatted_name`** parameter.
+  type: text/markdown

@@ -1,0 +1,16 @@
+info:
+  name: List Reply Object
+  type: folder
+  seq: 2
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    | Field | Description |
+    | --- | --- |
+    | **`id`** | The unique identifier (ID) of the selected row. |
+    | **`title`** | The title of the selected row. |
+    | **`description`** | The description of the selected row. |
+  type: text/markdown

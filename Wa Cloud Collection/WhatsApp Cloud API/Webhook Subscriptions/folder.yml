@@ -1,0 +1,18 @@
+info:
+  name: Webhook Subscriptions
+  type: folder
+  seq: 5
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    To get Webhook events for a specific WABA, you need to explicitly subscribe to that WABA. You only need to subscribe to a WABA once and then you receive all Webhook events for phone numbers under that WABA. You don’t need to subscribe for every phone number. 
+    <br><br>
+
+    ## Reminders
+    - To use these endpoints, you need to authenticate yourself with a [System User Access Token](https://developers.facebook.com/docs/facebook-login/access-tokens#usertokens) with the **`whatsapp_business_management`** permission.
+    - WhatsApp Business Account ID (WABA ID). If you need to find your WABA ID see [Get WABA ID](#b7f6e513-f4e4-4b62-b4a2-d18dc5e6249c).
+    - You need to set up Webhooks server in your application to receive Webhooks events. To learn how to set up Webhooks, see [Webhooks](https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/components).
+  type: text/markdown

@@ -1,0 +1,27 @@
+info:
+  name: Get Phone Numbers with Filtering (beta)
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/phone_numbers?fields=id,is_official_business_account,display_phone_number,verified_name&filtering=[{'field':'account_mode','operator':'EQUAL','value':'SANDBOX'}]
+  params:
+    - name: fields
+      value: id,is_official_business_account,display_phone_number,verified_name
+      type: query
+    - name: filtering
+      value: "[{'field':'account_mode','operator':'EQUAL','value':'SANDBOX'}]"
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  - Guide: [Filter Phone Numbers](https://developers.facebook.com/docs/whatsapp/business-management-api/manage-phone-numbers#filter-phone-numbers)
+  - Endpoint reference: [WhatsApp Business Account > Phone Numbers](https://developers.facebook.com/docs/graph-api/reference/whats-app-business-account/phone_numbers/)

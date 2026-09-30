@@ -1,0 +1,22 @@
+info:
+  name: Referral Object
+  type: folder
+  seq: 18
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    | Field | Description |
+    | --- | --- | 
+    | **`source_url`** | Specifies the URL that leads to the ad or post clicked by the user. Opening this URL takes you to the ad viewed by your user. |
+    | **`source_type`** | Specifies the type of the ad's source. Supported values are `"ad"` or `"post"`. |
+    | **`source_id`** | Specifies the Meta ID for an ad or post. |
+    | **`headline`** | Specifies the headline used in the ad or post that generated the message. |
+    | **`body`** | The description, or body, from the ad or post that generated the message. |
+    | **`media_type`** | Media present in the ad or post the user clicked. Supported values are `"image"` or `"video"`. |
+    | **`image_url`** | **Added if media_type is `“image”`**.<br/> Contains a URL to the raw image. |
+    | **`video_url`** | **Added if media_type is `“video”`**.<br/> Contains a URL to the video. |
+    | **`thumbnail_url`** | **Added if media_type is `“video”`**.<br/> Contains a URL to the thumbnail image of the clicked video. |
+  type: text/markdown

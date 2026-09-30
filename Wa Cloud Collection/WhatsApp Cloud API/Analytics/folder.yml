@@ -1,0 +1,11 @@
+info:
+  name: Analytics
+  type: folder
+  seq: 17
+
+request:
+  auth: inherit
+
+docs:
+  content: "- Guide: [Analytics](https://developers.facebook.com/docs/whatsapp/business-management-api/analytics)"
+  type: text/markdown

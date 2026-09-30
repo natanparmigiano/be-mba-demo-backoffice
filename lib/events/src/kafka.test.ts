@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict'
+import { describe, it } from 'node:test'
+import { getMissingTopics } from './kafka.js'
+
+describe('Kafka topic initialization', () => {
+  it('only requests creation for missing topics', () => {
+    assert.deepEqual(
+      getMissingTopics(
+        ['demo.events.v1', 'wa-cloud.webhook.v1'],
+        ['__consumer_offsets', 'demo.events.v1', 'wa-cloud.webhook.v1'],
+      ),
+      [],
+    )
+
+    assert.deepEqual(
+      getMissingTopics(
+        ['demo.events.v1', 'wa-cloud.webhook.v1'],
+        ['demo.events.v1'],
+      ),
+      ['wa-cloud.webhook.v1'],
+    )
+  })
+})

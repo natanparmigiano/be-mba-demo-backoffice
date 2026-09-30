@@ -1,0 +1,16 @@
+info:
+  name: Body Object
+  type: folder
+  seq: 2
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    ##### Fields
+
+    | Name                 | Description              |
+    |----------------------|--------------------------|
+    | **`text`**      | **Required**.<br/>The body content of the message. Emojis and markdown are supported. Links are supported.<br/><br/>Maximum length: 1024 characters.|
+  type: text/markdown

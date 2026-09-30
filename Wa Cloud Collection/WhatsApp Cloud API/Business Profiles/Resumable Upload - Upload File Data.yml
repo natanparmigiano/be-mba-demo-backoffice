@@ -1,0 +1,76 @@
+info:
+  name: Resumable Upload - Upload File Data
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Upload-ID}}
+  headers:
+    - name: Content-Type
+      value: image/jpeg
+    - name: file_offset
+      value: "0"
+      description: Specifies the offset to start the upload. The offset value should always be `0`.
+    - name: Authorization
+      value: OAuth {{User-Access-Token}}
+  body:
+    type: file
+    data:
+      - filePath: /Users/Sample.jpg
+        contentType: image/jpeg
+        selected: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Resumable Upload - Upload File Data
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Upload-ID}}
+      method: POST
+      headers:
+        - name: Content-Type
+          value: image/jpeg
+        - name: file_offset
+          value: "0"
+          description: Specifies the offset to start the upload. The offset value should always be `0`.
+        - name: Authorization
+          value: OAuth {{User-Access-Token}}
+      body:
+        type: file
+        data:
+          - filePath: /Users/Sample.jpg
+            contentType: image/jpeg
+            selected: true
+    response:
+      status: 200
+      statusText: OK
+      body:
+        type: text
+        data: |-
+          {
+              "h":"2:c2FtcGxlLm1wNA==:image/jpeg:GKAj0gAUCZmJ1voFADip2iIAAAAAbugbAAAA:e:1472075513:ARZ_3ybzrQqEaluMUdI"
+          }
+
+docs: |-
+  To upload a profile picture to your business profile, make a **POST** call to the named endpoint {{Version}}/{{Upload-ID}}, where **Upload-ID** is the value you received from **Resumable Upload - Create an Upload Session**. This value should look like the following:
+
+  ``` json
+  "upload:MTphdHRhY2htZW50Ojlk2mJiZxUwLWV6MDUtNDIwMy05yTA3LWQ4ZDPmZGFkNTM0NT8=?sig=ARZqkGCA_uQMxC8nHKI"
+
+  ```
+
+  The **`file_offset`** parameter **must** be included as an HTTP header. It will not work as a query parameter.
+
+  The access token must be included in an Authorization HTTP header. It cannot work as a query parameter.
+
+  For more information, see [Initiate Data Upload](https://developers.facebook.com/docs/graph-api/guides/upload#step-2--initiate-upload).
+
+  **Response**  
+  The call returns a handle that includes the session ID that you can use to update your profile picture using **Update Business Profile**.

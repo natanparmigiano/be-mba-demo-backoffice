@@ -1,0 +1,17 @@
+info:
+  name: System Message Object
+  type: folder
+  seq: 14
+
+docs:
+  content: |-
+    This object is added to Webhooks if a user has changed their phone number and if a user’s identity has potentially changed on WhatsApp.
+
+    | Field                 | Description                      |
+    |-----------------------|----------------------------------|
+    | **`body`**            | Describes the system message event. Supported use cases are:<ul><li>**Phone number update:** for when a user changes from an old number to a new number.</li><li>**Identity update:** for when a user identity has changed.</li></ul> |
+    | **`new_wa_id`**       | **Added to Webhooks for phone number updates.**<br/>New WhatsApp ID of the customer.|
+    | **`identity`**       | **Added to Webhooks for identity updates.**<br/>New WhatsApp ID of the customer.|
+    |**`type`**       | Supported types are:<ul><li>**user_changed_number**: for a user changed number notification.</li><li>**user_identity_changed**: for user identity changed notification.</li></ul>|
+    | **`user`**       | **Added to Webhooks for identity updates.**<br/>The new WhatsApp user ID of the customer.|
+  type: text/markdown

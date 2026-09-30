@@ -1,0 +1,35 @@
+{
+  "name": "@mba-demo/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@better-auth/sso": "1.7.6",
+    "better-auth": "^1.7.6",
+    "hono": "^4.9.8",
+    "i18next": "^26.4.2",
+    "i18next-browser-languagedetector": "^8.2.1",
+    "lucide-react": "^1.48.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-i18next": "^17.0.15",
+    "react-router-dom": "^7.9.5"
+  },
+  "devDependencies": {
+    "@mba-demo/api": "0.0.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.16",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.3",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7"
+  }
+}

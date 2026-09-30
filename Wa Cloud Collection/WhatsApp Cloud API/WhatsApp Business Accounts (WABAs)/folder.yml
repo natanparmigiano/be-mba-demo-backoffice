@@ -1,0 +1,16 @@
+info:
+  name: WhatsApp Business Accounts (WABAs)
+  type: folder
+  seq: 2
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    Some API calls listed in this document require you to know your WhatsApp Business Account (WABA) ID. You have the following methods of getting a WABA ID:
+
+    1.  **Business Manager**: This is the most simple way. Just open the [Business Manager](https://business.facebook.com/), select your business, go to Settings and find your WhatsApp Business Account. When you click on the account, you see `"owned by"` and `"id"`. Save that ID number.
+    2.  **During Embedded Signup Onboarding**: See [Get Shared WABA ID with accessToken](https://developers.facebook.com/docs/whatsapp/embedded-signup/manage-accounts#get-shared-waba-id-with-accesstoken) for information.
+    3.  **Getting all WABAs shared with your business**: See [Get List of Shared WABAs](https://developers.facebook.com/docs/whatsapp/embedded-signup/manage-accounts#get-list-of-shared-wabas) for information.
+  type: text/markdown

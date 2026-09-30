@@ -1,0 +1,48 @@
+info:
+  name: Get credit lines
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: https://graph.facebook.com/{{Version}}/{{Business-ID}}/extendedcredits
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Example response
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Business-ID}}/extendedcredits?fields=id,legal_entity_name
+      method: GET
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+      params:
+        - name: fields
+          value: id,legal_entity_name
+          type: query
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |
+          {
+            "data": [
+              {
+                "id": "1972385232742146",    
+                "legal_entity_name": "Lucky Shrub"
+              }
+            ]
+          }
+
+docs: "- Endpoint reference: [Business > Extendedcredits](https://developers.facebook.com/docs/marketing-api/reference/extended-credit/)"

@@ -1,0 +1,15 @@
+info:
+  name: Pricing Object
+  type: folder
+  seq: 4
+
+docs:
+  content: |-
+    The **`pricing`** object includes your billing attributes. The following fields are specified within the pricing object:
+
+    | Field                                  | Description                      |
+    |----------------------------------------|----------------------------------|
+    | **`pricing_model`**<br/>type: string  |  Type of pricing model being used. Current supported values are:<ul><li>`"CBP"` (conversation-based pricing): See [Conversation-Based Pricing](https://developers.facebook.com/docs/whatsapp/pricing/conversationpricing) for rates based on recipient country.</li><li>`"NBP"` (notification-based pricing): Notifications are also known as Template Messages ([click here for details on pricing](https://developers.facebook.com/docs/whatsapp/pricing)). This pricing model will be deprecated in a future release early 2022.</li></ul>|
+    | **`billable`**<br/>type: boolean  | Indicates if the given message or conversation is billable. Value varies according to **`pricing_model`**.<br/><br/>If you are using CBP (conversation-based pricing):<ul><li>This flag is set to **`false`** if the conversation was initiated from [free entry points](https://developers.facebook.com/docs/whatsapp/pricing/conversationpricing#free-entry-points). Conversations initiated from free entry points are not billable.</li><li>For all other conversations, it’s set to **`true`**.</li><li>This is also set to **`true`** for conversations inside your free tier limit. You are not charged for these conversations, but they are considered billable and are reflected on your invoice.</li></ul><br/>If you are using NBP (notification-based pricing):<ul><li>This flag is **`false`** for user-initiated conversations.</li><li>This flag is set to **`true`** for notification messages (template messages)</li></ul> |
+    | **`category`**<br/>type: string | Indicates the conversation pricing category. Currently, available options are:<ul><li>**`business_initiated`**: indicates that the conversation was started by a business sending the first message to a user. This applies any time it has been more than 24 hours since the last user message.</li><li>**`user_initiated`**: indicates that the conversation was initiated by a business replying to a user message. This applies only when the business reply is within 24 hours of the last user message.</li><li>**`referral_conversion`**: indicates that the conversation originated from a [free entry point](https://developers.facebook.com/docs/whatsapp/pricing/conversationpricing#free-entry-points). These conversations are always user-initiated.</li></ul>|
+  type: text/markdown

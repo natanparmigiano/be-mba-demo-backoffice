@@ -1,0 +1,52 @@
+info:
+  name: Get Phone Number By ID
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Get Phone Number By ID
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}
+      method: GET
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "verified_name": "Jasper's Market",
+              "display_phone_number": "+1 631-555-5555",
+              "id": "1906385232743451",
+              "quality_rating": "GREEN"
+          }
+
+docs: |-
+  When you query all the phone numbers for a WhatsApp Business Account, each phone number has an **`id`**. You can directly query for a phone number using this **`id`**.
+
+  #### Response Parameters
+
+  | Name                  | Description                 |
+  |-----------------------|-----------------------------|
+  | **`verified_name`**         | The verified name associated with the phone number.  |
+  | **`display_phone_number`**  | The string representation of the phone number.       |
+  | **`id`**                    | The ID associated with the phone number.                            |
+  | **`quality_rating`**        | The quality rating of the phone number based on how messages have been received by recipients in recent days. Valid values are: <br/><ul><li>**`Green`**: High Quality</li><li>**`Yellow`**: Medium Quality</li><li>**`Red`**: Low Quality</li><li>**`NA`**: Quality has not been determined</li></ul>  <br/>For more information relating to quality rating, see [About WhatsApp Business Account Message Quality Rating](https://www.facebook.com/business/help/896873687365001).                     |

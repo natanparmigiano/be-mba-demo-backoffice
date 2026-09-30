@@ -1,0 +1,11 @@
+info:
+  name: Payments API - SG
+  type: folder
+  seq: 13
+
+request:
+  auth: inherit
+
+docs:
+  content: "Guide: [Payments API - SG](https://developers.facebook.com/docs/whatsapp/cloud-api/payments-api/payments-sg)"
+  type: text/markdown

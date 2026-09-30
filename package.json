@@ -1,0 +1,39 @@
+{
+  "name": "mba-demo-backoffice",
+  "private": true,
+  "packageManager": "yarn@1.22.22",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "lib/*"
+  ],
+  "scripts": {
+    "postinstall": "node scripts/patch-kafkajs.mjs",
+    "dev": "concurrently -k -n api,web -c blue,green \"yarn workspace @mba-demo/api dev\" \"yarn workspace @mba-demo/web dev\"",
+    "build": "yarn workspace @mba-demo/db build && yarn workspace @mba-demo/kv build && yarn workspace @mba-demo/events build && yarn workspace @mba-demo/auth build && yarn workspace @mba-demo/schemas build && yarn workspace @mba-demo/api build && yarn workspace @mba-demo/webhook-generator build && yarn workspace @mba-demo/web build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "yarn workspace @mba-demo/db typecheck && yarn workspace @mba-demo/kv typecheck && yarn workspace @mba-demo/events typecheck && yarn workspace @mba-demo/auth typecheck && yarn workspace @mba-demo/schemas typecheck && yarn workspace @mba-demo/api typecheck && yarn workspace @mba-demo/webhook-generator typecheck && yarn workspace @mba-demo/web typecheck",
+    "test": "yarn workspace @mba-demo/db test && yarn workspace @mba-demo/kv test && yarn workspace @mba-demo/events test && yarn workspace @mba-demo/auth test && yarn workspace @mba-demo/api test && yarn workspace @mba-demo/webhook-generator test",
+    "quality": "yarn format:check && yarn lint && yarn typecheck && yarn test",
+    "auth:generate": "yarn workspace @mba-demo/db build && yarn workspace @mba-demo/auth auth:generate && yarn workspace @mba-demo/db build",
+    "auth:create-admin": "yarn workspace @mba-demo/db build && yarn workspace @mba-demo/auth auth:create-admin",
+    "db:generate": "yarn workspace @mba-demo/db db:generate",
+    "db:migrate": "yarn workspace @mba-demo/db db:migrate",
+    "db:studio": "yarn workspace @mba-demo/db db:studio"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.36.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^6.1.1",
+    "eslint-plugin-react-refresh": "^0.4.22",
+    "globals": "^16.4.0",
+    "prettier": "^3.9.9",
+    "typescript-eslint": "^8.44.1"
+  }
+}

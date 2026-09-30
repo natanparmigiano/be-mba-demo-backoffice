@@ -1,0 +1,60 @@
+info:
+  name: Delete Media
+  type: http
+  seq: 5
+
+http:
+  method: DELETE
+  url: https://graph.facebook.com/{{Version}}/{{Media-ID}}/?phone_number_id=<PHONE_NUMBER_ID>
+  params:
+    - name: phone_number_id
+      value: <PHONE_NUMBER_ID>
+      type: query
+      description: Specifies that deletion of the media  only be performed if the media belongs to the provided phone number.
+  body:
+    type: multipart-form
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Delete Media
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Media-ID}}?phone_number_id=<PHONE_NUMBER_ID>
+      method: DELETE
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+      params:
+        - name: phone_number_id
+          value: <PHONE_NUMBER_ID>
+          type: query
+      body:
+        type: multipart-form
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "success": true
+          }
+
+docs: |-
+  To delete media, make a **DELETE** call to the ID of the media you want to delete.
+
+  ## Prerequisites
+  - [User Access Token](https://developers.facebook.com/docs/facebook-login/access-tokens#usertokens) with **`whatsapp_business_messaging`** permission
+  - Media object ID from either uploading media endpoint or media message Webhooks
+
+  ## Request
+  [Perform requests in Graph API Explorer](https://developers.facebook.com/tools/explorer/?method=DELETE&path=media_id&version=v8.0)

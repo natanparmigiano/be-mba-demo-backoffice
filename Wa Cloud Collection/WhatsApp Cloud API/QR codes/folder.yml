@@ -1,0 +1,11 @@
+info:
+  name: QR codes
+  type: folder
+  seq: 15
+
+request:
+  auth: inherit
+
+docs:
+  content: "- Guide: [QR Codes](https://developers.facebook.com/docs/whatsapp/business-management-api/qr-codes)"
+  type: text/markdown

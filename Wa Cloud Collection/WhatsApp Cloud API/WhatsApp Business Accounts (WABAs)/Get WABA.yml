@@ -1,0 +1,75 @@
+info:
+  name: Get WABA
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Example response
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}
+      method: GET
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: ETag
+          value: '"c39946d41277419f1b3eb1f9761f2068612715ed"'
+        - name: Content-Type
+          value: application/json; charset=UTF-8
+        - name: Vary
+          value: Origin
+        - name: x-business-use-case-usage
+          value: '{"102290129340398":[{"type":"whatsapp_business_management","call_count":1,"total_cputime":1,"total_time":1,"estimated_time_to_regain_access":0}]}'
+        - name: x-fb-rlafr
+          value: "0"
+        - name: Access-Control-Allow-Origin
+          value: "*"
+        - name: facebook-api-version
+          value: v16.0
+        - name: Strict-Transport-Security
+          value: max-age=15552000; preload
+        - name: Pragma
+          value: no-cache
+        - name: Cache-Control
+          value: private, no-cache, no-store, must-revalidate
+        - name: Expires
+          value: Sat, 01 Jan 2000 00:00:00 GMT
+        - name: x-fb-request-id
+          value: AuECIG8CyNuAbaHekReCMDU
+        - name: x-fb-trace-id
+          value: Au3qI883HZc
+        - name: x-fb-rev
+          value: "1007269544"
+        - name: X-FB-Debug
+          value: Ja/wv3Ohd34TUOD8zF8ba70aUikGGCX1SwPAPuFErmXs69aTDV0YPXaxA2Xdj+bpGHniTzMRpaJYaOyGZYEtLA==
+        - name: Date
+          value: Sat, 08 Apr 2023 01:05:37 GMT
+        - name: Alt-Svc
+          value: h3=":443"; ma=86400
+        - name: Connection
+          value: keep-alive
+        - name: Content-Length
+          value: "150"
+      body:
+        type: json
+        data: |-
+          {
+              "id": "104996122399160",
+              "name": "Lucky Shrub",
+              "timezone_id": "1",
+              "message_template_namespace": "58e6d318_b627_4112_b9c7_2961197553ea"
+          }
+
+docs: "- Endpoint reference: [WhatsApp Business Account](https://developers.facebook.com/docs/graph-api/reference/whats-app-business-account)"

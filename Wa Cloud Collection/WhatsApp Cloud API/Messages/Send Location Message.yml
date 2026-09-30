@@ -1,0 +1,92 @@
+info:
+  name: Send Location Message
+  type: http
+  seq: 28
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+          "messaging_product": "whatsapp",
+          "recipient_type": "individual",
+          "to": "{{Recipient-Phone-Number}}",
+          "type": "location",
+          "location": {
+              "latitude": "<LOCATION_LATITUDE>",
+              "longitude": "<LOCATION_LONGITUDE>",
+              "name": "<LOCATION_NAME>",
+              "address": "<LOCATION_ADDRESS>"
+          }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Send Location Messages
+    request:
+      url: https://graph.facebook.com/v13.0/{{Phone-Number-ID}}/messages
+      method: POST
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "recipient_type": "individual",
+              "to": "{{Recipient-Phone-Number}}",
+              "type": "location",
+              "location": {
+                  "latitude": 37.758056,
+                  "longitude": -122.425332,
+                  "name": "META HQ",
+                  "address": "1 Hacker Way, Menlo Park, CA 94025"
+              }
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "contacts": [
+                  {
+                      "input": "48XXXXXXXXX",
+                      "wa_id": "48XXXXXXXXX "
+                  }
+              ],
+              "messages": [
+                  {
+                      "id": "wamid.gBGGSFcCNEOPAgkO_KJ55r4w_ww"
+                  }
+              ]
+          }
+
+docs: |-
+  To send location messages, make a **POST** call to **`/{{Phone-Number-ID}}/messages`** and attach a message object with type = `location`. Then, add a location object.
+
+  For more information on the structure of `Location Object`, see [Location Object](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/messages#location-object).
+
+  ## Response
+
+  A successful response includes an object with an identifier prefixed with **`wamid`**.

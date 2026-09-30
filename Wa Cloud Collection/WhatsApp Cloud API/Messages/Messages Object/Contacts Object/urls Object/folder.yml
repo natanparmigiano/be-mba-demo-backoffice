@@ -1,0 +1,15 @@
+info:
+  name: urls Object
+  type: folder
+  seq: 6
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    | Name | Description |
+    | --- | --- |
+    | **`url`** | **Optional.**  <br>The URL. |
+    | **`type`** | **Optional.**  <br>Standard Values: `HOME`, `WORK` |
+  type: text/markdown

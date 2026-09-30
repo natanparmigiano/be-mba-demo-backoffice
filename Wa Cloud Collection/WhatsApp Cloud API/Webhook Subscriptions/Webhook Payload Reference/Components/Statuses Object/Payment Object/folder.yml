@@ -1,0 +1,18 @@
+info:
+  name: Payment Object
+  type: folder
+  seq: 2
+
+docs:
+  content: |-
+    The **`payment`** object tracks the attributes of the user-initiated transaction changes. The following fields are specified within the payment object:
+
+    | Field | Description |
+    | --- | --- |
+    | **`id`**  <br>type: string | Webhook ID for the notification. |
+    | **`from`**  <br>type: string | WhatsApp ID of the customer. |
+    | **`type`**  <br>type: string | For payment status update webhooks, type is `payment`. |
+    | **`status`**  <br>type: string | Latest status of the payment. Can be one of `captured`, `failed` or `pending`. |
+    | **`payment`**  <br>type: object | Contains the following field:  <br>  <br>`reference_id` string  <br>\- Unique reference ID for the order sent in order_details message. |
+    | **`timestamp`**  <br>type: string | Timestamp for the webhook. |
+  type: text/markdown

@@ -1,0 +1,17 @@
+info:
+  name: Reaction Object
+  type: folder
+  seq: 12
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    The `Reaction` object contains information about messages that contain a reaction and corresponding emojis. This object contains the following fields:
+
+    | Field                 | Description                      |
+    |-----------------------|----------------------------------|
+    | **`message_id`**      | Specifies the **`wamid`** of the message received that contained the reaction. |
+    | **`emoji`**           | The emoji used for the reaction.|
+  type: text/markdown

@@ -1,0 +1,16 @@
+info:
+  name: Identity Object
+  type: folder
+  seq: 10
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    | Field                 | Description                      |
+    |----------------------------|----------------------------------|
+    | **`acknowledged`**         | State of acknowledgment for latest **`user_identity_changed`** system notification. |
+    | **`created_timestamp`**    | The timestamp of when the WhatsApp Business API detected the user potentially changed. |
+    | **`hash`**                 | Identifier for the latest **`user_identity_changed`** system notification. |
+  type: text/markdown

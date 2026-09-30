@@ -1,0 +1,95 @@
+info:
+  name: Send typing indicator and read receipt
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+  body:
+    type: json
+    data: |-
+      {
+          "messaging_product": "whatsapp",
+          "status": "read",
+          "message_id": "<WHATSAPP_MESSAGE_ID>",
+          "typing_indicator": {
+              "type": "text"
+          }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Send typing indicator and read receipt
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "status": "read",
+              "message_id": "wamid.HBgLMTY1MDM4Nzk0MzkVAgASGBQzQUYzMjEzNDM2RTZGQ0MzMDJBRgA=",
+              "typing_indicator": {
+                  "type": "text"
+              }
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json; charset=UTF-8
+        - name: Vary
+          value: Origin
+        - name: x-business-use-case-usage
+          value: '{"102290129340398":[{"type":"whatsapp","call_count":0,"total_cputime":0,"total_time":0,"estimated_time_to_regain_access":0}]}'
+        - name: Access-Control-Allow-Origin
+          value: "*"
+        - name: facebook-api-version
+          value: v22.0
+        - name: Strict-Transport-Security
+          value: max-age=15552000; preload
+        - name: Pragma
+          value: no-cache
+        - name: Cache-Control
+          value: private, no-cache, no-store, must-revalidate
+        - name: Expires
+          value: Sat, 01 Jan 2000 00:00:00 GMT
+        - name: x-fb-request-id
+          value: A_xHw226CwK1JmTNs0vg6H7
+        - name: x-fb-trace-id
+          value: HI+8wJKxeVw
+        - name: x-fb-rev
+          value: "1023054691"
+        - name: X-FB-Debug
+          value: lv4tuvFRJpqMrYs/DgGn3j5JDX8U1npjw9IK3Wq4ZK9SBhiBtL99ztZj5d/YLhsgoaBRNR0/FKJ1swL3oLYvMg==
+        - name: Date
+          value: Wed, 21 May 2025 17:38:00 GMT
+        - name: X-FB-Connection-Quality
+          value: EXCELLENT; q=0.9, rtt=7, rtx=0, c=10, mss=1380, tbw=3403, tp=-1, tpl=-1, uplat=552, ullat=0
+        - name: Alt-Svc
+          value: h3=":443"; ma=86400
+        - name: Connection
+          value: keep-alive
+        - name: Content-Length
+          value: "16"
+      body:
+        type: json
+        data: |-
+          {
+              "success": true
+          }
+
+docs: |-
+  - Guide: [Typing indicators](https://developers.facebook.com/docs/whatsapp/cloud-api/typing-indicators)
+      
+  - Endpoint reference: [WhatsApp Business Phone Number &gt; Messages](https://developers.facebook.com/docs/graph-api/reference/whats-app-business-account-to-number-current-status/messages/#Creating)

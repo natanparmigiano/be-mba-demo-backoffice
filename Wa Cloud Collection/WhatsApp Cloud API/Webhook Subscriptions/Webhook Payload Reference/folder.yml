@@ -1,0 +1,54 @@
+info:
+  name: Webhook Payload Reference
+  type: folder
+  seq: 1
+
+docs:
+  content: |-
+    Webhooks are user-defined HTTP callbacks that are triggered by specific events. Whenever that trigger event occurs, the WhatsApp Business API client captures the event, collects the data, and immediately sends a notification (HTTPs request) to the Webhook URL configured in the Webhooks setup step.
+
+    For the purposes of this use case, your Webhooks server must be reachable from facebook and have HTTPs support and a valid SSL certificate. See [Webhooks, Getting Started](https://developers.facebook.com/docs/graph-api/webhooks/getting-started) for requirements on creating a Webhooks endpoint and configuring the Webhooks product.
+
+    To get Webhooks notifications, your application must subscribe to the WABA you want to receive alerts for. For a full guide, see [Webhooks for WhatsApp Business Accounts](https://developers.facebook.com/docs/graph-api/webhooks/getting-started/webhooks-for-whatsapp).
+
+      
+    The structure of the webhook payload is explained in the [Webhooks Notification Payload Reference. ](https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/components/) All Webhooks have the following generic JSON format:
+
+    ``` json
+    {
+      "object": "whatsapp_business_account",
+      "entry": [
+        {
+          "id": "WHATSAPP_BUSINESS_ACCOUNT_ID",
+          "changes": [
+            {
+              "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                      "display_phone_number": "PHONE_NUMBER",
+                      "phone_number_id": "PHONE_NUMBER_ID"
+                  },
+                  # specific Webhooks payload            
+              },
+              "field": "messages"
+            }
+          ]
+        }
+      ]
+    }
+
+     ```
+
+      
+    If you receive a message that is not supported for the Cloud API beta release, you will get an [unknown message Webhook](https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks#received-unknown-messages).
+
+    **This table lists all possible options for the status of a message.**
+
+    | Status | Description | WhatsApp Mobile Equivalent |
+    | --- | --- | --- |
+    | **`sent`** | Message received by WhatsApp server. | One checkmark |
+    | **`delivered`** | Message delivered to the recipient. | Two checkmarks |
+    | **`read`** | Message read by recipient. | Two blue checkmarks |
+    | **`failed`** | Message failed to send. | Red error triangle |
+    | **`deleted`** | Message deleted by the user. | Message is replaced in WhatsApp mobile with the note `"This message was deleted"`. |
+  type: text/markdown

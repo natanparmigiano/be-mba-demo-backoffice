@@ -1,0 +1,23 @@
+info:
+  name: Parameter Object
+  type: folder
+  seq: 7
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    The **`Parameter Object`** contains the following fields:
+
+    #### Fields
+
+    | Name             | Description              |
+    |------------------|--------------------------|
+    | **`type`**       |**Required**. <br/> Describes the parameter type. <br/><br/><br/>**Values**: `text`, `currency`, `date_time`, `image`, `document`<br/><br/>For text-based templates, the only supported parameter types are `text`, `currency`, and `date_time` |
+    | **`text`**       |**Required when type=`text`**. <br/> The message of the text.<br/>For the `header component`, the character limit is 60 characters. <br/>For the `body component`, the character limit is 1024.<br/><br/>The exception to these character limits applies to template messages in the following conditions:<br/><ul><li>When sending a **`template`** message with a **`body`** component only, the character limit for the `text` parameter and the full template text is 32768 characters.</li><li>When sending a **`template`** message with **`body`** and other components, The character limit for the `text` parameter and the full template text is 1024 characters.</li><ul/>|
+    | **`currency`**       |**Required when type is `currency`**. <br/> A [currency object](#424b70af-ced8-456d-b1e1-1360c5afb9e9).|
+    | **`date_time`**       |**Required when type is `date_time`**. <br/> A [date_time object](#ec955b05-7bd4-4273-ad87-ae755b580f6e).|
+    | **`image`**       |**Required when type is `image`**. <br/> A [media object](#77f64012-481d-45d8-855f-e1620c6b2a5e) of type image.|
+    | **`document`**       |**Required when type is `document`**. <br/> A [media object](#77f64012-481d-45d8-855f-e1620c6b2a5e) of type document. <br/>Only PDF documents are supported for media-based message templates.|
+  type: text/markdown

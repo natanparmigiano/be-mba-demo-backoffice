@@ -1,0 +1,10 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+**/dist
+**/node_modules
+**/*.tsbuildinfo
+.DS_Store
+README.md

@@ -1,0 +1,16 @@
+info:
+  name: Interactive Object
+  type: folder
+  seq: 13
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    | Field | Description |
+    | --- | --- |
+    | **`type`** | Contains the type of interactive object. Supported options are:<ul><li>`button_reply`: for responses of Reply Buttons.</li><li>`list_reply`: for responses to List Messages and other interactive objects.</li></ul>|
+    | **`button_reply`** | **Used on Webhooks related to Reply Buttons.**  <br/>Contains a [button reply object](#3530f9ca-704b-4811-a1bc-04472a72e00f). |
+    | **`list_reply`** | **Used on Webhooks related to List Messages**  <br/>Contains a [list reply object](#374bd5d7-e6c5-48e6-80f9-5821ad5da7ff). |
+  type: text/markdown

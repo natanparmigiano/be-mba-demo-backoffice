@@ -1,0 +1,20 @@
+info:
+  name: addresses Object
+  type: folder
+  seq: 1
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    | Name | Description |
+    | --- | --- |
+    | **`street`** | **Optional**.  <br>Steet number and name. |
+    | **`city`** | **Optional**.  <br>The name of the city. |
+    | **`state`** | **Optional**.  <br>The abbreviation name of the state. |
+    | **`zip`** | **Optional**.  <br>The ZIP code. |
+    | **`country`** | **Optional**.  <br>The full name of the country. |
+    | **`country_code`** | **Optional**.  <br>The two-letter country abbreviation. |
+    | **`type`** | **Optional**.  <br>Standard values: `HOME`, `WORK`. |
+  type: text/markdown

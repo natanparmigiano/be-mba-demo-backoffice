@@ -1,0 +1,74 @@
+info:
+  name: Get Endpoint Availability Metric
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: https://graph.facebook.com/{{Version}}/{{Flow-ID}}?fields=metric.name(ENDPOINT_AVAILABILITY).granularity(DAY).since(2024-01-28).until(2024-01-30)
+  params:
+    - name: fields
+      value: metric.name(ENDPOINT_AVAILABILITY).granularity(DAY).since(2024-01-28).until(2024-01-30)
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Get Endpoint Availability Metric
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Flow-ID}}?fields=metric.name(ENDPOINT_AVAILABILITY).granularity(DAY).since(2024-01-28).until(2024-01-30)
+      method: GET
+      params:
+        - name: fields
+          value: metric.name(ENDPOINT_AVAILABILITY).granularity(DAY).since(2024-01-28).until(2024-01-30)
+          type: query
+          description: Return specific fields in the response
+    response:
+      status: 200
+      statusText: OK
+      body:
+        type: text
+        data: |-
+          {
+              "id": "flow-1",
+              "metric": {
+                  "granularity": "DAY",
+                  "name": "ENDPOINT_AVAILABILITY",
+                  "data_points": [
+                      {
+                          "timestamp": "2024-01-28T08:00:00+0000",
+                          "data": [
+                              {
+                                  "key": "succeeded",
+                                  "value": 713
+                              },
+                              {
+                                  "key": "failed",
+                                  "value": 335
+                              }
+                          ]
+                      },
+                      {
+                          "timestamp": "2024-01-29T08:00:00+0000",
+                          "data": [
+                              {
+                                  "key": "succeeded",
+                                  "value": 623
+                              },
+                              {
+                                  "key": "failed",
+                                  "value": 2
+                              }
+                          ]
+                      }
+                  ]
+              }
+          }
+
+docs: Can request specific fields by enabling the \`fields\` query param

@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790741928165,
+      "tag": "0000_parallel_vengeance",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790742677419,
+      "tag": "0001_short_iron_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790745454871,
+      "tag": "0002_crazy_corsair",
+      "breakpoints": true
+    }
+  ]
+}

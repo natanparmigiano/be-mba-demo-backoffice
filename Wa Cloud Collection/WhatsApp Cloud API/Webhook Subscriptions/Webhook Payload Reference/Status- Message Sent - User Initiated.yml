@@ -1,0 +1,61 @@
+info:
+  name: "Status: Message Sent - User Initiated"
+  type: http
+  seq: 13
+
+http:
+  method: VIEW
+  url: http://
+  body:
+    type: json
+    data: |-
+      {
+          "object": "whatsapp_business_account",
+          "entry": [
+              {
+                  "id": "WHATSAPP_BUSINESS_ACCOUNT_ID",
+                  "changes": [
+                      {
+                          "value": {
+                              "messaging_product": "whatsapp",
+                              "metadata": {
+                                  "display_phone_number": "PHONE_NUMBER",
+                                  "phone_number_id": "PHONE_NUMBER_ID"
+                              },
+                              "statuses": [
+                                  {
+                                      "id": "wamid.ID",
+                                      "recipient_id": "PHONE_NUMBER",
+                                      "status": "sent",
+                                      "timestamp": "TIMESTAMP",
+                                      "conversation": {
+                                          "id": "CONVERSATION_ID",
+                                          "expiration_timestamp": TIMESTAMP,
+                                          "origin": {
+                                              "type": "user_initiated"
+                                          }
+                                      },
+                                      "pricing": {
+                                          "pricing_model": "CBP",
+                                          "billable": true,
+                                          "category": "user_initiated"
+                                      }
+                                  }
+                              ]
+                          },
+                          "field": "messages"
+                      }
+                  ]
+              }
+          ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: "The following notification is received when a business sends a message as part of a [user-initiated conversation](https://developers.facebook.com/docs/whatsapp/pricing/conversationpricing#how-it-works) (if that conversation did not originate in a free entry point):"

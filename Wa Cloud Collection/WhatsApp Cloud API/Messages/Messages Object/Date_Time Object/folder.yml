@@ -1,0 +1,25 @@
+info:
+  name: Date_Time Object
+  type: folder
+  seq: 9
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    The `Date_Time Object` contains the following fields:
+
+    #### Fields
+
+    | Name                 | Description              |
+    |----------------------|--------------------------|
+    | **`fallback_value`** | **Required**. <br/> The default text if localization fails. |
+    | **`day_of_week`**    | **Optional**. <br/> If it is different from the value derived from the date (if specified), use the derived value. Both strings and numbers are accepted.<br/>Supported values: <ul><li>`"MONDAY"` or 1</li><li>`"TUESDAY"` or 2</li><li>`"WEDNESDAY"` or 3</li><li>`"THURSDAY"` or 4</li><li>`"FRIDAY"` or 5</li><li>`"SATURDAY"` or 6</li><li>`"SUNDAY"` or 7</li></ul> |
+    | **`year`** | **Optional**. <br/> Specifies the year. |
+    | **`month`** | **Optional**. <br/> Specifies the month. |
+    | **`day_of_month`** | **Optional**. <br/> Specifies the day of the month. |
+    | **`hour`** | **Optional**. <br/> Specifies the hour. |
+    | **`minute`** | **Optional**. <br/> Specifies the minute. |
+    | **`calendar`** | **Optional**. <br/> The type of calendar.<br/><br/>**Values**: `"GREGORIAN"` or `"SOLAR_HIJRI"`. |
+  type: text/markdown

@@ -1,0 +1,16 @@
+info:
+  name: org Object
+  type: folder
+  seq: 4
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    | Name | Description |
+    | --- | --- |
+    | **`company`** | **Optional.**  <br>Name of the contact's company. |
+    | **`department`** | **Optional.**  <br>Name of the contact's department. |
+    | **`title`** | **Optional.**  <br>The contact's business title. |
+  type: text/markdown

@@ -1,0 +1,20 @@
+info:
+  name: Button Parameter Object
+  type: folder
+  seq: 10
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    The `Button Parameter Object` contains the following fields:
+
+    #### Fields
+
+    | Name                 | Description              |
+    |----------------------|--------------------------|
+    | **`type`** | **Required**. <br/> Specifies the type of parameter for the button. <br/><br/>**Values**: `payload`,`text`|
+    | **`payload`** | **Required for `quick_reply` buttons**. <br/> Developer-defined payload that is returned when the button is clicked in addition to the display text on the button.<br/><br/>For more information on usage, see [Callback from a Quick Reply Button Click](#eb99d8fb-170a-4284-b7da-454484a0333a).|
+    | **`text`** | **Required for url buttons**. <br/> Developer-provided suffix that is appended to the predefined prefix URL in the template.|
+  type: text/markdown

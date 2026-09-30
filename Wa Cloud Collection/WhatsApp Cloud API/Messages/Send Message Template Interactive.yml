@@ -1,0 +1,239 @@
+info:
+  name: Send Message Template Interactive
+  type: http
+  seq: 32
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+          "messaging_product": "whatsapp",
+          "recipient_type": "individual",
+          "to": "{{Recipient-Phone-Number}}",
+          "type": "template",
+          "template": {
+              "name": "template-name",
+              "language": {
+                  "code": "language-and-locale-code"
+              },
+              "components": [
+                  {
+                      "type": "header",
+                      "parameters": [
+                          {
+                              "type": "image",
+                              "image": {
+                                  "link": "http(s)://the-image-url"
+                              }
+                          }
+                      ]
+                  },
+                  {
+                      "type": "body",
+                      "parameters": [
+                          {
+                              "type": "text",
+                              "text": "text-string"
+                          },
+                          {
+                              "type": "currency",
+                              "currency": {
+                                  "fallback_value": "$100.99",
+                                  "code": "USD",
+                                  "amount_1000": 100990
+                              }
+                          },
+                          {
+                              "type": "date_time",
+                              "date_time": {
+                                  "fallback_value": "February 25, 1977",
+                                  "day_of_week": 5,
+                                  "year": 1977,
+                                  "month": 2,
+                                  "day_of_month": 25,
+                                  "hour": 15,
+                                  "minute": 33,
+                                  "calendar": "GREGORIAN"
+                              }
+                          }
+                      ]
+                  },
+                  {
+                      "type": "button",
+                      "sub_type": "quick_reply",
+                      "index": "0",
+                      "parameters": [
+                          {
+                              "type": "payload",
+                              "payload": "aGlzIHRoaXMgaXMgY29v"
+                          }
+                      ]
+                  },
+                  {
+                      "type": "button",
+                      "sub_type": "quick_reply",
+                      "index": "1",
+                      "parameters": [
+                          {
+                              "type": "payload",
+                              "payload": "9rwnB8RbYmPF5t2Mn09x4h"
+                          }
+                      ]
+                  }
+              ]
+          }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Send Interactive Message Template
+    request:
+      url: https://graph.facebook.com/v13.0/{{Phone-Number-ID}}/messages
+      method: POST
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |
+          {
+              "messaging_product": "whatsapp",
+              "recipient_type": "individual",
+              "to": "{{Recipient-Phone-Number}}",
+              "type": "template",
+              "template": {
+                  "name": "template-name",
+                  "language": {
+                      "code": "language-and-locale-code"
+                  },
+                  "components": [
+                      {
+                          "type": "header",
+                          "parameters": [
+                              {
+                                  "type": "image",
+                                  "image": {
+                                      "link": "http(s)://the-image-url"
+                                  }
+                              }
+                          ]
+                      },
+                      {
+                          "type": "body",
+                          "parameters": [
+                              {
+                                  "type": "text",
+                                  "text": "text-string"
+                              },
+                              {
+                                  "type": "currency",
+                                  "currency": {
+                                      "fallback_value": "$100.99",
+                                      "code": "USD",
+                                      "amount_1000": 100990
+                                  }
+                              },
+                              {
+                                  "type": "date_time",
+                                  "date_time": {
+                                      "fallback_value": "February 25, 1977",
+                                      "day_of_week": 5,
+                                      "year": 1977,
+                                      "month": 2,
+                                      "day_of_month": 25,
+                                      "hour": 15,
+                                      "minute": 33,
+                                      "calendar": "GREGORIAN"
+                                  }
+                              }
+                          ]
+                      },
+                      {
+                          "type": "button",
+                          "sub_type": "quick_reply",
+                          "index": "0",
+                          "parameters": [
+                              {
+                                  "type": "payload",
+                                  "payload": "aGlzIHRoaXMgaXMgY29v"
+                              }
+                          ]
+                      },
+                      {
+                          "type": "button",
+                          "sub_type": "quick_reply",
+                          "index": "1",
+                          "parameters": [
+                              {
+                                  "type": "payload",
+                                  "payload": "9rwnB8RbYmPF5t2Mn09x4h"
+                              }
+                          ]
+                      }
+                  ]
+              }
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "contacts": [
+                  {
+                      "input": "48XXXXXXXXX",
+                      "wa_id": "48XXXXXXXXX "
+                  }
+              ],
+              "messages": [
+                  {
+                      "id": "wamid.gBGGSFcCNEOPAgkO_KJ55r4w_ww"
+                  }
+              ]
+          }
+
+docs: |-
+  Before sending a message template, you need to create one. See [Create Template Using the WhatsApp Manager](https://developers.facebook.com/docs/whatsapp/message-templates/creation) for more information. If your account is not verified yet, you can use one of our [pre-approved templates](https://www.facebook.com/business/help/722393685250070).
+
+  To send an interactive message template, make a **POST** call to **`/{{Phone-Number-ID}}/messages`** and attach a message object with `type=template`. Then, add a template object with your chosen button.
+
+  Interactive message templates expand the content you can send recipients beyond the standard message template and media messages template types to include interactive buttons using the components object. There are two types of predefined buttons offered:
+
+  * Call-to-Action — Allows your customer to call a phone number and visit a website.
+  * Quick Reply — Allows your customer to return a simple text message.
+
+  These buttons can be attached to text messages or media messages. Once your interactive message templates have been created and approved, you can use them in notification messages as well as customer service/care messages.
+
+  ## Message Objects
+
+  Interactive message templates can contain the following `Message Objects`:
+
+  * [Template Object](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/messages#template-object)
+  * [Component Object](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/messages#components-object)
+  * [Parameter Object](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/messages#parameter-object)
+  * [Currency Object](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/messages#currency-object)
+  * [Date_Time Object](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/messages#date-time-object)
+
+  ## Response
+
+  A successful response includes an object with an identifier prefixed with **`wamid`**.

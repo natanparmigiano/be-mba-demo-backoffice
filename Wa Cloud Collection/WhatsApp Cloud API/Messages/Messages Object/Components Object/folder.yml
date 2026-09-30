@@ -1,0 +1,21 @@
+info:
+  name: Components Object
+  type: folder
+  seq: 6
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    The `Components Object` contains the following fields:
+
+    #### Fields
+
+    | Name             | Description              |
+    |------------------|--------------------------|
+    | **`type`**  |**Required**. <br/> Describes the component type. <br/><br/> **Values**: `header`, `body`, `button` <br/> For text-based templates, only `body` is supported. |
+    | **`parameters`**  |**Required when type is `button`**. <br/> The namespace of the template. |
+    | **`sub_type`**  |**Required when type is `button`. Not used for the other types.**<br/> The type of button to create. <br/><br/>**Values**: `quick_reply`, `url`|
+    | **`index`**  |**Required when type is `button`. Not used for the other types.** <br/> The position index of the button. You can have up to 3 buttons using index values of 0 to 2. |
+  type: text/markdown

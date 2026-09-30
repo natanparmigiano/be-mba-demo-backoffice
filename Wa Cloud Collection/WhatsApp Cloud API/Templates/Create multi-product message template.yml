@@ -1,0 +1,156 @@
+info:
+  name: Create multi-product message template
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/message_templates
+  body:
+    type: json
+    data: |-
+      {
+          "name": "abandoned_cart",
+          "language": "en_US",
+          "category": "MARKETING",
+          "components": [
+              {
+                  "type": "HEADER",
+                  "format": "TEXT",
+                  "text": "Forget something {{1}}?",
+                  "example": {
+                      "header_text": [
+                          "Pablo"
+                      ]
+                  }
+              },
+              {
+                  "type": "BODY",
+                  "text": "Looks like you left some items in your cart! Use code {{1}} and you can get 10% off of all of them!",
+                  "example": {
+                      "body_text": [
+                          [
+                              "10OFF"
+                          ]
+                      ]
+                  }
+              },
+              {
+                  "type":"BUTTONS",
+                  "buttons": [
+                      {
+                          "type": "MPM",
+                          "text": "View items"
+                      }
+                  ]
+              }
+          ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Example response
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/message_templates
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+              "name": "abandoned_cart",
+              "language": "en_US",
+              "category": "MARKETING",
+              "components": [
+                  {
+                      "type": "HEADER",
+                      "format": "TEXT",
+                      "text": "Forget something {{1}}?",
+                      "example": {
+                          "header_text": [
+                              "Pablo"
+                          ]
+                      }
+                  },
+                  {
+                      "type": "BODY",
+                      "text": "Looks like you left some items in your cart! Use code {{1}} and you can get 10% off of all of them!",
+                      "example": {
+                          "body_text": [
+                              [
+                                  "10OFF"
+                              ]
+                          ]
+                      }
+                  },
+                  {
+                      "type":"BUTTONS",
+                      "buttons": [
+                          {
+                              "type": "MPM",
+                              "text": "View items"
+                          }
+                      ]
+                  }
+              ]
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json; charset=UTF-8
+        - name: Vary
+          value: Origin
+        - name: x-business-use-case-usage
+          value: '{"104996122399160":[{"type":"whatsapp_business_management","call_count":1,"total_cputime":1,"total_time":1,"estimated_time_to_regain_access":0}]}'
+        - name: x-fb-rlafr
+          value: "0"
+        - name: Access-Control-Allow-Origin
+          value: "*"
+        - name: facebook-api-version
+          value: v16.0
+        - name: Strict-Transport-Security
+          value: max-age=15552000; preload
+        - name: Pragma
+          value: no-cache
+        - name: Cache-Control
+          value: private, no-cache, no-store, must-revalidate
+        - name: Expires
+          value: Sat, 01 Jan 2000 00:00:00 GMT
+        - name: x-fb-request-id
+          value: A3RpRCRYq_2lAy6Wxi8LHKA
+        - name: x-fb-trace-id
+          value: Bw/YMwRpjl4
+        - name: x-fb-rev
+          value: "1007468797"
+        - name: X-FB-Debug
+          value: PUCQeqJ37UQ+sft7EingcX61vzlQ66E+YYidBn/TRmvZr4c+cmh/1L1Vi0IwsGuBeB1rTgXk4LrOevOiTagYMg==
+        - name: Date
+          value: Wed, 10 May 2023 21:28:52 GMT
+        - name: Alt-Svc
+          value: h3=":443"; ma=86400
+        - name: Connection
+          value: keep-alive
+        - name: Content-Length
+          value: "67"
+      body:
+        type: json
+        data: |-
+          {
+              "id": "1986030731777856",
+              "status": "PENDING",
+              "category": "MARKETING"
+          }
+
+docs: |-
+  - Guide: [Multi-Product Message Templates](https://developers.facebook.com/docs/whatsapp/business-management-api/message-templates/mpm-templates)
+  - Guide: [Message Templates](https://developers.facebook.com/docs/whatsapp/business-management-api/message-templates)
+  - Guide: [How To Monitor Quality Signals](https://developers.facebook.com/docs/whatsapp/guides/how-to-monitor-quality-signals)
+  - Endpoint reference: [WhatsApp Business Account > Message Templates](https://developers.facebook.com/docs/graph-api/reference/whats-app-business-account/message_templates/)

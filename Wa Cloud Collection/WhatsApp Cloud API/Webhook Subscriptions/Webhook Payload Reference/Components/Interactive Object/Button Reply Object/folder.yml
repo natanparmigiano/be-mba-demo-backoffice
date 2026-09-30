@@ -1,0 +1,15 @@
+info:
+  name: Button Reply Object
+  type: folder
+  seq: 1
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    | Field | Description |
+    | --- | --- |
+    | **`id`** | The unique identifier of the button. |
+    | **`title`** | The title of the button. |
+  type: text/markdown

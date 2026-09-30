@@ -1,0 +1,82 @@
+info:
+  name: Resumable Upload - Create an Upload Session
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/app/uploads/?file_length=<YOUR_FILE_LENGTH>&file_type=image/jpeg&file_name=myprofile.jpg
+  headers:
+    - name: Authorization
+      value: OAuth {{User-Access-Token}}
+  params:
+    - name: file_length
+      value: <YOUR_FILE_LENGTH>
+      type: query
+      description: "**Required**<br/>Specifies the size of your file in bytes."
+    - name: file_type
+      value: image/jpeg
+      type: query
+      description: "**Required**<br/>Specifies the MIME type. Values are <ul><li>`image/jpeg`</li><li>`image/png`</li><li>`video/mp4`</li></ul>"
+    - name: file_name
+      value: myprofile.jpg
+      type: query
+      description: "**Optional**<br/>Specifies the file name you are using to create the session."
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Resumable Upload - Create an Upload Session
+    request:
+      url: https://graph.facebook.com/{{Version}}/app/uploads/?file_length=14502&file_type=image/jpeg&file_name=myprofile.jpg
+      method: POST
+      headers:
+        - name: Authorization
+          value: OAuth {{User-Access-Token}}
+      params:
+        - name: file_length
+          value: "14502"
+          type: query
+          description: "**Required**<br/>Specifies the size of your file in bytes."
+        - name: file_type
+          value: image/jpeg
+          type: query
+          description: "**Required**<br/>Specifies the MIME type. Values are <ul><li>`image/jpeg`</li><li>`video/mp4`</li></ul>"
+        - name: file_name
+          value: myprofile.jpg
+          type: query
+          description: "**Optional**<br/>Specifies the file name you are using to create the session."
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "id": "upload:MTphdHRhY2htZW50Ojlk2mJiZxUwLWV6MDUtNDIwMy05yTA3LWQ4ZDPmZGFkNTM0NT8=?sig=ARZqkGCA_uQMxC8nHKI"
+          }
+
+docs: |-
+  The Resumable Upload series of requests allow you to upload Profile Pictures to Meta so you can receive a handle to update these pictures in the Business Profile API. The Resumable Upload requests consist of the following:
+
+  * **Resumable Upload - Create an Upload Session**
+  * **Resumable Upload - Upload File Data**
+  * **Resumable Upload - Query File Upload Status**
+
+  To create a new upload session, make a **POST** call using the `/app/uploads` endpoint.
+
+  For more information, see [Create an Upload Session](https://developers.facebook.com/docs/graph-api/guides/upload#step-1--create-a-session).
+
+  **Response**  
+  The call returns a server-generated value that includes the session ID that you can use in later calls. 
+
+  >Copy this value and Open the **Environment quick look** in Postman and paste it in the **CURRENT VALUE** for `Upload-ID`.

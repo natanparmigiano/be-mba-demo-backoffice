@@ -1,0 +1,49 @@
+type RuntimeEnvironment = Readonly<Record<string, string | undefined>>
+
+export function isInProcessWorkerEnabled(
+  env: RuntimeEnvironment = getRuntimeEnvironment(),
+): boolean {
+  const value = env.ENABLE_WORKER_IN_PROCESS?.trim().toLowerCase()
+
+  if (!value) return false
+  if (value === 'true') return true
+  if (value === 'false') return false
+
+  throw new Error('ENABLE_WORKER_IN_PROCESS must be true or false')
+}
+
+export function getSubscribedTopics(
+  availableTopics: readonly string[],
+  env: RuntimeEnvironment = getRuntimeEnvironment(),
+): string[] {
+  const configuredValue = env.SUBSCRIBE_TO_TOPICS?.trim() || 'all'
+  const requestedTopics = [
+    ...new Set(
+      configuredValue
+        .split(',')
+        .map((topic) => topic.trim())
+        .filter(Boolean),
+    ),
+  ]
+
+  if (requestedTopics.includes('all')) return [...availableTopics]
+
+  const available = new Set(availableTopics)
+  const unknownTopics = requestedTopics.filter((topic) => !available.has(topic))
+
+  if (unknownTopics.length > 0) {
+    throw new Error(
+      `No subscriber handlers are registered for: ${unknownTopics.join(', ')}`,
+    )
+  }
+
+  return requestedTopics
+}
+
+function getRuntimeEnvironment(): RuntimeEnvironment {
+  const runtime = globalThis as typeof globalThis & {
+    process?: { env?: RuntimeEnvironment }
+  }
+
+  return runtime.process?.env ?? {}
+}

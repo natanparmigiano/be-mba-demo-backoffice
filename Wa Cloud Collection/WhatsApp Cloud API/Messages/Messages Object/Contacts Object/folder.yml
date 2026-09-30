@@ -1,0 +1,24 @@
+info:
+  name: Contacts Object
+  type: folder
+  seq: 11
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    The `Contacts Object` contains the following fields:
+
+    #### Fields
+
+    | Name                 | Description              |
+    |----------------------|--------------------------|
+    | **`addresses`** | **Optional**. <br/> Specifies an array of address objects. For more information, see [address object](https://developers.facebook.com/docs/whatsapp/api/messages#addresses-object).|
+    | **`birthday`** | **Optional**. <br/> A **YYYY-MM-DD** formatted string.|
+    | **`emails`** | **Optional**. <br/> Specifies an array of email objects. For more information, see [emails object](https://developers.facebook.com/docs/whatsapp/api/messages#emails-object).|
+    | **`name`** | **Required**. <br/> Specifies the name object. For more information, see [name object](https://developers.facebook.com/docs/whatsapp/api/messages#name-object).|
+    | **`org`** | **Optional**. <br/> Specifies the org object. For more information, see [org object](https://developers.facebook.com/docs/whatsapp/api/messages#org-object).|
+    | **`phones`** | **Optional**. <br/> Specifies an array of phone objects. For more information, see [phone object](https://developers.facebook.com/docs/whatsapp/api/messages#phone-object).|
+    | **`urls`** | **Optional**. <br/> Specifies an array of url objects. For more information, see [url object](https://developers.facebook.com/docs/whatsapp/api/messages#urls-object).|
+  type: text/markdown

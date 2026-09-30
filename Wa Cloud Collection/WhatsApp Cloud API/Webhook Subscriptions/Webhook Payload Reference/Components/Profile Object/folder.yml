@@ -1,0 +1,11 @@
+info:
+  name: Profile Object
+  type: folder
+  seq: 6
+
+docs:
+  content: |-
+    | Field | Description |
+    | --- | --- |
+    | **`name`** |  **Optional.**<br/> Specifies the sender's profile name. |
+  type: text/markdown

@@ -1,0 +1,14 @@
+info:
+  name: Payments API - IN
+  type: folder
+  seq: 14
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    **These APIs are in beta. Please reach out to Meta Business Engineering teams with your WABA ID to gain access.**
+
+    Guide: [Payments API - IN](https://developers.facebook.com/docs/whatsapp/cloud-api/payments-api/payments-in)
+  type: text/markdown

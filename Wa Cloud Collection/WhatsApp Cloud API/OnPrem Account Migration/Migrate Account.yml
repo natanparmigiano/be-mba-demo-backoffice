@@ -1,0 +1,77 @@
+info:
+  name: Migrate Account
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/register
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+          "messaging_product": "whatsapp",
+          "pin": "6-digit-pin",
+          "backup": {
+              "data": "backup_data",
+              "password": "password"
+          }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Migrate Account
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/register
+      method: POST
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "pin": "123678",
+              "backup": {
+                  "data": "BACKUP_DATA",
+                  "password": "P455w0rd##"
+              }
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "success": "true"
+          }
+
+docs: |-
+  To migrate your account, make a **POST** call to the **`/{{Phone-Number-ID}}/register`** endpoint and include the parameters listed below. 
+
+  Your request may take as long as 15 seconds to finish. During this period, your on-premise deployment is automatically disconnected from WhatsApp server and shutdown; the business account will start up in the cloud-hosted service at the same time. After the request finishes successfully, you can send messages immediately.
+
+  ## Request Parameters
+  | Name                  | Description               |
+  |-----------------------|---------------------------|
+  |**`messaging_product`**| **Required**.<br/>Messaging service used for the request. For account migration, always use `"whatsapp"`. 
+  | **`pin`**             |**Required**.<br/>A 6-digit pin you have previously set up — See [Set Two-Step Verification](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/two-step-verification) If you use the wrong pin, your on-premise deployment will be down and will be disconnected from the WhatsApp servers.<br/>If you haven't set up or you have disabled two-step verification, provide a random 6-digit pin in the request, and this will be used to enable two-step verification in the WhatsApp Business Cloud-Based API. |
+  |**`backup.data`** | **Required**.<br/>The data value you get when you backup your on-premise deployment. This contains the account registration info and application settings. <br/>For more information, see [Backup and Restore](https://developers.facebook.com/docs/whatsapp/api/settings/backup-and-restore) to backup your on-premise implementation. |
+  |**`backup.password`** | **Required**.<br/>The password you used in the backup API of your On-Premise deployment.|

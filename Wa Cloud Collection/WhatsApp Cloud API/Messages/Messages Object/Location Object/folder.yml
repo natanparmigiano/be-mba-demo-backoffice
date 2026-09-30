@@ -1,0 +1,21 @@
+info:
+  name: Location Object
+  type: folder
+  seq: 12
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    The `Location Object` contains the following fields:
+
+    <h5>Fields</h5>
+
+    | Name                 | Description              |
+    |----------------------|--------------------------|
+    | **`longitude`** | **Required**. <br/> The longitude of the location.|
+    | **`latitude`** | **Required**. <br/> The latitude of the location.|
+    | **`name`** | **Optional**. <br/> The name of the location.|
+    | **`address`** | **Optional**. <br/> The address of the location. This field is only displayed if **`name`** is present.|
+  type: text/markdown

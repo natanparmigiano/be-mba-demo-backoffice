@@ -1,0 +1,21 @@
+info:
+  name: Media Object
+  type: folder
+  seq: 3
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    The `Media Object` consists of audio, document, image, sticker, and video objects.
+
+    #### Fields
+
+    | Name            | Description         |
+    |-----------------|---------------------|
+    | **`id`**        | **Required when type is an image, audio, document, sticker, or video and you are not using a link**.<br/>The media object ID. For more information, see [Get Media ID](#39a02bc0-ede1-4848-b24e-4ac3d501aaea). |
+    | **`link`**      | **Required when type is audio, document, image, sticker, or video and you are not using an uploaded media ID.** <br/>The protocol and URL of the media to be sent. Use only with HTTP/HTTPS URLs. |
+    | **`caption`** | **Optional**.<br/>Describes the specified image, document, or video. Do not use it with audio or sticker media.|
+    |**`filename`** | **Optional**. <br/> Describes the filename for the specific document. Use only with document media.|
+  type: text/markdown

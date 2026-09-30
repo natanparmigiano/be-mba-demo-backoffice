@@ -1,0 +1,31 @@
+info:
+  name: Messages Object
+  type: folder
+  seq: 7
+
+docs:
+  content: |-
+    The messages array of objects is nested within the **`Value`** object and is triggered when a customer updates their profile information or a customer sends a message to the business that is subscribed to the Webhook.
+
+    | Field                   | Description                      |
+    |-------------------------|----------------------------------|
+    | **`from`**              | The customer's phone number.       |
+    | **`id`**                | The unique identifier of incoming message, you can use messages endpoint to mark it as read.       |
+    | **`timestamp`**         | The timestamp when a customer sends a message.       |
+    | **`type`**              | The type of message being received.<br/><br/>Supported values are:<ul><li>`text`: for text messages.</li><li>`image`: for image (media) messages.</li><li>`interactive`: for interactive messages.</li><li>`document`: for document (media) messages.</li><li>`audio`: for audio and voice (media) messages.</li><li>`sticker`: for sticker messages.</li><li>`order`: for when a customer has placed an order.</li><li>`video`: for video (media) messages.</li><li>`button`: for responses to [interactive message templates](#b00c9f92-be3e-4511-af38-be72827a7f3a).</li><li>`contacts`: for contact messages.</li><li>`location`: for location messages.</li><li>`unknown`: for unknown messages.</li><li>`system`: for user number change messages.</li></ul>       |
+    | **`context`**              |  **Added to Webhook if message is forwarded or an inbound reply.** <br/>A [context object](#57287ed9-e640-44db-b991-9f03749cb645).|
+    | **`identity`**            | **Added to Webhook if show_security_notifications is enabled in application settings.** <br/>An [identity object](#a1b69494-a0f5-405c-9dd5-968362c4a30f). |
+    | **`text`**              |  **Added to Webhook if type is `text`**. <br/>A [text object](#e2e1d9df-0886-4e29-a8c8-ff93223178bd). |
+    | **`audio`**              |  **Added to Webhook if type is `audio` (including voice messages)**. <br/>A [media object](#058689bd-e754-4efc-938d-bec7bec3b1c4) with the audio information. |
+    | **`image`**              |  **Added to Webhook if type is `image`**. <br/>A [media object](#058689bd-e754-4efc-938d-bec7bec3b1c4) with the image information. |
+    | **`sticker`**              |  **Added to Webhook if type is `sticker`**. <br/>A [media object](#058689bd-e754-4efc-938d-bec7bec3b1c4) with the sticker information. |
+    | **`video`**              |  **Added to Webhook if type is `video`**. <br/>A [media object](#058689bd-e754-4efc-938d-bec7bec3b1c4) with the video information. |
+    | **`interactive`**              |  **Added to Webhook if type is `interactive`**. <br/>When a customer has interacted with your message, an [interactive object](https://documenter.getpostman.com/view/13382743/UVC5FTHT?fbclid=IwAR083mCseNzJm-JgxlIQbdF30hkAbEOHkbBaw9bA7-isGKU6uwtq1RJKc0o#68fe0550-aba5-4ee3-b79d-0846f3dddef1) is included in the **``Messages`** object. |
+    | **`order`** | Included in the **`Messages`** object when a customer has placed an order. The order object can contain the following fields:<ul><li>**`catalog_id`**: ID for the catalog the ordered item belongs to.</li><li>**`text`**: Text message from the user sent along with the order.</li><li>**`product_items`**: Array of product item objects.</li></ul><br/><br/>The **`product_items`** object contains the following fields:<ul><li>**`product_retailer_id`**: The unique identifier of the product in a catalog.</li><li>**`quanitity`**: The number of items.</li><li>**`item_price`**: The price of each item.</li><li>**`currency`**: The price currency.</li></ul>
+    | **`document`**              |  **Added to Webhook if type is `document`**. <br/>A [media object](#058689bd-e754-4efc-938d-bec7bec3b1c4) with the document information. |
+    | **`errors`**              |  **Added to Webhook if type is `unknown`**. <br/>If displayed, this field contains the following error message:<br/><br/>```[{"code":131051,"details":"Message type is not currently supported","title":"Unsupported message type"]```|
+    | **`system`**              |  **Added to Webhook if type is `system`**. <br/>A [system message object](#15b395a9-15eb-4610-ba12-3c9f8a5e0528). |
+    | **`button`**              |  **Added to Webhook if type is `button`**. <br/>A [button message object](#cffcb0b3-f6c8-45d6-b4a1-5deaa8955a7d). <br/>This field is used when the Webhook notifies you that a user clicked on a quick reply button.|
+    | **`referral`**              |  **Added to Webhook if the message is coming from a user that clicked an ad that is `Click To WhatsApp`**.<br/>A [referral object](). This is how the referral object works:<ol><li>A user clicks on an ad with the Click to WhatsApp call-to-action.</li><li>User is redirected to WhatsApp and sends a message to the advertising business.</li><li>User sends a message to the business. Be aware that users may elect to remove their referral data.</li><li>The advertising business gets an inbound message notification including the **`referral`** object, which provides additional context on the ad that triggered the message. Knowing all this information, the business can appropriately reply to the user message.</li></ol>
+    |
+  type: text/markdown

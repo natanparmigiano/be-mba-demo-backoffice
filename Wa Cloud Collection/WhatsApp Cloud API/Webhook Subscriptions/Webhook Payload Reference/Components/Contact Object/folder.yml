@@ -1,0 +1,12 @@
+info:
+  name: Contact Object
+  type: folder
+  seq: 5
+
+docs:
+  content: |-
+    | Field                   | Description                      |
+    |-------------------------|----------------------------------|
+    | **`profile`**           | The [profile object](#bedd6ec6-be2f-42ca-9b0e-a6c3f6f4cd70).          |
+    | **`wa_id`**             | The WhatsApp ID of the customer. You can send messages using this **`wa_id`**.          |
+  type: text/markdown

@@ -1,0 +1,67 @@
+info:
+  name: Get Phone Number ID
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/phone_numbers
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Get Phone Number ID
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/phone_numbers
+      method: GET
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "data": [
+                  {
+                      "verified_name": "Jasper's Market",
+                      "display_phone_number": "+1 631-555-5555",
+                      "id": "1906385232743451",
+                      "quality_rating": "GREEN"
+                  },
+                  {
+                      "verified_name": "Jasper's Ice Cream",
+                      "display_phone_number": "+1 631-555-5556",
+                      "id": "1913623884432103",
+                      "quality_rating": "NA"
+                  }
+              ]
+          }
+
+docs: |-
+  To send messages, you need to register the phone number you want to use. This is the business phone number we mentioned in [Set up Assets](https://developers.facebook.com/docs/whatsapp/cloud-api/get-started#set-up-assets).
+
+  Before you can proceed to registration, you need to find that phone number’s ID.
+
+  #### Response
+
+  If the request is successful, the response includes all phone numbers connected to your WABA.
+
+  Save the ID for the phone number you want to register. For more information about this endpoint, see [Read Phone Numbers](https://developers.facebook.com/docs/whatsapp/business-management-api/phone-numbers).
+
+  #### Migration Exception
+
+  If you are migrating a phone number from the On-Premises API to the Cloud API, there are extra steps you need to perform before registering a phone number with the Cloud API. For more information regarding the full process, see [Migrate Between On-Premises and Cloud API](#79b8156b-8c83-4db9-94ac-dd9aaaa67390).
+
+  To get your phone number’s ID, make the following API call:

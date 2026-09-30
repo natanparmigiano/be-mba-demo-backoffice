@@ -1,0 +1,11 @@
+info:
+  name: Text Object
+  type: folder
+  seq: 8
+
+docs:
+  content: |-
+    | Field                 | Description                      |
+    |-------------------------|----------------------------------|
+    | **`body`**              | The text of the text message.    |
+  type: text/markdown

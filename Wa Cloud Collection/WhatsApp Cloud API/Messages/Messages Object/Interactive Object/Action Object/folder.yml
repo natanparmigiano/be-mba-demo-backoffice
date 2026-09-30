@@ -1,0 +1,20 @@
+info:
+  name: Action Object
+  type: folder
+  seq: 4
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    ##### Fields
+
+    | Name                 | Description              |
+    |----------------------|--------------------------|
+    | **`button`**      | **Required for all List Messages**.<br/>The Button content. It cannot be an empty string and must be unique within the message. Does not allow emojis or markdown.<br/><br/>Maximum length: 20 characters.|
+    | **`buttons`**      | **Required for Reply Button**.<br/>A button can contain the following parameters:<ul><li>**`type`**: only supported if **`type`**=**`reply`**(for Reply Button)</li><li>**`title`**: The Button title. It cannot be an empty string and must be unique within the message. Does not allow emojis or markdown. Maximum length: 20 characters.</li><li>**`id`**: Unique identifier for your button. This ID is returned in the Webhook when the button is clicked by the user. Maximum length: 256 characters.</li></ul><br/>You can have a maximum of 3 buttons.|
+    | **`sections`**      | **Required for List Messages and Multi-Product Messages**.<br/>The array of **`section`** objects. There is a minimum of 1 and maximum of 10. For more information, see [section object](#).|
+    | **`catalog_id`**  |  **Required for Single Product and Multi-Product messages.**<br/><br/>Unique identifier of the Facebook catalog linked to your WhatsApp Business Account. **`catalog_id`** can be retrieved through [Commerce Manager](https://business.facebook.com/commerce/). |
+    | **`product_retailer_id`**  | **Required for Single Product and Multi-Product messages.**<br/><br/> The unique identifier of the product in the catalog.<br/><br/>To get the **`product_retailer_id`**, go to [Commerce Manager](https://business.facebook.com/commerce/), select your Facebook Business account, and you will see a list of shops connected to your account. Click the shop you want to use. On the left-side panel, click **Catalog** > **Items**, and find the item you want to mention. The ID for that item is displayed under the item's name.     |
+  type: text/markdown

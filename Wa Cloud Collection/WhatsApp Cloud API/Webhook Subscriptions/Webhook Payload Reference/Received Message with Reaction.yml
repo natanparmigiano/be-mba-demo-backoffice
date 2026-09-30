@@ -1,0 +1,61 @@
+info:
+  name: Received Message with Reaction
+  type: http
+  seq: 4
+
+http:
+  method: VIEW
+  url: http://
+  body:
+    type: json
+    data: |-
+      {
+          "object": "whatsapp_business_account",
+          "entry": [
+              {
+                  "id": "8856996819413533",
+                  "changes": [
+                      {
+                          "value": {
+                              "messaging_product": "whatsapp",
+                              "metadata": {
+                                  "display_phone_number": "<PHONE_NUMBER>",
+                                  "phone_number_id": "27681414235104944"
+                              },
+                              "contacts": [
+                                  {
+                                      "profile": {
+                                          "name": "<CONTACT_NAME>"
+                                      },
+                                      "wa_id": "<WA_ID>"
+                                  }
+                              ],
+                              "messages": [
+                                  {
+                                      "from": "sender_wa_id",
+                                      "id": "message_id",
+                                      "timestamp": "message_timestamp",
+                                      "type": "reaction",
+                                      "reaction": {
+                                          "emoji": "<emoji>",
+                                          "messsage_id": "<WAMID>"
+                                      }
+                                  }
+                              ]
+                          },
+                          "field": "messages"
+                      }
+                  ]
+              }
+          ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: If the message being reacted to is more than 30 days old the reaction message webhook will not be delivered. Note that for reactions, the **`timestamp`** value indicates when the customer sent the reaction, not when the Webhook was generated.

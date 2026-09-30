@@ -1,0 +1,152 @@
+info:
+  name: Send Catalog Message
+  type: http
+  seq: 39
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+          "messaging_product": "whatsapp",
+          "recipient_type": "individual",
+          "to": "{{Recipient-Phone-Number}}",
+          "type": "interactive",
+          "interactive": {
+              "type": "catalog_message",
+              "body": {
+                  "text": "Hello! Thanks for your interest. Ordering is easy. Just visit our catalog and add items to purchase."
+              },
+              "action": {
+                  "name": "catalog_message",
+                  "parameters": {
+                      "thumbnail_product_retailer_id": "2lc20305pt"
+                  }
+              },
+              "footer": {
+                  "text": "Best grocery deals on WhatsApp!"
+              }
+          }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Example response
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+      method: POST
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "recipient_type": "individual",
+              "to": "+16505551234",
+              "type": "interactive",
+              "interactive": {
+                  "type": "catalog_message",
+                  "body": {
+                      "text": "Hello! Thanks for your interest. Ordering is easy. Just visit our catalog and add items to purchase."
+                  },
+                  "action": {
+                      "name": "catalog_message",
+                      "parameters": {
+                          "thumbnail_product_retailer_id": "2lc20305pt"
+                      }
+                  },
+                  "footer": {
+                      "text": "Best grocery deals on WhatsApp!"
+                  }
+              }
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json; charset=UTF-8
+        - name: Vary
+          value: Origin
+        - name: x-business-use-case-usage
+          value: '{"104996122399160":[{"type":"whatsapp","call_count":1,"total_cputime":1,"total_time":1,"estimated_time_to_regain_access":0}]}'
+        - name: Access-Control-Allow-Origin
+          value: "*"
+        - name: facebook-api-version
+          value: v17.0
+        - name: Strict-Transport-Security
+          value: max-age=15552000; preload
+        - name: Pragma
+          value: no-cache
+        - name: Cache-Control
+          value: private, no-cache, no-store, must-revalidate
+        - name: Expires
+          value: Sat, 01 Jan 2000 00:00:00 GMT
+        - name: x-fb-request-id
+          value: Aw3rl09JmaSC43LvqSra8Wo
+        - name: x-fb-trace-id
+          value: BINWLl+juwM
+        - name: x-fb-rev
+          value: "1007674581"
+        - name: X-FB-Debug
+          value: QHCq1sCilMV6uusUBKtpCSiVKmcPAD85rWpN+a7A+lQLKJH1N5h2VAdbTiE+8Gmdreo04CEQ503ETjOQ+n0lCA==
+        - name: Date
+          value: Tue, 13 Jun 2023 22:45:17 GMT
+        - name: Alt-Svc
+          value: h3=":443"; ma=86400
+        - name: Connection
+          value: keep-alive
+        - name: Content-Length
+          value: "173"
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "contacts": [
+                  {
+                      "input": "+16505551234",
+                      "wa_id": "16505551234"
+                  }
+              ],
+              "messages": [
+                  {
+                      "id": "wamid.HBgLMTY1MDM4Nzk0MzkVAgARGBI3NDMzMjc2N0VDNUVFNURBQzQA"
+                  }
+              ]
+          }
+
+docs: |-
+  To send a single product message, make a **POST** call to the **`/{{Version}}/phone_number/messages`** endpoint.
+
+  This request uses an **`interactive`** object and parameter **`type`** should be set to `interactive`. The **`interactive`** parameter must also be set to the **`interactive`** object associated with the single product message. 
+
+  ### Parameters
+
+  | Name | Description |
+  | --- | --- |
+  | **`messaging_product`** | **Required**.<br/>Always set this value to `"whatsapp"`. |
+  | **`recipient_type`** | **Optional**.<br/> Currently, you can only send messages to individuals. Set this value to `"individual"`. <br/><br/>**Default**: `individual` |
+  | **`to`** | **Required**. <br/> WhatsApp ID or phone number for the person you want to send a message to.<br></br>See [Phone Numbers, Formatting](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/phone-numbers#formatting) for more information. |
+  | **`type`** | **Required**.<br/> To send single product messages, set this string value to `"interactive"`. |
+  | **`interactive`** | **Required**. <br/> The [interactive object](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/messages#interactive-object) associated with the single product message. |
+
+  ### Interactive Object Parameters specific to Single Product Messages
+  | Name | Description |
+  | --- | --- |
+  | **`type`** | **Required**.<br/>Specifies the type of interactive object. For single product messages set this value to `"product"`.|
+  | **`action`** | **Required**.<br/> |

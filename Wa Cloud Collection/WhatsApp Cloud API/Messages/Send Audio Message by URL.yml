@@ -1,0 +1,96 @@
+info:
+  name: Send Audio Message by URL
+  type: http
+  seq: 12
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+          "messaging_product": "whatsapp",
+          "recipient_type": "individual",
+          "to": "{{Recipient-Phone-Number}}",
+          "type": "audio",
+          "audio": {
+              "link": "http(s)://audio-url"
+          }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Send Audio Message By URL
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+      method: POST
+      headers:
+        - name: Authorization
+          value: Bearer {{User-Access-Token}}
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "recipient_type": "individual",
+              "to": "{{Recipient-Phone-Number}}",
+              "type": "audio",
+              "audio": {
+                  "link": "<http(s)://audio-url>",
+                  "voice": true
+              }
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "contacts": [
+                  {
+                      "input": "48XXXXXXXXX",
+                      "wa_id": "48XXXXXXXXX "
+                  }
+              ],
+              "messages": [
+                  {
+                      "id": "wamid.gBGGSFcCNEOPAgkO_KJ55r4w_ww"
+                  }
+              ]
+          }
+
+docs: |-
+  To send an audio link as a reply to message, make a **POST** call to **`/{{Phone-Number-ID}}/messages`** and attach a media object with type = `audio`. Then, be sure to include the link to the audio.
+
+  ## Request Parameters
+
+  | Parameter | Description |
+  | --- | --- |
+  | **`messaging_product`** | **Required**  <br>Messaging service used for the request. Use `"whatsapp"`. |
+  | **`type`** | **Required**  <br>Specifies the media type. Use "audio". |
+  | **`audio.link`** | Specifies the link of the image you are using for your reply. |
+  | **`audio.voice`** | boolean. If true, send this as a [voice](https://faq.whatsapp.com/657157755756612/) message instead of a normal [audio](https://developers.facebook.com/docs/whatsapp/cloud-api/messages/audio-messages) message. Ensure your audio file is an .ogg codec=opus file if using this |
+
+  For more information about the `Media Object` structure, see [Media Object](https://developers.facebook.com/docs/whatsapp/cloud-api/reference/messages#media-object).
+
+  ## Response
+
+  A successful response includes an object with an identifier prefixed with **`wamid`**. Use the ID listed after **`wamid`** to track your message status.

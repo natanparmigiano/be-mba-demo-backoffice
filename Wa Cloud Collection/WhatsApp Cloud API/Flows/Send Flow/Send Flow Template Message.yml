@@ -1,0 +1,106 @@
+info:
+  name: Send Flow Template Message
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+  body:
+    type: json
+    data: |-
+      {
+          "messaging_product": "whatsapp",
+          "to": "{{Recipient-Phone-Number}}",
+          "type": "template",
+          "template": {
+              "name": "<TEMPLATE_NAME>",
+              "language": {
+                  "code": "en_US"
+              },
+              "components": [
+                  {
+                      "type": "button",
+                      "sub_type": "flow",
+                      "index": "0",
+                      "parameters": [
+                          {
+                              "type": "action",
+                              "action": {
+                                  "flow_token": "<FLOW_TOKEN>",
+                                  "flow_action_data": {
+                                      "<CUSTOM_KEY>": "<CUSTOM_VALUE>"
+                                  }
+                              }
+                          }
+                      ]
+                  }
+              ]
+          }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Send Flow Template Message
+    request:
+      url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/messages
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "to": "{{Recipient-Phone-Number}}",
+              "type": "template",
+              "template": {
+                  "name": "<TEMPLATE_NAME>",
+                  "language": {
+                      "code": "en_US"
+                  },
+                  "components": [
+                      {
+                          "type": "button",
+                          "sub_type": "flow",
+                          "index": "0",
+                          "parameters": [
+                              {
+                                  "type": "action",
+                                  "action": {
+                                      "flow_token": "<FLOW_TOKEN>",
+                                      "flow_action_data": {
+                                          "<CUSTOM_KEY>": "<CUSTOM_VALUE>"
+                                      }
+                                  }
+                              }
+                          ]
+                      }
+                  ]
+              }
+          }
+    response:
+      status: 200
+      statusText: OK
+      body:
+        type: text
+        data: |-
+          {
+              "messaging_product": "whatsapp",
+              "contacts": [
+                  {
+                      "input": "18055555555",
+                      "wa_id": "18055555555"
+                  }
+              ],
+              "messages": [
+                  {
+                      "id": "wamid.HBgL..."
+                  }
+              ]
+          }

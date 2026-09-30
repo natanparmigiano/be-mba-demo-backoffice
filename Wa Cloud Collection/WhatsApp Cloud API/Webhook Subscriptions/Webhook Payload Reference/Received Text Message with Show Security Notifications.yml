@@ -1,0 +1,65 @@
+info:
+  name: Received Text Message with Show Security Notifications
+  type: http
+  seq: 3
+
+http:
+  method: VIEW
+  url: http://
+  body:
+    type: json
+    data: |-
+      {
+          "object": "whatsapp_business_account",
+          "entry": [
+              {
+                  "id": "8856996819413533",
+                  "changes": [
+                      {
+                          "value": {
+                              "messaging_product": "whatsapp",
+                              "metadata": {
+                                  "display_phone_number": "<PHONE_NUMBER>",
+                                  "phone_number_id": "27681414235104944"
+                              },
+                              "contacts": [
+                                  {
+                                      "profile": {
+                                          "name": "<CONTACT_NAME>"
+                                      },
+                                      "wa_id": "<WA_ID>"
+                                  }
+                              ],
+                              "messages": [
+                                  {
+                                      "from": "<FROM_PHONE_NUMBER>",
+                                      "id": "ABGGFjFVU2AfAgo6V-Hc5eCgK5Gh",
+                                      "identity": {
+                                          "acknowledged": true,
+                                          "created_timestamp": 1602532300000,
+                                          "hash": "Sjvjlx8G6Z0="
+                                      },
+                                      "text": {
+                                          "body": "Hi from new number 3601"
+                                      },
+                                      "timestamp": "1602532300",
+                                      "type": "text"
+                                  }
+                              ]
+                          },
+                          "field": "messages"
+                      }
+                  ]
+              }
+          ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: The following is an example of a text message you receive from a customer, when you have the **`show_security_notifications`** parameter set to **`true`** in the **application settings**.

@@ -1,0 +1,24 @@
+{
+  "name": "@mba-demo/webhook-generator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "mba-webhook-generator": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx --conditions=development src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --conditions=development --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@mba-demo/schemas": "0.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

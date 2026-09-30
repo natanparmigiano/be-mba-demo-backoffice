@@ -1,0 +1,153 @@
+info:
+  name: Edit template
+  type: http
+  seq: 13
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/<TEMPLATE_ID>
+  body:
+    type: json
+    data: |-
+      {
+          "name": "2023_april_promo",
+          "components": [
+              {
+                  "type": "HEADER",
+                  "format": "TEXT",
+                  "text": "Fall Sale"
+              },
+              {
+                  "type": "BODY",
+                  "text": "Hi {{1}}, our Fall Sale is on! Use promo code {{2}} Get an extra 25% off every order above $350!",
+                  "example": {
+                      "body_text": [
+                          [
+                              "Mark",
+                              "FALL25"
+                          ]
+                      ]
+                  }
+              },
+              {
+                  "type": "FOOTER",
+                  "text": "Not interested in any of our sales? Tap Stop Promotions"
+              },
+              {
+                  "type": "BUTTONS",
+                  "buttons": [
+                      {
+                          "type": "QUICK_REPLY",
+                          "text": "Stop promotions"
+                      }
+                  ]
+              }
+          ],
+          "language": "en_US",
+          "category": "MARKETING"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: Example response
+    request:
+      url: https://graph.facebook.com/{{Version}}/920070352646140
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+              "name": "2023_april_promo",
+              "components": [
+                  {
+                      "type": "HEADER",
+                      "format": "TEXT",
+                      "text": "Fall Sale"
+                  },
+                  {
+                      "type": "BODY",
+                      "text": "Hi {{1}}, our Fall Sale is on! Use promo code {{2}} Get an extra 25% off every order above $350!",
+                      "example": {
+                          "body_text": [
+                              [
+                                  "Mark",
+                                  "FALL25"
+                              ]
+                          ]
+                      }
+                  },
+                  {
+                      "type": "FOOTER",
+                      "text": "Not interested in any of our sales? Tap Stop Promotions"
+                  },
+                  {
+                      "type": "BUTTONS",
+                      "buttons": [
+                          {
+                              "type": "QUICK_REPLY",
+                              "text": "Stop promotions"
+                          }
+                      ]
+                  }
+              ],
+              "language": "en_US",
+              "category": "MARKETING"
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json; charset=UTF-8
+        - name: Vary
+          value: Origin
+        - name: x-business-use-case-usage
+          value: '{"634974688087057":[{"type":"whatsapp_business_management","call_count":0,"total_cputime":0,"total_time":0,"estimated_time_to_regain_access":0}]}'
+        - name: x-fb-rlafr
+          value: "0"
+        - name: Access-Control-Allow-Origin
+          value: "*"
+        - name: facebook-api-version
+          value: v16.0
+        - name: Strict-Transport-Security
+          value: max-age=15552000; preload
+        - name: Pragma
+          value: no-cache
+        - name: Cache-Control
+          value: private, no-cache, no-store, must-revalidate
+        - name: Expires
+          value: Sat, 01 Jan 2000 00:00:00 GMT
+        - name: x-fb-request-id
+          value: AxL3yVE-rzEh1hPOKywIZDW
+        - name: x-fb-trace-id
+          value: BfPPcrAeZzp
+        - name: x-fb-rev
+          value: "1007268877"
+        - name: X-FB-Debug
+          value: zbNYNbDIkRVjsYZD3iU+7DGcNYKDv3s4901qpUuDTKGBq20h5dU5YjKCRIlIc2+Mzs/ZqnnGk0U68tK3eYVjvA==
+        - name: Date
+          value: Fri, 07 Apr 2023 19:32:22 GMT
+        - name: Alt-Svc
+          value: h3=":443"; ma=86400
+        - name: Connection
+          value: keep-alive
+        - name: Content-Length
+          value: "16"
+      body:
+        type: json
+        data: |-
+          {
+              "success": true
+          }
+
+docs: |-
+  - Guide: [Message Templates](https://developers.facebook.com/docs/whatsapp/business-management-api/message-templates)
+  - Guide: [How To Monitor Quality Signals](https://developers.facebook.com/docs/whatsapp/guides/how-to-monitor-quality-signals)
+  - Endpoint reference: [WhatsApp Message Template](https://developers.facebook.com/docs/graph-api/reference/whats-app-business-hsm/)

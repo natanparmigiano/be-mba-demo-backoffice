@@ -1,0 +1,11 @@
+info:
+  name: Billing
+  type: folder
+  seq: 18
+
+request:
+  auth: inherit
+
+docs:
+  content: "- Help Center Article: [About billing for your WhatsApp Business Account](https://www.facebook.com/business/help/2225184664363779)"
+  type: text/markdown

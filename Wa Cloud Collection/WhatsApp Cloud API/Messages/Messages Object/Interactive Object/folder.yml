@@ -1,0 +1,25 @@
+info:
+  name: Interactive Object
+  type: folder
+  seq: 13
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    The **`Interactive Object`** contains four main components: **`header`**, **`body`**, **`footer`**, and **`action`**. Additionally, some of those components can contain one or more different objects:
+
+    * Inside **`header`**, you can nest **`media`** objects.
+    * Inside **`action`**, you can nest **`section`** and **`button`** objects.
+
+    #### Fields
+
+    | Name                 | Description              |
+    |----------------------|--------------------------|
+    | **`type`**      | **Required**.<br/>The type of interactive message you want to send. Supported values:<ul><li>`list`: Use it for List Messages.</li><li>`button`: Use it for Reply Buttons.</li><li>`product`: Use this for Single Product Messages</li><li>`product_list`: Use this for Multi-Product Messages</li></ul>|
+    | **`header`**      | **Required for type `product_list`**. **Optional for other types**.<br/>This contains the header content displayed on top of a message. You cannot set a **`header`** if your **`interactive`** object is type `product`.<br/><br/>The **`header`** object contains the following fields:<ul><li>`document`: **Required** if **`type`** is set to `document`. Contains the **`media`** object with the document.</li><li>`image`: **Required** if **`type`** is set to `image`. Contains the **`media`** object with the image.</li><li>`video`: **Required** if **`type`** is set to `video`. Contains the **`media`** object with the video.</li><li>`text`: **Required** if **`type`** is set to `text`. The text for the header. Formatting allows emojis, but not markdown. Maximum length: 60 characters.</li></ul><br/><br/>Supported interactive message type by header type:<ul><li>`text` - for List Messages, Reply Buttons, and Multi-Product Messages</li><li>`video` - for Reply Buttons.</li><li>`image`: for Reply Buttons.</li><li>`document` - For Reply Buttons.</li></ul>|
+    | **`body`**      |  **Optional** for type `product`. **Required** for all other message types.<br/>The body of the message. The **`text`** field for the **`body`** object supports Emojis and markdown.<br/><br/>Maximum length: 1024 characters.|
+    | **`footer`**      | **Optional**.<br/>An object with the footer of the message.Emojis and markdown are supported.<br/><br/>Maximum length: 60 characters.|
+    | **`action`**      | **Required**.<br/>The action you want the user to perform after reading the message.|
+  type: text/markdown

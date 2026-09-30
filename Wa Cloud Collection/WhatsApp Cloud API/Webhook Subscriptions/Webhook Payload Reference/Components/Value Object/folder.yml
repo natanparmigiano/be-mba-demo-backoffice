@@ -1,0 +1,15 @@
+info:
+  name: Value Object
+  type: folder
+  seq: 4
+
+docs:
+  content: |-
+    | Field                   | Description                      |
+    |-------------------------|----------------------------------|
+    | **`messaging_product`** | The messaging service used for Webhooks. For WhatsApp messages, this value needs to be set to `“whatsapp”`. |
+    | **`metadata`**        | The metadata about your phone number. |
+    | **`messages`**        | An array of [message objects](#9ad6ff8c-72d6-4b04-b4d5-45fe093976ad). **Added to Webhooks for incoming message notifications**.|
+    | **`statuses`**        | An array of [message status objects](#15305365-753b-400a-90ce-de069ee7f909). **Added to Webhooks for message status update**. |
+    | **`errors`**          | An array of [message error objects](#a89ecf92-9b51-409a-af27-2c3b9bc0fd7e). |
+  type: text/markdown

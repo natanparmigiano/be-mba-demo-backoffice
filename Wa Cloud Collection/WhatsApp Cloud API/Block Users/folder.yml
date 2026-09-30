@@ -1,0 +1,11 @@
+info:
+  name: Block Users
+  type: folder
+  seq: 20
+
+request:
+  auth: inherit
+
+docs:
+  content: "Guide: [Block Users](https://developers.facebook.com/docs/whatsapp/cloud-api/block-users)"
+  type: text/markdown

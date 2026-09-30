@@ -1,0 +1,20 @@
+info:
+  name: Statuses Object
+  type: folder
+  seq: 15
+
+docs:
+  content: |-
+    The **`statuses`** object informs you of the status of messages between you, users, and/or groups.
+
+    | Field                        | Description                      |
+    |------------------------------|----------------------------------|
+    | **`id`**<br/>type: string    |  The message ID. |
+    | **`recipient_id`**<br/>type: string | The WhatsApp ID of the recipient.|
+    | **`status`**<br/>type: string          | The status of the message. Valid values are: **`read`**, **`delivered`**, **`sent`**, **`failed`**, or **`deleted`**. <br/><br/>For more information, see [All Possible Message Statuses](#9a302c08-c8d7-42da-8800-1b24bed8adaf).|
+    | **`timestamp`**<br/>type: string       | The timestamp of the status message.|
+    | **`type`**<br/>type: string            | The type of entity this status object is about. Currently, the only available option is `"message"`.<br/>_This object is only available for the On-Premises implementation of the API. Cloud API developers will not receive this field._ |
+    | **`conversation`**<br/>type: object    | **This object will be provided by default when [Conversation-Based Pricing](https://developers.facebook.com/docs/whatsapp/pricing/conversationpricing) launches in a future update.**<br/>Object containing conversation attributes, including **`id`**. See [conversation object](#7f5a70d6-7302-44d3-a473-74b92c21365b) for more information.<br/><br/>WhatsApp defines a conversation as a 24-hour session of messaging between a person and a business. There is no limit on the number of messages that can be exchanged in the fixed 24-hour window. The 24-hour conversation session begins when:<ul><li>A business-initiated message is delivered to a user</li><li>A business’ reply to a user message is delivered</li></ul><br/>The 24-hour conversation session is different from the 24-hour customer support window. The customer support window is a rolling window that is refreshed when a user-initiated message is delivered to a business. Within the customer support window businesses can send free-form messages. Any business-initiated message sent more than 24 hours after the last customer message must be a template message. |
+    | **`pricing`**<br/>type: object       | **This object will be provided by default when [Conversation-Based Pricing](https://developers.facebook.com/docs/whatsapp/pricing/conversationpricing) launches in a future update.**<br/>| Object containing billing attributes, including **`pricing_model`**, **`billable`** flag, and **`category`**. See [pricing object](https://documenter.getpostman.com/view/13382743/UVC5FTHT#f72385a4-9ab5-40ec-bd1b-fd0adf0d37e3) for more information.
+    | **`errors`**          | **Added to Webhook if status is set to `failed`**. <br/>An array of [error objects](#a89ecf92-9b51-409a-af27-2c3b9bc0fd7e) with information about a message’s delivery failure.|
+  type: text/markdown

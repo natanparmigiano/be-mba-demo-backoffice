@@ -1,0 +1,19 @@
+info:
+  name: Reaction Object
+  type: folder
+  seq: 2
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    The `Reaction Object` consists of a message ID and a emoji.
+
+    #### Fields
+
+    | Name            | Description         |
+    |-----------------|---------------------|
+    | **`message_id`**        | **Required**.<br/><br/>Specifies the WhatsApp message ID (WAMID) that this reaction is being sent to. <br/><br/> You cannot send a reaction to a **`message_id`** that previously sent or received reaction messages. |
+    | **`emoji`**      | **Required**.<br/><br/>The emoji used for the reaction.<br/><br/>All emojis are supported, however only one emoji can be sent in a reaction message. Set this value to "" (empty string) to remove the reaction. <br/>Unicode is not supported. However, unicode values can be Java or JavaScript-escape encoded. |
+  type: text/markdown

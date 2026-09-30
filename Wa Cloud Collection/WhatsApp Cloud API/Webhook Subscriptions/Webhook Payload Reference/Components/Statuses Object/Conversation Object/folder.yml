@@ -1,0 +1,15 @@
+info:
+  name: Conversation Object
+  type: folder
+  seq: 1
+
+docs:
+  content: |-
+    The **`conversation`** object tracks the attributes of your current conversation. The following fields are specified within the conversation object:
+
+    | Field                        | Description                      |
+    |------------------------------|----------------------------------|
+    | **`id`**<br/>type: string    |  The ID of the conversation the given status notification belongs to. |
+    | **`origin`**<br/>type: object | Describes where the conversation originated from. See [origin object](#efa78bee-682f-4620-9d97-14ecb3cee0ef) for more information.|
+    | **`expiration_timestamp`**<br/>type: [UNIX timestamp](https://en.wikipedia.org/wiki/Unix_time?fbclid=IwAR3joUPmHY6qMICZD4EeLhuRgSR7F28eKavnrVnru3QFMhtgOcCJ3V-QjbQ)    |  The timestamp when the current ongoing conversation expires. This field is not present in all Webhook types. |
+  type: text/markdown

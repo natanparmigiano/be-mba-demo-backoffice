@@ -1,0 +1,64 @@
+info:
+  name: Received Unknown Messages
+  type: http
+  seq: 10
+
+http:
+  method: VIEW
+  url: http://
+  body:
+    type: json
+    data: |-
+      {
+          "object": "whatsapp_business_account",
+          "entry": [
+              {
+                  "id": "1900820329959633",
+                  "changes": [
+                      {
+                          "value": {
+                              "messaging_product": "whatsapp",
+                              "metadata": {
+                                  "display_phone_number": "16315551234",
+                                  "phone_number_id": "16315551234"
+                              },
+                              "contacts": [
+                                  {
+                                      "profile": {
+                                          "name": "Kerry Fisher"
+                                      },
+                                      "wa_id": "16315555555"
+                                  }
+                              ],
+                              "messages": [
+                                  {
+                                      "from": "16315555555",
+                                      "id": "wamid.ABGGFlA5FpafAgo6tHcNmNjXmuSf",
+                                      "timestamp": "1602139392",
+                                      "errors": [
+                                          {
+                                              "code": 130501,
+                                              "details": "Message type is not currently supported",
+                                              "title": "Unsupported message type"
+                                          }
+                                      ],
+                                      "type": "unknown"
+                                  }
+                              ]
+                          },
+                          "field": "messages"
+                      }
+                  ]
+              }
+          ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: It’s possible to receive an unknown message callback notification. The following is an example of a message you received from a customer that is not supported.

@@ -1,0 +1,52 @@
+info:
+  name: Message Status Update Notifications
+  type: http
+  seq: 11
+
+http:
+  method: VIEW
+  url: http://
+  body:
+    type: json
+    data: |-
+      {
+          "object": "whatsapp_business_account",
+          "entry": [
+              {
+                  "id": "8856996819413533",
+                  "changes": [
+                      {
+                          "value": {
+                              "messaging_product": "whatsapp",
+                              "metadata": {
+                                  "display_phone_number": "16505553333",
+                                  "phone_number_id": "27681414235104944"
+                              },
+                              "statuses": [
+                                  {
+                                      "id": "wamid.gBGGFlCGg0cvAglAxydbAoy-gwNo",
+                                      "status": "sent",
+                                      "timestamp": "1603086313",
+                                      "recipient_id": "16315551234"
+                                  }
+                              ]
+                          },
+                          "field": "messages"
+                      }
+                  ]
+              }
+          ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  The WhatsApp Business API sends notifications to inform you of the status of the messages between you and users. When a message is sent successfully, you receive a notification when the message is sent, delivered, and read. The order of these notifications in your app may not reflect the actual timing of the message status. You can view the timestamp to determine the timing.
+
+  The following is an example of successful message status update Webhooks:
