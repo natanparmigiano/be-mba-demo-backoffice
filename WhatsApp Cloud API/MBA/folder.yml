@@ -1,0 +1,16 @@
+info:
+  name: MBA
+  type: folder
+  seq: 23
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    Meta Business Agent Platform API requests for WhatsApp Business phone numbers.
+
+    Set the collection variables used by each folder before sending requests. Most requests use `X-API-Version: 2.0.0`; Thread Control intentionally uses `1.0.0` as required by its API specification.
+
+    Documentation: https://developers.facebook.com/documentation/meta-business-agent/overview
+  type: text/markdown

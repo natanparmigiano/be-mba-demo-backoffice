@@ -25,6 +25,7 @@ export {
   TableRow,
 } from './table'
 export { Tabs, type TabItem } from './tabs'
+export { TagInput, type TagInputProps } from './tag-input'
 export { Textarea, type TextareaProps } from './textarea'
 export { Toast, type ToastMessage } from './toast'
 export { useTimedToast } from './use-toast'

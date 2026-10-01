@@ -1,0 +1,33 @@
+info:
+  name: Upsert Connector Certificate
+  type: http
+  seq: 10
+
+http:
+  method: POST
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/upsertCertificate
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "client_certificate": "<PEM_ENCODED_CLIENT_CERTIFICATE>",
+        "client_key": "<PEM_ENCODED_PRIVATE_KEY>"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Uploads or rotates the selected connector's mTLS material. Add `ca_certificate` when a private CA is required. Replace placeholders locally; never commit certificate private keys.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/connectors

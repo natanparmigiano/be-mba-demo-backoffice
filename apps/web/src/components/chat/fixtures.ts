@@ -5,18 +5,21 @@ export function createInitialMessages(t: TFunction): ChatMessage[] {
   return [
     {
       id: 'text-incoming',
+      providerMessageId: 'wamid.design-system-text-incoming',
       type: 'text',
       direction: 'incoming',
       sentAt: '09:41',
       text: t('chat.intro'),
+      forwarded: true,
       reactions: [{ emoji: '👍', count: 2 }, { emoji: '💙' }],
     },
     {
-      id: 'text-undelivered',
+      id: 'text-sent',
       type: 'text',
       direction: 'outgoing',
+      aiGenerated: true,
       sentAt: '09:42',
-      status: 'undelivered',
+      status: 'sent',
       text: t('chat.reply'),
     },
     {
@@ -25,9 +28,11 @@ export function createInitialMessages(t: TFunction): ChatMessage[] {
       direction: 'outgoing',
       sentAt: '09:43',
       status: 'delivered',
-      url: 'https://placehold.co/720x420/0866ff/ffffff?text=Campaign+preview',
+      url: placeholderUrl('720x420/0866ff/ffffff', t('chat.campaignPreview')),
       alt: t('chat.imageAlt'),
       caption: t('chat.imageCaption'),
+      forwarded: true,
+      frequentlyForwarded: true,
       reactions: [{ emoji: '🔥', count: 3 }],
     },
     {
@@ -44,7 +49,7 @@ export function createInitialMessages(t: TFunction): ChatMessage[] {
       type: 'document',
       direction: 'incoming',
       sentAt: '09:46',
-      fileName: 'Q3-campaign-results.pdf',
+      fileName: t('chat.documentFileName'),
       mimeType: 'application/pdf',
       size: '2.4 MB',
       caption: t('chat.documentCaption'),
@@ -67,9 +72,9 @@ export function createInitialMessages(t: TFunction): ChatMessage[] {
       type: 'audio',
       direction: 'outgoing',
       sentAt: '09:50',
-      status: 'read',
-      title: 'Brand theme.mp3',
-      artist: 'MBA Studio',
+      status: 'played',
+      title: t('chat.audioTitle'),
+      artist: t('chat.companyName'),
       duration: '3:24',
     },
     {
@@ -89,10 +94,10 @@ export function createInitialMessages(t: TFunction): ChatMessage[] {
       sentAt: '09:54',
       contacts: [
         {
-          formattedName: 'Maya Chen',
-          givenName: 'Maya',
-          familyName: 'Chen',
-          organization: 'MBA Studio',
+          formattedName: t('chat.contactName'),
+          givenName: t('chat.contactGivenName'),
+          familyName: t('chat.contactFamilyName'),
+          organization: t('chat.companyName'),
           title: t('chat.contactRole'),
           birthday: '1992-04-18',
           phones: [{ label: 'CELL', value: '+55 11 99999-2048' }],
@@ -104,7 +109,7 @@ export function createInitialMessages(t: TFunction): ChatMessage[] {
               city: 'São Paulo',
               region: 'SP',
               postalCode: '01310-200',
-              country: 'Brazil',
+              country: t('chat.countryBrazil'),
             },
           ],
           urls: [{ label: 'WORK', value: 'https://example.com' }],
@@ -135,7 +140,7 @@ export function createInitialMessages(t: TFunction): ChatMessage[] {
       sentAt: '10:00',
       status: 'read',
       text: t('chat.appointment'),
-      footer: 'MBA Support',
+      footer: t('chat.supportFooter'),
       buttons: [{ id: 'confirm', title: t('chat.confirmAppointment') }],
     },
     {
@@ -225,7 +230,10 @@ export function createInitialMessages(t: TFunction): ChatMessage[] {
       items: [
         {
           id: 'starter',
-          imageUrl: 'https://placehold.co/640x360/0866ff/ffffff?text=Starter',
+          imageUrl: placeholderUrl(
+            '640x360/0866ff/ffffff',
+            t('chat.plans.starter'),
+          ),
           imageAlt: t('chat.plans.starter'),
           title: t('chat.plans.starter'),
           description: t('chat.plans.starterDescription'),
@@ -233,7 +241,10 @@ export function createInitialMessages(t: TFunction): ChatMessage[] {
         },
         {
           id: 'growth',
-          imageUrl: 'https://placehold.co/640x360/7c3aed/ffffff?text=Growth',
+          imageUrl: placeholderUrl(
+            '640x360/7c3aed/ffffff',
+            t('chat.plans.growth'),
+          ),
           imageAlt: t('chat.plans.growth'),
           title: t('chat.plans.growth'),
           description: t('chat.plans.growthDescription'),
@@ -241,7 +252,10 @@ export function createInitialMessages(t: TFunction): ChatMessage[] {
         },
         {
           id: 'scale',
-          imageUrl: 'https://placehold.co/640x360/0f766e/ffffff?text=Scale',
+          imageUrl: placeholderUrl(
+            '640x360/0f766e/ffffff',
+            t('chat.plans.scale'),
+          ),
           imageAlt: t('chat.plans.scale'),
           title: t('chat.plans.scale'),
           description: t('chat.plans.scaleDescription'),
@@ -250,4 +264,8 @@ export function createInitialMessages(t: TFunction): ChatMessage[] {
       ],
     },
   ]
+}
+
+function placeholderUrl(sizeAndColors: string, text: string): string {
+  return `https://placehold.co/${sizeAndColors}?text=${encodeURIComponent(text)}`
 }

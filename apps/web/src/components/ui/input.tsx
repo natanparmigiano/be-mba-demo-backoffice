@@ -55,7 +55,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           ref={ref}
           id={inputId}
           className={cn(
-            'h-10 w-full rounded-lg border border-input bg-card px-3.5 text-sm text-foreground shadow-xs outline-none transition placeholder:text-muted-foreground/75 focus:border-ring focus:ring-3 focus:ring-ring/15 disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-70',
+            'h-10 w-full rounded-lg border border-input bg-card text-sm text-foreground shadow-xs outline-none transition placeholder:text-muted-foreground/75 focus:border-ring focus:ring-3 focus:ring-ring/15 disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-70',
+            props.type === 'file'
+              ? 'cursor-pointer p-0 pr-3.5 leading-10 file:mr-3 file:h-full file:cursor-pointer file:border-0 file:border-r file:border-input file:bg-muted/45 file:px-3.5 file:align-top file:text-sm file:font-semibold file:leading-normal file:text-foreground hover:file:bg-muted'
+              : 'px-3.5',
             LeadingIcon && 'pl-10',
             error &&
               'border-destructive focus:border-destructive focus:ring-destructive/15',

@@ -19,20 +19,34 @@ services:
     build: .
     command: ['app']
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     environment:
       NODE_ENV: production
       PORT: 8080
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_demo_backoffice
       ENABLE_WORKER_IN_PROCESS: 'true'
       SUBSCRIBE_TO_TOPICS: ${SUBSCRIBE_TO_TOPICS:-all}
+      WA_WEBHOOK_MAX_RETRIES: ${WA_WEBHOOK_MAX_RETRIES:-5}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-development-only-secret-change-before-production}
       BETTER_AUTH_URL: ${COMPOSE_BETTER_AUTH_URL:-http://localhost:8080}
+      BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-}
       CORS_ORIGIN: ${COMPOSE_CORS_ORIGIN:-http://localhost:8080}
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      FILES_ADAPTER: fs
+      FILES_DIRECTORY: /var/lib/mba-demo/files
+      FILES_PUBLIC_URL: ${COMPOSE_FILES_PUBLIC_URL:-http://localhost:8080}
+      FILES_SIGNING_SECRET: ${FILES_SIGNING_SECRET:-development-only-files-signing-secret}
     depends_on:
       postgres:
         condition: service_healthy
     ports:
       - '${WEB_PORT:-8080}:8080'
+    volumes:
+      - files-data:/var/lib/mba-demo/files
     healthcheck:
       test:
         - CMD
@@ -45,4 +59,5 @@ services:
       start_period: 10s
 
 volumes:
+  files-data:
   postgres-data:

@@ -9,6 +9,8 @@ import { sso } from '@better-auth/sso'
 import { getAuthEnvironment } from './env.js'
 import { createSecondaryStorage } from './secondary-storage.js'
 
+export { hasSsoProviders } from './sso-availability.js'
+
 const environment = getAuthEnvironment()
 
 export const auth = betterAuth({
@@ -34,6 +36,10 @@ export const auth = betterAuth({
       },
       domainVerification: {
         enabled: true,
+      },
+      saml: {
+        enableInResponseToValidation: true,
+        allowIdpInitiated: false,
       },
     }),
   ],

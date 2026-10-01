@@ -1,0 +1,29 @@
+info:
+  name: Onboard Agent
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_onboarding
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: "{}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Creates the agent and schedules its onboarding jobs. Add the optional `catalog_id` field to link a catalog during onboarding.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/onboard/agent-onboarding

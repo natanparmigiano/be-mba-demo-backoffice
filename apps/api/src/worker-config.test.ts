@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
+  DEFAULT_WA_WEBHOOK_MAX_RETRIES,
   getSubscribedTopics,
+  getWhatsAppWebhookMaxRetries,
   isInProcessWorkerEnabled,
 } from './worker-config.js'
 
@@ -49,5 +51,29 @@ describe('worker configuration', () => {
         }),
       /No subscriber handlers are registered/,
     )
+  })
+
+  it('defaults webhook failures to five retries', () => {
+    assert.equal(
+      getWhatsAppWebhookMaxRetries({}),
+      DEFAULT_WA_WEBHOOK_MAX_RETRIES,
+    )
+    assert.equal(
+      getWhatsAppWebhookMaxRetries({ WA_WEBHOOK_MAX_RETRIES: '0' }),
+      0,
+    )
+    assert.equal(
+      getWhatsAppWebhookMaxRetries({ WA_WEBHOOK_MAX_RETRIES: '12' }),
+      12,
+    )
+  })
+
+  it('rejects invalid webhook retry limits', () => {
+    for (const value of ['-1', '1.5', '101', 'many']) {
+      assert.throws(
+        () => getWhatsAppWebhookMaxRetries({ WA_WEBHOOK_MAX_RETRIES: value }),
+        /integer from 0 to 100/,
+      )
+    }
   })
 })

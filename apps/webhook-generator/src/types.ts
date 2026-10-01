@@ -1,9 +1,8 @@
-import type { WhatsAppWebhook } from '@mba-demo/schemas/wa-cloud/webhooks'
+import type { WhatsAppWebhook } from '@mba-demo/wa-webhooks'
 
 export type ConversationOwner = 'agent' | 'human_app'
 
 export type GeneratedWebhookKind =
-  | 'agent_event'
   | 'group_lifecycle'
   | 'group_settings'
   | 'handover'

@@ -1,14 +1,22 @@
 import {
+  Bot,
   Building2,
+  Braces,
   ChevronDown,
+  MessagesSquare,
+  Package,
+  ContactRound,
+  FlaskConical,
   Home,
+  KeyRound,
   LogOut,
   RadioTower,
   ShieldCheck,
+  Users,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import signifierUrl from '../../assets/signifier.png'
 import { authClient } from '../../auth/auth-client'
 import { useAuth } from '../../auth/AuthProvider'
@@ -30,9 +38,12 @@ import { OrganizationSwitcher } from './OrganizationSwitcher'
 
 export function AppShell() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { t } = useTranslation()
   const { session, user, refetch } = useAuth()
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const isChatRoute =
+    location.pathname === '/chat' || location.pathname.startsWith('/chat/')
 
   const signOut = async () => {
     setIsSigningOut(true)
@@ -46,28 +57,94 @@ export function AppShell() {
   }
 
   const navigation = [
-    { to: '/', label: 'Home', icon: Home, end: true },
-    { to: '/channels', label: 'Channels', icon: RadioTower, end: false },
+    { to: '/', label: t('shell.home'), icon: Home, end: true },
+    {
+      to: '/chat',
+      label: t('shell.chat'),
+      icon: MessagesSquare,
+      end: false,
+    },
+  ]
+  const directoryNavigation = [
+    {
+      to: '/contacts',
+      label: t('shell.contacts'),
+      icon: ContactRound,
+      end: false,
+    },
+    {
+      to: '/groups',
+      label: t('shell.groups'),
+      icon: Users,
+      end: false,
+    },
+  ]
+  const configurationNavigation = [
+    {
+      to: '/agents',
+      label: t('shell.agents'),
+      icon: Bot,
+      end: false,
+    },
+    {
+      to: '/channels',
+      label: t('shell.channels'),
+      icon: RadioTower,
+      end: false,
+    },
+  ]
+  const customIntegrationNavigation = [
+    {
+      to: '/functions',
+      label: t('shell.functions'),
+      icon: Braces,
+      end: false,
+    },
+    {
+      to: '/mcps',
+      label: t('shell.mcps'),
+      icon: Package,
+      end: false,
+    },
+    {
+      to: '/api-keys',
+      label: t('shell.apiKeys'),
+      icon: KeyRound,
+      end: false,
+    },
   ]
   const workspaceNavigation = [
     {
       to: '/organization',
-      label: 'Manage organizations',
+      label: t('shell.manageOrganizations'),
       icon: Building2,
     },
     ...(hasAdminRole(user?.role)
-      ? [{ to: '/admin', label: 'Administration', icon: ShieldCheck }]
+      ? [
+          {
+            to: '/admin',
+            label: t('shell.administration'),
+            icon: ShieldCheck,
+          },
+        ]
       : []),
   ]
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div
+      className={cn(
+        'bg-background text-foreground',
+        isChatRoute ? 'h-dvh overflow-hidden' : 'min-h-screen',
+      )}
+    >
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r bg-card p-4 md:flex">
         <div className="flex items-center gap-3 px-2 py-1">
           <img className="size-9 rounded-xl" src={signifierUrl} alt="" />
           <div>
-            <p className="text-sm font-bold">MBA Demo</p>
-            <p className="text-xs text-muted-foreground">Backoffice</p>
+            <p className="text-sm font-bold">{t('shell.productName')}</p>
+            <p className="text-xs text-muted-foreground">
+              {t('shell.productArea')}
+            </p>
           </div>
         </div>
         <nav className="mt-8 grid gap-1">
@@ -89,6 +166,104 @@ export function AppShell() {
               {label}
             </NavLink>
           ))}
+          <div
+            className="mt-4"
+            role="group"
+            aria-labelledby="directory-navigation-label"
+          >
+            <p
+              id="directory-navigation-label"
+              className="px-3 text-[11px] font-bold tracking-[0.12em] text-muted-foreground uppercase"
+            >
+              {t('shell.directory')}
+            </p>
+            <div className="mt-1 grid gap-1 pl-2">
+              {directoryNavigation.map(({ to, label, icon: Icon, end }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors',
+                      isActive
+                        ? 'bg-primary/12 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )
+                  }
+                >
+                  <Icon className="size-4" />
+                  {label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+          <div
+            className="mt-4"
+            role="group"
+            aria-labelledby="configuration-navigation-label"
+          >
+            <p
+              id="configuration-navigation-label"
+              className="px-3 text-[11px] font-bold tracking-[0.12em] text-muted-foreground uppercase"
+            >
+              {t('shell.configuration')}
+            </p>
+            <div className="mt-1 grid gap-1 pl-2">
+              {configurationNavigation.map(({ to, label, icon: Icon, end }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors',
+                      isActive
+                        ? 'bg-primary/12 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )
+                  }
+                >
+                  <Icon className="size-4" />
+                  {label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+          <div
+            className="mt-4"
+            role="group"
+            aria-labelledby="custom-integration-navigation-label"
+          >
+            <p
+              id="custom-integration-navigation-label"
+              className="px-3 text-[11px] font-bold tracking-[0.12em] text-muted-foreground"
+            >
+              {t('shell.customCode')}
+            </p>
+            <div className="mt-1 grid gap-1 pl-2">
+              {customIntegrationNavigation.map(
+                ({ to, label, icon: Icon, end }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={end}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors',
+                        isActive
+                          ? 'bg-primary/12 text-primary'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                      )
+                    }
+                  >
+                    <Icon className="size-4" />
+                    {label}
+                  </NavLink>
+                ),
+              )}
+            </div>
+          </div>
         </nav>
         <div className="mt-auto rounded-2xl border bg-card p-2 shadow-xs">
           <OrganizationSwitcher />
@@ -125,15 +300,26 @@ export function AppShell() {
                 void authClient.admin.stopImpersonating().then(() => refetch())
               }
             >
-              Stop impersonating
+              {t('shell.stopImpersonating')}
             </Button>
           )}
+          <Button
+            variant={
+              location.pathname === '/api-playground' ? 'secondary' : 'ghost'
+            }
+            size="sm"
+            onClick={() => void navigate('/api-playground')}
+            aria-label={t('shell.apiPlayground')}
+          >
+            <FlaskConical className="size-4" aria-hidden />
+            <span className="hidden sm:inline">{t('shell.apiPlayground')}</span>
+          </Button>
           <LanguageSwitcher />
           <ThemeSwitcher />
           <Menu>
             <MenuTrigger
               className="group flex max-w-64 items-center gap-2 rounded-full py-0.5 pl-3 text-left"
-              aria-label={user?.name ?? user?.email ?? 'User'}
+              aria-label={user?.name ?? user?.email ?? t('auth.userFallback')}
             >
               <span className="hidden min-w-0 text-right sm:block">
                 <span className="block truncate text-sm font-bold">
@@ -143,7 +329,10 @@ export function AppShell() {
                   {user?.email}
                 </span>
               </span>
-              <Avatar name={user?.name ?? user?.email ?? 'User'} size="md" />
+              <Avatar
+                name={user?.name ?? user?.email ?? t('auth.userFallback')}
+                size="md"
+              />
               <span className="grid size-7 place-items-center rounded-full text-muted-foreground transition-colors group-hover:bg-muted group-hover:text-foreground">
                 <ChevronDown
                   className="size-3.5 transition-transform group-aria-expanded:rotate-180"
@@ -172,8 +361,21 @@ export function AppShell() {
         </div>
       </header>
 
-      <main className="min-h-screen pt-16 md:pl-64">
-        <div className="mx-auto max-w-7xl p-5 sm:p-8">
+      <main
+        className={cn(
+          'pt-16 md:pl-64',
+          isChatRoute
+            ? 'box-border h-dvh min-h-0 overflow-hidden'
+            : 'min-h-screen',
+        )}
+      >
+        <div
+          className={
+            isChatRoute
+              ? 'h-full min-h-0 overflow-hidden'
+              : 'mx-auto max-w-7xl p-5 sm:p-8'
+          }
+        >
           <OrganizationGuard>
             <Outlet />
           </OrganizationGuard>

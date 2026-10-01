@@ -1,0 +1,140 @@
+opencollection: 1.0.0
+
+info:
+  name: WhatsApp Cloud API
+config:
+  proxy:
+    inherit: true
+    config:
+      protocol: http
+      hostname: ""
+      port: ""
+      auth:
+        username: ""
+        password: ""
+      bypassProxy: ""
+
+request:
+  auth:
+    type: bearer
+    token: "{{User-Access-Token}}"
+  variables:
+    - name: User-Access-Token
+      value: EAAAqYoMEA4EBSjqgmiKYrlj2oyVZBGCRZAPyWgiNZCrKxtZAArhVhgOlFckfHFVo1UnccxYlJIdlZBuPMffS3XZC9Ygo7uiGmPBo13y5DHbQuZB0N2VEHwaWxznSOUs9C6jsJPG1dsON9PntShZBklAKggY47yLH6gJqfp7aIB0Gh1Lv83yMZB63fRikTlLtuq81BaGY452kfojcjFsM1F2Pts2KEE3TI
+    - name: Version
+      value: v26.0
+    - name: WABA-ID
+      value: "40902594742319"
+    - name: Phone-Number-ID
+      value: "14102802820274"
+    - name: Recipient-Phone-Number
+      value: " +5511932761156"
+    - name: Pin
+      value: "123456"
+    - name: Business-ID
+      value: "49902592301954"
+    - name: MBA-Agent-ID
+      value: ""
+    - name: MBA-Allowlist-Entry-ID
+      value: ""
+    - name: MBA-Connector-ID
+      value: ""
+    - name: MBA-Tool-ID
+      value: ""
+    - name: MBA-Skill-ID
+      value: ""
+    - name: MBA-UI-Skill-ID
+      value: ""
+    - name: MBA-FAQ-ID
+      value: ""
+    - name: MBA-File-ID
+      value: ""
+    - name: MBA-Website-ID
+      value: ""
+    - name: MBA-Agent-Event-ID
+      value: ""
+    - name: MBA-Eval-Case-IDs
+      value: ""
+    - name: MBA-Eval-IDs
+      value: ""
+    - name: MBA-Eval-Summary-IDs
+      value: ""
+    - name: MBA-Eval-Job-ID
+      value: ""
+    - name: MBA-Consumer-ID
+      value: "+5511932761156"
+    - name: MBA-Start-Date
+      value: 2026-09-01
+    - name: MBA-End-Date
+      value: 2026-09-30
+  scripts:
+    - type: before-request
+      code: req.setHeader('User-Agent', 'Postman/WhatsAppCloudAPICollection');
+
+docs:
+  content: |-
+    [WhatsApp Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api), hosted by Meta, is the official WhatsApp Business Platform API used for business messaging. This collection contains common queries, sample responses, and links to supporting documentation that can help you quickly get started with the API.
+
+    ## **Cloud API Overview**
+
+    Cloud API allows medium and large businesses to communicate with customers at scale. Using the API, businesses can build systems that connect thousands of customers with agents or bots, enabling both programmatic and manual communication. Additionally, businesses can integrate the API with numerous backend systems, such as CRM and marketing platforms.
+
+    [https://developers.facebook.com/docs/whatsapp/cloud-api/overview](https://developers.facebook.com/docs/whatsapp/cloud-api/overview)
+
+    ## Getting Started with Cloud API
+
+    To use the API and this collection you must have a Meta business portfolio, a WhatsApp Business Account, and a business phone number. If you complete the steps in the Cloud API [Get Started](https://developers.facebook.com/docs/whatsapp/cloud-api/get-started) guide, these assets will be created for you.
+
+    ## Get Started as a Solution Partner
+
+    [This guide](https://developers.facebook.com/docs/whatsapp/solution-providers/get-started-for-solution-partners) goes over the steps Solution Partners need to take in order to offer the Cloud API to their customers.
+
+    ## Migrating from On-Premises API to Cloud API
+
+    [This guide explains how to migrate](https://developers.facebook.com/docs/whatsapp/cloud-api/guides/migrating-from-onprem-to-cloud) business phone numbers from On-Premises API to Cloud API.
+
+    ## Environment
+
+    This collection has a corresponding WhatsApp Cloud API Postman [environment](https://learning.postman.com/docs/sending-requests/managing-environments/) which you must select when using the collection. Set **current values** for the variables defined in this environment if you wish to use the collection to perform queries.
+
+    You can find most of these values in the [WhatsApp Manager](https://business.facebook.com/wa/manage/home/) or the **WhatsApp** > **Getting Started** panel in the [app dashboard](https://developers.facebook.com/apps). However, if you have an access token and your business portfolio ID, you can use queries in the collection to get the remaining values.
+
+    ## Access tokens
+
+    The API supports both user and system user access tokens. You can get a user access token by loading your app in the [app dashboard](https://developers.facebook.com/apps) and navigating to the WhatsApp > Getting Started panel. Alternatively you can use the [Graph API Explorer](https://developers.facebook.com/tools/explorer/) to generate one.
+
+    Since user access tokens expire after 24 hours, you'll likely want to generate a system user access token, which lasts up to 60 days (or permanently, if you wish). See [Access Tokens](https://developers.facebook.com/docs/whatsapp/business-management-api/get-started#access-tokens) to learn how to create a system user and system user access token.
+
+    Once you have your token, save it as a **current value** in the environment.
+
+    ## Business portfolio ID
+
+    You can get your business portfolio ID by signing into the [Meta Business Suite](https://business.facebook.com). The ID appears in the URL as the `business_id` query string parameter value. Once you save this as a **current value** in the environment, go to the WhatsApp Business Account (WABA) folder and run the **Get all owned WABAs** query. This will return your WABA ID, which you can save to your environment and then use to determine your business phone number ID.
+
+    ## Permissions
+
+    The API only relies on two permissions:
+
+    - whatsapp_business_management
+        
+    - whatsapp_business_messaging
+        
+
+    Note that if you get a user access token from the app dashboard, your app will automatically be granted these permissions (by you, on your behalf), so you can use the token to test right away.
+
+    Queries that target your business portfolio require the business_management permission, which you may also need based on your business use case. Most developers do not need this permission, however, as accessing your business portfolio is uncommon, and the Meta Business Suite provides nearly all of this functionality anyway.
+
+    ## Access token debugger
+
+    You can paste any token you generate into the [access token debugger](https://developers.facebook.com/tools/debug/accesstoken/) to see what type of token it is and what permission you have granted to your app.
+
+    ## Pagination
+
+    Endpoints that return lists/collections may [paginate results](https://developers.facebook.com/docs/graph-api/results) (you'll see previous and next properties in the response). Use the URLs from these properties to get the previous or next set of results. Note that if you click one of these links in Postman, it will open a new query in a new tab which you must save before running (otherwise it can't read your environment variables), so you may wish to cut and paste the URL and run the query in the same tab in which it was returned.
+  type: text/markdown
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git

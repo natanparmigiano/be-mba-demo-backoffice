@@ -1,9 +1,17 @@
 import { closeDatabase } from '@mba-demo/db'
 import { events } from '@mba-demo/events'
-import { registerSubscribers, subscriberRegistry } from './subscribers.js'
+import { files } from '@mba-demo/files'
+import { pubsub } from '@mba-demo/pubsub'
+import {
+  includeWhatsAppReliabilityTopics,
+  registerSubscribers,
+  subscriberRegistry,
+} from './subscribers.js'
 import { getSubscribedTopics } from './worker-config.js'
 
-const topics = getSubscribedTopics(Object.keys(subscriberRegistry))
+const topics = includeWhatsAppReliabilityTopics(
+  getSubscribedTopics(Object.keys(subscriberRegistry)),
+)
 const unsubscribe = registerSubscribers(events, { topics })
 
 await events.start()
@@ -16,4 +24,9 @@ const signal = await new Promise<NodeJS.Signals>((resolve) => {
 
 console.log(`Received ${signal}; shutting down worker`)
 unsubscribe()
-await Promise.all([closeDatabase(), events.close()])
+await Promise.all([
+  closeDatabase(),
+  events.close(),
+  files.close(),
+  pubsub.close(),
+])

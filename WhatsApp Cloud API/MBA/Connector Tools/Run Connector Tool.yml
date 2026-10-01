@@ -1,0 +1,32 @@
+info:
+  name: Run Connector Tool
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/tools/{{MBA-Tool-ID}}/run
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "input": "{\"order_id\":\"12345\"}"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Executes the selected tool for pre-production verification. `input` is a JSON-encoded string.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/connector-tools

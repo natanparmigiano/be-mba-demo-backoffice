@@ -1,0 +1,24 @@
+info:
+  name: List FAQs
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_config/faq
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Lists all FAQ knowledge entries. FAQ operations share a 1,000 requests-per-hour limit.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/agent-knowledge-faqs

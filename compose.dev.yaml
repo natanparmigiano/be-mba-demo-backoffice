@@ -63,7 +63,31 @@ services:
     volumes:
       - dev-kafka-data:/var/lib/kafka/data
 
+  minio:
+    image: alpine/minio:RELEASE.2025-10-15T17-29-55Z
+    command: ['server', '/data', '--console-address', ':9001']
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - '127.0.0.1:9000:9000'
+      - '127.0.0.1:9001:9001'
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget --quiet --spider http://localhost:9000/minio/health/live',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    volumes:
+      - dev-minio-data:/data
+
 volumes:
   dev-kafka-data:
+  dev-minio-data:
   dev-postgres-data:
   dev-redis-data:

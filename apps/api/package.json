@@ -10,21 +10,32 @@
     }
   },
   "scripts": {
-    "dev": "tsx watch --conditions=development --env-file-if-exists=../../.env src/index.ts",
+    "dev": "NODE_OPTIONS=--no-node-snapshot tsx watch --conditions=development --env-file-if-exists=../../.env src/index.ts",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node --env-file-if-exists=../../.env dist/index.js",
+    "start": "node --no-node-snapshot --env-file-if-exists=../../.env dist/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --conditions=development --test src/**/*.test.ts"
+    "test": "NODE_OPTIONS=--no-node-snapshot tsx --conditions=development --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@mba-demo/auth": "0.0.0",
     "@mba-demo/db": "0.0.0",
     "@mba-demo/events": "0.0.0",
+    "@mba-demo/files": "0.0.0",
     "@mba-demo/kv": "0.0.0",
-    "@mba-demo/schemas": "0.0.0",
+    "@mba-demo/pubsub": "0.0.0",
+    "@mba-demo/runner": "0.0.0",
+    "@mba-demo/wa-media": "0.0.0",
+    "@mba-demo/wa-messaging": "0.0.0",
+    "@mba-demo/wa-mba": "0.0.0",
+    "@mba-demo/wa-registration": "0.0.0",
+    "@mba-demo/wa-subscriptions": "0.0.0",
+    "@mba-demo/wa-templates": "0.0.0",
+    "@mba-demo/wa-webhooks": "0.0.0",
     "@hono/node-server": "^1.19.1",
     "@hono/zod-validator": "^0.7.2",
-    "hono": "^4.9.8",
+    "@modelcontextprotocol/hono": "^2.0.1",
+    "@modelcontextprotocol/server": "^2.2.0",
+    "hono": "^4.13.12",
     "zod": "^4.1.11"
   },
   "devDependencies": {

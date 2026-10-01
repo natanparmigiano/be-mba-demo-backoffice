@@ -1,0 +1,24 @@
+info:
+  name: Get Knowledge Website
+  type: http
+  seq: 14
+
+http:
+  method: GET
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_config/websites/{{MBA-Website-ID}}
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Retrieves one website crawl entry and its crawl status.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/agent-knowledge-websites

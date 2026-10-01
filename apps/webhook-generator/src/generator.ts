@@ -6,8 +6,8 @@ import type {
   WhatsAppMessageStatus,
   WhatsAppWebhook,
   WhatsAppWebhookChange,
-} from '@mba-demo/schemas/wa-cloud/webhooks'
-import { whatsappWebhookSchema } from '@mba-demo/schemas/wa-cloud/webhooks'
+} from '@mba-demo/wa-webhooks'
+import { whatsappWebhookSchema } from '@mba-demo/wa-webhooks'
 import { SeededRandom } from './random.js'
 import type {
   ConversationOwner,
@@ -35,6 +35,7 @@ interface PendingStatus {
   messageId: string
   recipientId: string
   sentAt: number
+  source: 'messages' | 'standby'
   stage: 0 | 1 | 2
 }
 
@@ -192,13 +193,12 @@ export class SyntheticWebhookGenerator {
       return this.createHandover(conversation, 'agent')
     }
 
-    const phase = conversation.phase % 5
+    const phase = conversation.phase % 4
     conversation.phase += 1
     if (phase === 0 || phase === 2) {
       return this.createInboundMessage(conversation, 'standby')
     }
-    if (phase === 1) return this.createAgentEvent(conversation)
-    if (phase === 3) return this.createOutboundEcho(conversation)
+    if (phase === 1) return this.createOutboundEcho(conversation)
     return this.createHandover(conversation, 'human_app')
   }
 
@@ -230,24 +230,33 @@ export class SyntheticWebhookGenerator {
     )
     conversation.lastInboundMessageId = id
 
+    if (source === 'standby') {
+      return {
+        kind: 'standby',
+        payload: this.envelope({
+          field: 'standby',
+          value: {
+            messaging_product: 'whatsapp',
+            metadata: this.metadata,
+            standby: {
+              contacts: [this.asWebhookContact(contact)],
+              messages: [message],
+            },
+          },
+        }),
+      }
+    }
+
     return {
-      kind: source === 'standby' ? 'standby' : 'message',
+      kind: 'message',
       payload: this.envelope({
         field: 'messages',
-        value:
-          source === 'standby'
-            ? {
-                messaging_product: 'whatsapp',
-                metadata: this.metadata,
-                contacts: [this.asWebhookContact(contact)],
-                standby: [message],
-              }
-            : {
-                messaging_product: 'whatsapp',
-                metadata: this.metadata,
-                contacts: [this.asWebhookContact(contact)],
-                messages: [message],
-              },
+        value: {
+          messaging_product: 'whatsapp',
+          metadata: this.metadata,
+          contacts: [this.asWebhookContact(contact)],
+          messages: [message],
+        },
       }),
     }
   }
@@ -351,8 +360,38 @@ export class SyntheticWebhookGenerator {
       messageId: id,
       recipientId: conversation.contact.id,
       sentAt: timestamp,
+      source: conversation.owner === 'agent' ? 'standby' : 'messages',
       stage: 0,
     })
+
+    if (conversation.owner === 'agent') {
+      return {
+        kind: 'message_echo',
+        payload: this.envelope({
+          field: 'standby',
+          value: {
+            messaging_product: 'whatsapp',
+            metadata: this.metadata,
+            standby: {
+              message_echoes: [
+                {
+                  id,
+                  timestamp: String(timestamp),
+                  message: {
+                    to: conversation.contact.id,
+                    recipient: conversation.contact.id,
+                    recipient_type: 'individual',
+                    type: 'text',
+                    text: echo.text,
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      }
+    }
+
     return {
       kind: 'message_echo',
       payload: this.envelope({
@@ -394,6 +433,21 @@ export class SyntheticWebhookGenerator {
       })
     }
 
+    const contact = this.asWebhookContact(this.findContact(pending.recipientId))
+    if (pending.source === 'standby') {
+      return {
+        kind: 'status',
+        payload: this.envelope({
+          field: 'standby',
+          value: {
+            messaging_product: 'whatsapp',
+            metadata: this.metadata,
+            standby: { contacts: [contact], statuses: [value] },
+          },
+        }),
+      }
+    }
+
     return {
       kind: 'status',
       payload: this.envelope({
@@ -401,9 +455,7 @@ export class SyntheticWebhookGenerator {
         value: {
           messaging_product: 'whatsapp',
           metadata: this.metadata,
-          contacts: [
-            this.asWebhookContact(this.findContact(pending.recipientId)),
-          ],
+          contacts: [contact],
           statuses: [value],
         },
       }),
@@ -433,51 +485,22 @@ export class SyntheticWebhookGenerator {
         field: 'messaging_handovers',
         value: {
           messaging_product: 'whatsapp',
-          metadata: this.metadata,
-          contacts: [this.asWebhookContact(conversation.contact)],
-          messaging_handovers: [
-            {
-              id: handoverId,
-              event: 'handover',
-              timestamp,
-              conversation_id: `conversation.${this.runId}.${conversation.contact.id}`,
-              user_id: conversation.contact.id,
-              previous_owner: previousOwner,
-              new_owner: newOwner,
-              agent:
-                newOwner === 'agent'
-                  ? { id: 'mba-agent-synthetic-1', name: 'Synthetic MBA Agent' }
-                  : { id: 'human-app', name: 'Human Application' },
-            },
-          ],
-        },
-      }),
-    }
-  }
-
-  private createAgentEvent(conversation: DirectConversation): GeneratedWebhook {
-    return {
-      kind: 'agent_event',
-      payload: this.envelope({
-        field: 'messaging_handovers',
-        value: {
-          messaging_product: 'whatsapp',
-          metadata: this.metadata,
-          contacts: [this.asWebhookContact(conversation.contact)],
-          messaging_handovers: [
-            {
-              id: this.nextId('agent-event'),
-              event: 'agent_event',
-              event_type: 'agent_active',
-              timestamp: this.timestamp(),
-              conversation_id: `conversation.${this.runId}.${conversation.contact.id}`,
-              user_id: conversation.contact.id,
-              agent: {
-                id: 'mba-agent-synthetic-1',
-                name: 'Synthetic MBA Agent',
-              },
-            },
-          ],
+          recipient: this.metadata,
+          sender: { phone_number: conversation.contact.id },
+          timestamp,
+          type: 'control_passed',
+          control_passed: {
+            metadata: handoverId,
+            previous_owner_app_id:
+              previousOwner === 'agent' ? 'mba-agent-synthetic-1' : 'human-app',
+            previous_owner_app_role:
+              previousOwner === 'agent'
+                ? 'meta_business_agent'
+                : 'business_app',
+            previous_owner_role:
+              previousOwner === 'agent' ? 'ai_agent' : 'escalation',
+            new_owner_role: newOwner === 'agent' ? 'ai_agent' : 'escalation',
+          },
         },
       }),
     }

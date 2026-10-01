@@ -1,32 +1,74 @@
-import { auth } from '@mba-demo/auth'
+import { auth, hasSsoProviders as defaultHasSsoProviders } from '@mba-demo/auth'
 import { events, type EventBus } from '@mba-demo/events'
+import { files, type FileStore } from '@mba-demo/files'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { cors } from 'hono/cors'
 import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import {
+  createApiPlaygroundRoute,
+  type ApiPlaygroundRouteOptions,
+} from './routes/api-playground.js'
+import {
+  createMessagingPlaygroundRoute,
+  type MessagingPlaygroundRouteOptions,
+} from './routes/messaging-playground.js'
+import {
+  createMediaPlaygroundRoute,
+  type MediaPlaygroundRouteOptions,
+} from './routes/media-playground.js'
+import {
   createChannelManagementRoute,
   type ChannelManagementRouteOptions,
 } from './routes/channels.js'
+import {
+  createContactsRoute,
+  type ContactsRouteOptions,
+} from './routes/contacts.js'
+import { createChatsRoute, type ChatsRouteOptions } from './routes/chats.js'
 import { createAdminOrganizationsRoute } from './routes/admin-organizations.js'
 import { createEventsRoute } from './routes/events.js'
+import { createFilesRoute } from './routes/files.js'
+import { createGroupsRoute, type GroupsRouteOptions } from './routes/groups.js'
+import { createMcpRoute, type McpRouteOptions } from './routes/mcp.js'
+import { createRunnerRoute, type RunnerRouteOptions } from './routes/runner.js'
 import {
   createWaCloudWebhookRoute,
   type WaCloudWebhookRouteOptions,
 } from './routes/wa-cloud.js'
 
 interface CreateAppOptions {
+  apiPlayground?: ApiPlaygroundRouteOptions
   channelManagement?: ChannelManagementRouteOptions
+  chats?: ChatsRouteOptions
+  contacts?: ContactsRouteOptions
   corsOrigin?: string
   eventBus?: EventBus
+  fileStore?: FileStore
+  groups?: GroupsRouteOptions
+  hasSsoProviders?: () => Promise<boolean>
+  messagingPlayground?: MessagingPlaygroundRouteOptions
+  mediaPlayground?: MediaPlaygroundRouteOptions
+  mcp?: McpRouteOptions
+  runner?: RunnerRouteOptions
   waCloudWebhook?: WaCloudWebhookRouteOptions
   webRoot?: string
 }
 
 export const createApp = ({
+  apiPlayground,
   channelManagement,
+  chats,
+  contacts,
   corsOrigin = 'http://localhost:5173',
   eventBus = events,
+  fileStore = files,
+  groups,
+  hasSsoProviders = defaultHasSsoProviders,
+  messagingPlayground,
+  mediaPlayground,
+  mcp,
+  runner,
   waCloudWebhook,
   webRoot,
 }: CreateAppOptions = {}) => {
@@ -36,22 +78,47 @@ export const createApp = ({
       '/api/*',
       cors({
         origin: corsOrigin,
-        allowHeaders: ['Content-Type', 'Authorization'],
-        allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowHeaders: [
+          'Content-Type',
+          'Authorization',
+          'X-API-Key',
+          'MCP-Protocol-Version',
+          'MCP-Method',
+          'MCP-Name',
+          'MCP-Session-Id',
+          'Last-Event-ID',
+        ],
+        allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        exposeHeaders: ['MCP-Protocol-Version', 'MCP-Session-Id'],
         credentials: true,
         maxAge: 600,
       }),
     )
-    .on(['GET', 'POST'], '/api/auth/**', (c) => auth.handler(c.req.raw))
+    .get('/api/auth/sso-availability', async (c) =>
+      c.json({ enabled: await hasSsoProviders() }),
+    )
+    .on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw))
     .get('/api/health', (c) =>
       c.json({
         status: 'ok' as const,
         runtime: 'node' as const,
       }),
     )
+    .route('/api/playground', createApiPlaygroundRoute(apiPlayground))
+    .route(
+      '/api/playground/messaging',
+      createMessagingPlaygroundRoute({ fileStore, ...messagingPlayground }),
+    )
+    .route('/api/playground/media', createMediaPlaygroundRoute(mediaPlayground))
     .route('/api/admin/organizations', createAdminOrganizationsRoute())
     .route('/api/channels', createChannelManagementRoute(channelManagement))
+    .route('/api/chats', createChatsRoute({ fileStore, ...chats }))
+    .route('/api/contacts', createContactsRoute(contacts))
     .route('/api/events', createEventsRoute(eventBus))
+    .route('/api/files', createFilesRoute(fileStore))
+    .route('/api/groups', createGroupsRoute(groups))
+    .route('/api/mcp', createMcpRoute(mcp))
+    .route('/api/runner', createRunnerRoute(runner))
     .route(
       '/api/wa-cloud/webhook',
       createWaCloudWebhookRoute(eventBus, waCloudWebhook),

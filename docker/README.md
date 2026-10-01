@@ -1,6 +1,18 @@
 # Container deployment
 
-The repository builds one production image with multiple process roles. Hono serves both the API and compiled static assets, so no Nginx process or reverse proxy is required.
+The repository builds one production image with `app` and `worker` roles. Use
+Simple Compose for a one-process demo and Full Compose to validate Kafka-backed
+worker isolation. Hono serves both `/api` and the compiled React application,
+so the image does not need Nginx or another static-file proxy.
+
+| Profile               | Use it for                                     | Processes          | File storage      |
+| --------------------- | ---------------------------------------------- | ------------------ | ----------------- |
+| `compose.dev.yaml`    | Host development with production-like services | Host API/Vite      | MinIO             |
+| `compose.simple.yaml` | Smallest self-contained demo                   | One `app`          | Filesystem volume |
+| `compose.yaml`        | Local app/worker split validation              | `app` and `worker` | MinIO             |
+
+The committed credentials and plaintext service connections are local/demo
+defaults, not a production security template.
 
 ## Image construction
 
@@ -12,7 +24,9 @@ The root `Dockerfile` uses these stages:
 4. `production-dependencies` installs production-only dependencies.
 5. `runtime` copies compiled output, Drizzle migrations, and the entrypoint into a Node 24 slim image.
 
-The runtime process runs as the unprivileged `node` user, exposes port 8080, and uses `SIGTERM` as its stop signal.
+The runtime process runs as the unprivileged `node` user, exposes port 8080,
+uses `SIGTERM` as its stop signal, and sets `NODE_OPTIONS=--no-node-snapshot` as
+required by `isolated-vm`.
 
 ## Entrypoint roles
 
@@ -34,6 +48,8 @@ An unknown or missing role exits with usage error code 64. Both roles use `exec`
 | PostgreSQL | `localhost:5432` | Application and authentication data         |
 | Redis      | `localhost:6379` | KV and Better Auth secondary storage        |
 | Kafka      | `localhost:9092` | Event publishing and in-process subscribers |
+| MinIO      | `localhost:9000` | S3-compatible file storage                  |
+| MinIO UI   | `localhost:9001` | Local object-storage administration         |
 
 Start the services and wait for their health checks:
 
@@ -54,7 +70,10 @@ docker compose -f compose.dev.yaml logs -f
 docker compose -f compose.dev.yaml down
 ```
 
-The development profile has its own Compose project name and named volumes, so its data is isolated from the full and simple application stacks. To intentionally reset all development service data:
+The development profile has its own Compose project name and named volumes, so
+its PostgreSQL, Redis, Kafka, and MinIO data is isolated from the full and
+simple application stacks. To intentionally reset all development service
+data:
 
 ```bash
 docker compose -f compose.dev.yaml down --volumes
@@ -75,10 +94,16 @@ docker compose up --build
 | `postgres` | Durable application and auth data          |
 | `redis`    | KV and Better Auth secondary storage       |
 | `kafka`    | Event transport                            |
+| `minio`    | S3-compatible file storage                 |
 | `app`      | Hono API/static server and Kafka publisher |
 | `worker`   | Kafka subscriber process                   |
 
-The app waits for PostgreSQL, Redis, and Kafka health checks. Its in-process worker is explicitly disabled. The worker waits for Kafka and subscribes according to `SUBSCRIBE_TO_TOPICS`.
+The app waits for PostgreSQL, Redis, Kafka, and MinIO. Its in-process worker is
+explicitly disabled, and the S3 adapter creates its bucket lazily in this local
+profile. The worker waits for Kafka and MinIO, subscribes according to
+`SUBSCRIBE_TO_TOPICS`, and uses the same S3 configuration when archiving
+WhatsApp webhook media. Container-side object operations use `http://minio:9000`; generated browser URLs use
+`FILES_S3_PUBLIC_ENDPOINT`, which defaults to `http://localhost:9000`.
 
 ## Simple profile
 
@@ -86,7 +111,12 @@ The app waits for PostgreSQL, Redis, and Kafka health checks. Its in-process wor
 docker compose -f compose.simple.yaml up --build
 ```
 
-This starts only PostgreSQL and the app. Because neither `REDIS_URL` nor Kafka configuration is provided, KV and events select their memory adapters. `ENABLE_WORKER_IN_PROCESS=true` ensures publishers and subscribers share the same app process.
+This starts only PostgreSQL and the app. Because neither `REDIS_URL` nor Kafka
+configuration is provided, KV and events select their memory adapters.
+`ENABLE_WORKER_IN_PROCESS=true` ensures publishers and subscribers share the
+same app process. Files use the durable `files-data` volume mounted at
+`/var/lib/mba-demo/files`; the rest of the application filesystem remains
+read-only.
 
 Do not split a memory-mode publisher and worker into separate containers: process-local events cannot cross that boundary.
 
@@ -111,20 +141,23 @@ The app health check calls `/api/health`. PostgreSQL uses `pg_isready`, Redis us
 Compose mounts named volumes for durable services:
 
 - `postgres-data` in both profiles.
-- `redis-data` and `kafka-data` in the full profile.
+- `files-data` in the simple profile.
+- `redis-data`, `kafka-data`, and `minio-data` in the full profile.
 
 `docker compose down` stops containers while preserving named volumes. Adding `--volumes` destroys local service data and should be used deliberately.
 
 The shared application containers use a read-only filesystem, a `/tmp` tmpfs, `no-new-privileges`, and `restart: unless-stopped` in the full profile.
 
-## Production considerations
+## Production requirements
 
-The Compose files are local/development defaults. Before deployment:
+Before deployment:
 
 - Replace `BETTER_AUTH_SECRET` with a high-entropy secret.
 - Set externally correct auth and CORS URLs.
 - Replace embedded PostgreSQL credentials.
-- Configure TLS/authentication or managed services for PostgreSQL, Redis, and Kafka.
+- Replace `FILES_SIGNING_SECRET` in filesystem mode.
+- Configure TLS/authentication or managed services for PostgreSQL, Redis,
+  Kafka, and S3-compatible storage.
 - Decide which topics each worker owns and set `SUBSCRIBE_TO_TOPICS` explicitly.
 - Use distinct, stable Kafka consumer group IDs when workloads require independent delivery.
 
@@ -134,28 +167,35 @@ Podman users can run the same flows with `podman compose`.
 
 The root [`render.yaml`](../render.yaml) describes the hosted equivalent of the simple profile. Applying it creates:
 
-- One free Docker web service using the `app` entrypoint role.
+- One starter Docker web service using the `app` entrypoint role and a 1 GiB
+  persistent disk mounted at `/var/data`.
 - One free Render PostgreSQL database.
 - One free Render Key Value service for Redis-compatible shared KV storage.
 
-It intentionally defines no Kafka or separate worker services. `ENABLE_WORKER_IN_PROCESS=true` keeps the event handlers in the web process. The injected `REDIS_URL` selects the Redis KV adapter, while the absence of Kafka variables selects the in-memory event adapter.
+It intentionally defines no Kafka or separate worker services.
+`ENABLE_WORKER_IN_PROCESS=true` keeps the event handlers in the web process.
+The injected `REDIS_URL` selects the Redis KV adapter, while the absence of
+Kafka variables selects the in-memory event adapter. `FILES_ADAPTER=fs` stores
+files below `/var/data/files` on the persistent disk.
 
 Render supplies `PORT` at runtime, so the Blueprint does not override it. `DATABASE_URL` and `REDIS_URL` are populated from their services' internal connection strings, and Render generates `BETTER_AUTH_SECRET`. The Key Value service has no public IP allowlist and uses `allkeys-lru` eviction when it reaches its memory limit.
 
-During Blueprint creation, Render prompts for two non-synchronized variables:
+During Blueprint creation, Render prompts for three non-synchronized variables:
 
-| Variable          | Value                                                                                            |
-| ----------------- | ------------------------------------------------------------------------------------------------ |
-| `BETTER_AUTH_URL` | The final public service URL, such as `https://mba-demo-backoffice.onrender.com`                 |
-| `CORS_ORIGIN`     | The browser origin allowed to call the API; for the bundled app, use the same public service URL |
+| Variable           | Value                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------ |
+| `BETTER_AUTH_URL`  | The final public service URL, such as `https://mba-demo-backoffice.onrender.com`                 |
+| `CORS_ORIGIN`      | The browser origin allowed to call the API; for the bundled app, use the same public service URL |
+| `FILES_PUBLIC_URL` | The public service URL used as the base for filesystem signed URLs; normally the same URL        |
 
 These values are intentionally not hard-coded because Render can assign a different hostname and production deployments may use a custom domain.
 
 The app entrypoint applies pending Drizzle migrations before starting the server. A failed migration prevents the service from becoming healthy.
 
-### Free-tier constraints
+### Plan constraints
 
-- The web service can sleep when idle and lose in-memory event state.
+- Persistent disks require a paid Render web-service plan, so the Blueprint
+  uses `starter`; changing it to `free` makes the disk configuration invalid.
 - The free Key Value service is shared across app instances but is non-authoritative cache/secondary storage; its availability, persistence, and capacity follow Render's current free-plan terms.
 - In-memory events work only because the free profile uses one app process.
 - PostgreSQL remains the authoritative durable store; its free-tier retention and capacity are governed by Render's current plan terms.

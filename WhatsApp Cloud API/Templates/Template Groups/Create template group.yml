@@ -1,0 +1,30 @@
+info:
+  name: Create template group
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/template_groups
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Black Friday 2026",
+        "description": "Black Friday campaign templates.",
+        "whatsapp_business_templates": ["{{Template-ID-1}}", "{{Template-ID-2}}"]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Canonical guide: [Create a template group](https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/template-groups#create-a-template-group).

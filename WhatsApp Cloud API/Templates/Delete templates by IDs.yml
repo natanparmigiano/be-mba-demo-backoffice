@@ -1,0 +1,27 @@
+info:
+  name: Delete templates by IDs
+  type: http
+  seq: 17
+
+http:
+  method: DELETE
+  url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/message_templates?hsm_ids=["<TEMPLATE_ID_1>","<TEMPLATE_ID_2>"]
+  params:
+    - name: hsm_ids
+      value: '["<TEMPLATE_ID_1>","<TEMPLATE_ID_2>"]'
+      type: query
+      description: JSON array containing at most 100 template IDs.
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Deletes up to 100 templates atomically by ID. Do not combine `hsm_ids` with
+  `name` or `hsm_id`; if any ID is invalid, no template is deleted.
+
+  Canonical guide: [Delete templates by IDs](https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/template-management#delete-templates-by-ids).

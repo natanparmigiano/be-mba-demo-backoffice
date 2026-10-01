@@ -1,0 +1,56 @@
+info:
+  name: Messaging Handover Control Passed
+  type: http
+  seq: 27
+
+http:
+  method: VIEW
+  url: http://
+  body:
+    type: json
+    data: |-
+      {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "WHATSAPP_BUSINESS_ACCOUNT_ID",
+            "changes": [
+              {
+                "field": "messaging_handovers",
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "recipient": {
+                    "display_phone_number": "16505553333",
+                    "phone_number_id": "PHONE_NUMBER_ID"
+                  },
+                  "sender": {
+                    "phone_number": "16315551234"
+                  },
+                  "timestamp": "1790807000",
+                  "type": "control_passed",
+                  "control_passed": {
+                    "metadata": "optional metadata",
+                    "previous_owner_app_id": "BUSINESS_AGENT_APP_ID",
+                    "previous_owner_app_role": "meta_business_agent",
+                    "previous_owner_role": "ai_agent",
+                    "new_owner_role": "escalation"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Observed Meta Business Agent ownership callback. The callback is a single
+  `control_passed` value; it is not a `messaging_handovers` array and does not
+  use the normal `metadata` object.

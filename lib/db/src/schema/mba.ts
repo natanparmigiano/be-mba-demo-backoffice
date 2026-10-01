@@ -1,7 +1,7 @@
 import type {
   WhatsAppOutboundMessage,
   WhatsAppSendMessageResponse,
-} from '@mba-demo/schemas/wa-cloud/messages'
+} from '@mba-demo/wa-messaging'
 import type {
   Call,
   CallStatus,
@@ -9,12 +9,13 @@ import type {
   HistoryMessage,
   MessageEcho,
   MessagingHandoverEvent,
+  StandbyMessageEcho,
   UserPreference,
   WebhookError,
   WhatsAppContact,
   WhatsAppMessage as WhatsAppInboundMessage,
   WhatsAppMessageStatus as WhatsAppWebhookMessageStatus,
-} from '@mba-demo/schemas/wa-cloud/webhooks'
+} from '@mba-demo/wa-webhooks'
 import { sql } from 'drizzle-orm'
 import { organization } from './auth.js'
 import {
@@ -22,9 +23,12 @@ import {
   bigint,
   boolean,
   check,
+  foreignKey,
   index,
+  integer,
   jsonb,
   pgSchema,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -99,6 +103,7 @@ export const whatsappConversationOrigins = [
 // Add `instagram` and `messenger` after their provider-specific fields and ingestion paths exist.
 export const channelTypes = ['whatsapp'] as const
 export const chatKinds = ['direct', 'group'] as const
+export const chatHandlers = ['mba', 'application'] as const
 export const whatsappGroupWebhookFields = [
   'group_lifecycle_update',
   'group_participants_update',
@@ -141,6 +146,7 @@ export type WhatsAppConversationOrigin =
   (typeof whatsappConversationOrigins)[number]
 export type ChannelType = (typeof channelTypes)[number]
 export type ChatKind = (typeof chatKinds)[number]
+export type ChatHandler = (typeof chatHandlers)[number]
 export type WhatsAppGroupWebhookField =
   (typeof whatsappGroupWebhookFields)[number]
 export type ChatEventType = (typeof chatEventTypes)[number]
@@ -149,8 +155,41 @@ export type ChatEventSource = (typeof chatEventSources)[number]
 export type StoredWhatsAppMessagePayload =
   | HistoryMessage
   | MessageEcho
+  | StandbyMessageEcho
   | WhatsAppInboundMessage
   | WhatsAppOutboundMessage
+
+type InboundMessageOfType<Type extends WhatsAppInboundMessage['type']> =
+  Extract<WhatsAppInboundMessage, { type: Type }>
+type OutboundMessageOfType<Type extends WhatsAppOutboundMessage['type']> =
+  Extract<WhatsAppOutboundMessage, { type: Type }>
+export type StoredMessageInteractiveData =
+  | InboundMessageOfType<'interactive'>['interactive']
+  | OutboundMessageOfType<'interactive'>['interactive']
+export type StoredMessageContactData =
+  InboundMessageOfType<'contacts'>['contacts']
+export type StoredMessageLocationData =
+  InboundMessageOfType<'location'>['location']
+export type StoredMessageButtonData = InboundMessageOfType<'button'>['button']
+export type StoredMessageOrderData = InboundMessageOfType<'order'>['order']
+export type StoredMessageReactionData =
+  | InboundMessageOfType<'reaction'>['reaction']
+  | OutboundMessageOfType<'reaction'>['reaction']
+export type StoredMessageTemplateData =
+  OutboundMessageOfType<'template'>['template']
+export type StoredMessageSystemData = InboundMessageOfType<'system'>['system']
+export type StoredMessageEditData = InboundMessageOfType<'edit'>['edit']
+export type StoredMessageRevokeData = InboundMessageOfType<'revoke'>['revoke']
+export type StoredMessageContextData =
+  | NonNullable<WhatsAppInboundMessage['context']>
+  | NonNullable<WhatsAppOutboundMessage['context']>
+export type StoredMessageReferralData = NonNullable<
+  WhatsAppInboundMessage['referral']
+>
+export type StoredMessageIdentityData = NonNullable<
+  WhatsAppInboundMessage['identity']
+>
+export type StoredMessageErrorData = InboundMessageOfType<'unknown'>['errors']
 
 type SendResponseContact = WhatsAppSendMessageResponse['contacts'][number]
 export type StoredWhatsAppContact = SendResponseContact | WhatsAppContact
@@ -189,6 +228,11 @@ export const channels = mbaSchema.table(
     waAppSecret: text('wa_app_secret').notNull(),
     // Per-channel secret presented by Meta during the webhook subscription verification challenge.
     waWebhookVerifyToken: text('wa_webhook_verify_token').notNull(),
+    // Downstream endpoints that receive a copy of each successfully verified webhook.
+    webhookForwardUrls: text('webhook_forward_urls')
+      .array()
+      .default(sql`ARRAY[]::text[]`)
+      .notNull(),
     // Sensitive system-user token used for Cloud API calls; never expose or log it.
     waSystemUserAccessToken: text('wa_system_user_access_token').notNull(),
     // Time this channel configuration was created in the application.
@@ -201,11 +245,35 @@ export const channels = mbaSchema.table(
       .notNull(),
   },
   (table) => [
+    uniqueIndex('channels_id_organization_uidx').on(
+      table.id,
+      table.organizationId,
+    ),
     uniqueIndex('channels_type_wa_phone_number_id_uidx').on(
       table.type,
       table.waPhoneNumberId,
     ),
     index('channels_organization_id_idx').on(table.organizationId),
+  ],
+)
+
+export const agentKnowledgeFileArchives = mbaSchema.table(
+  'agent_knowledge_file_archives',
+  {
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    providerFileId: text('provider_file_id').notNull(),
+    storagePath: text('storage_path').notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: 'agent_knowledge_file_archives_pk',
+      columns: [table.organizationId, table.providerFileId],
+    }),
+    uniqueIndex('agent_knowledge_file_archives_storage_path_uidx').on(
+      table.storagePath,
+    ),
   ],
 )
 
@@ -246,6 +314,7 @@ export const contacts = mbaSchema.table(
       .notNull(),
   },
   (table) => [
+    uniqueIndex('contacts_id_channel_uidx').on(table.id, table.channelId),
     uniqueIndex('contacts_channel_wa_id_uidx').on(table.channelId, table.waId),
     uniqueIndex('contacts_channel_user_id_uidx').on(
       table.channelId,
@@ -299,6 +368,7 @@ export const groups = mbaSchema.table(
       .notNull(),
   },
   (table) => [
+    uniqueIndex('groups_id_channel_uidx').on(table.id, table.channelId),
     uniqueIndex('groups_channel_provider_group_uidx').on(
       table.channelId,
       table.providerGroupId,
@@ -316,16 +386,18 @@ export const chats = mbaSchema.table(
       .generatedAlwaysAsIdentity(),
     // Application discriminator derived from a message's `group_id` or its remote contact.
     kind: text('kind', { enum: chatKinds }).notNull(),
+    // Current owner inferred from webhook routing: `standby` belongs to MBA and `messages` to the application.
+    handledBy: text('handled_by', { enum: chatHandlers })
+      .default('application')
+      .notNull(),
+    // Denormalized source channel used for direct chat-to-channel joins and consistency checks.
+    channelId: bigint('channel_id', { mode: 'number' }).notNull(),
+    // Denormalized tenant owner used as the leading key for the organization inbox index.
+    organizationId: text('organization_id').notNull(),
     // Sole remote participant for a direct chat; null for group chats.
-    contactId: bigint('contact_id', { mode: 'number' }).references(
-      () => contacts.id,
-      { onDelete: 'restrict' },
-    ),
+    contactId: bigint('contact_id', { mode: 'number' }),
     // Internal `mba.groups` identity for a group chat; null for direct chats.
-    groupId: bigint('group_id', { mode: 'number' }).references(
-      () => groups.id,
-      { onDelete: 'restrict' },
-    ),
+    groupId: bigint('group_id', { mode: 'number' }),
     // Denormalized pointer to the newest message in this chat for cursor and range lookups.
     latestMessageId: bigint('latest_message_id', {
       mode: 'number',
@@ -334,6 +406,8 @@ export const chats = mbaSchema.table(
     latestReadMessageId: bigint('latest_read_message_id', {
       mode: 'number',
     }).references((): AnyPgColumn => messages.id, { onDelete: 'set null' }),
+    // Denormalized unread inbound count; maintained with the latest/read pointers for O(1) inbox reads.
+    unreadMessageCount: integer('unread_message_count').default(0).notNull(),
     // Time this application first discovered the chat from a message or group webhook.
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
@@ -346,10 +420,35 @@ export const chats = mbaSchema.table(
   (table) => [
     uniqueIndex('chats_contact_uidx').on(table.contactId),
     uniqueIndex('chats_group_uidx').on(table.groupId),
+    index('chats_channel_id_idx').on(table.channelId),
+    index('chats_organization_updated_id_idx').on(
+      table.organizationId,
+      table.updatedAt,
+      table.id,
+    ),
     index('chats_latest_message_id_idx').on(table.latestMessageId),
+    foreignKey({
+      name: 'chats_channel_organization_fk',
+      columns: [table.channelId, table.organizationId],
+      foreignColumns: [channels.id, channels.organizationId],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'chats_contact_channel_fk',
+      columns: [table.contactId, table.channelId],
+      foreignColumns: [contacts.id, contacts.channelId],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'chats_group_channel_fk',
+      columns: [table.groupId, table.channelId],
+      foreignColumns: [groups.id, groups.channelId],
+    }).onDelete('restrict'),
     check(
       'chats_identity_check',
       sql`(${table.kind} = 'direct' and ${table.contactId} is not null and ${table.groupId} is null) or (${table.kind} = 'group' and ${table.contactId} is null and ${table.groupId} is not null)`,
+    ),
+    check(
+      'chats_unread_message_count_check',
+      sql`${table.unreadMessageCount} >= 0`,
     ),
   ],
 )
@@ -380,12 +479,49 @@ export const messages = mbaSchema.table(
     direction: text('direction', {
       enum: whatsappMessageDirections,
     }).notNull(),
+    // True only for outbound echoes observed through the Business AI standby channel.
+    aiGenerated: boolean('ai_generated').notNull().default(false),
     // Message discriminator from inbound `messages[].type` or outbound request `type`.
     messageType: text('message_type', { enum: whatsappMessageTypes }),
     // Interactive discriminator from inbound/outbound `interactive.type`, when applicable.
     interactiveType: text('interactive_type', {
       enum: whatsappInteractiveTypes,
     }),
+    // Primary human-readable content used by inbox previews and text bubbles.
+    textContent: text('text_content'),
+    // Provider media identity. Inbound webhooks usually provide this instead of a URL.
+    mediaId: text('media_id'),
+    // Direct inbound URL or outbound link when the provider payload supplies one.
+    mediaUrl: text('media_url'),
+    // Provider MIME type for audio, document, image, sticker, and video messages.
+    mediaMimeType: text('media_mime_type'),
+    // Provider content digest used to identify and verify downloaded media.
+    mediaSha256: text('media_sha256'),
+    // Durable object-store key assigned after downloading provider-hosted media.
+    mediaFilePath: text('media_file_path'),
+    // Display filename supplied for document messages.
+    mediaFileName: text('media_file_name'),
+    // Caption supplied alongside image, video, or document media.
+    mediaCaption: text('media_caption'),
+    // Audio voice-note marker and animated-sticker marker.
+    mediaVoice: boolean('media_voice'),
+    mediaAnimated: boolean('media_animated'),
+    // Type-specific UI projections retain their typed structure without reparsing raw_message.
+    interactiveData:
+      jsonb('interactive_data').$type<StoredMessageInteractiveData>(),
+    contactData: jsonb('contact_data').$type<StoredMessageContactData>(),
+    locationData: jsonb('location_data').$type<StoredMessageLocationData>(),
+    buttonData: jsonb('button_data').$type<StoredMessageButtonData>(),
+    orderData: jsonb('order_data').$type<StoredMessageOrderData>(),
+    reactionData: jsonb('reaction_data').$type<StoredMessageReactionData>(),
+    templateData: jsonb('template_data').$type<StoredMessageTemplateData>(),
+    systemData: jsonb('system_data').$type<StoredMessageSystemData>(),
+    editData: jsonb('edit_data').$type<StoredMessageEditData>(),
+    revokeData: jsonb('revoke_data').$type<StoredMessageRevokeData>(),
+    contextData: jsonb('context_data').$type<StoredMessageContextData>(),
+    referralData: jsonb('referral_data').$type<StoredMessageReferralData>(),
+    identityData: jsonb('identity_data').$type<StoredMessageIdentityData>(),
+    errorsData: jsonb('errors_data').$type<StoredMessageErrorData>(),
     // Local outbound lifecycle state; distinct from delivery status webhooks in `statuses[].status`.
     dispatchStatus: text('dispatch_status', {
       enum: whatsappDispatchStatuses,
@@ -418,13 +554,16 @@ export const messages = mbaSchema.table(
     webhookEntryTime: timestamp('webhook_entry_time', { withTimezone: true }),
     // Replied-to message from inbound `messages[].context.id` or outbound `context.message_id`.
     contextMessageId: text('context_message_id'),
+    // Forwarding markers from inbound `messages[].context`; omitted values remain unknown rather than false.
+    forwarded: boolean('forwarded'),
+    frequentlyForwarded: boolean('frequently_forwarded'),
     // Message affected by reaction/edit/revoke content, such as `reaction.message_id`.
     targetMessageId: text('target_message_id'),
     // Complete typed inbound message, history/echo message, or outbound send request.
     rawMessage: jsonb('raw_message').$type<StoredWhatsAppMessagePayload>(),
     // Complete typed Graph API response returned after an outbound message submission.
     sendResponse: jsonb('send_response').$type<WhatsAppSendMessageResponse>(),
-    // Latest delivery state from `statuses[].status`; maintained from status webhooks.
+    // Local read/delivered state for inbound traffic or latest provider delivery state for outbound traffic.
     status: text('status', { enum: whatsappMessageStatuses }),
     // Original Unix timestamp string from the latest `statuses[].timestamp`.
     statusProviderTimestamp: text('status_provider_timestamp'),
@@ -473,7 +612,11 @@ export const messages = mbaSchema.table(
       table.chatId,
       table.clientMessageId,
     ),
-    index('messages_chat_occurred_at_idx').on(table.chatId, table.occurredAt),
+    index('messages_chat_occurred_id_idx').on(
+      table.chatId,
+      table.occurredAt,
+      table.id,
+    ),
     index('messages_contact_occurred_at_idx').on(
       table.contactId,
       table.occurredAt,
@@ -665,6 +808,10 @@ export type Message = typeof messages.$inferSelect
 export type NewMessage = typeof messages.$inferInsert
 export type Channel = typeof channels.$inferSelect
 export type NewChannel = typeof channels.$inferInsert
+export type AgentKnowledgeFileArchive =
+  typeof agentKnowledgeFileArchives.$inferSelect
+export type NewAgentKnowledgeFileArchive =
+  typeof agentKnowledgeFileArchives.$inferInsert
 export type Contact = typeof contacts.$inferSelect
 export type NewContact = typeof contacts.$inferInsert
 export type Group = typeof groups.$inferSelect

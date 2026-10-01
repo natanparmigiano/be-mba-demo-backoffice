@@ -1,6 +1,13 @@
 # `@mba-demo/auth`
 
-Better Auth configuration shared by the Hono application. It uses Drizzle/PostgreSQL for durable auth records and `@mba-demo/kv` as Better Auth secondary storage.
+This package is the server's single Better Auth configuration boundary. It
+stores durable identities and organizations in PostgreSQL, places sessions and
+verification state in the selected `@mba-demo/kv` adapter, and exposes the
+handler mounted by Hono at `/api/auth/*`.
+
+Production must provide `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`. Multi-instance
+deployments must also configure shared Redis secondary storage; process memory
+cannot coordinate sessions or verification state across replicas.
 
 ## Configuration
 
@@ -16,17 +23,20 @@ The exported `auth` instance is configured with:
 - A KV-backed secondary storage adapter.
 - One trusted origin derived from `CORS_ORIGIN`.
 
-The API mounts `auth.handler` at `/api/auth/**`.
+The API mounts the resulting `auth.handler` at `/api/auth/*`.
 
 ## Environment
 
-| Variable             | Development behavior                            | Production behavior        |
-| -------------------- | ----------------------------------------------- | -------------------------- |
-| `BETTER_AUTH_SECRET` | Falls back to an unsafe development-only secret | Required                   |
-| `BETTER_AUTH_URL`    | Defaults to `http://localhost:3000`             | Required                   |
-| `CORS_ORIGIN`        | Defaults to `http://localhost:5173`             | Used as the trusted origin |
+| Variable                      | Development behavior                            | Production behavior                     |
+| ----------------------------- | ----------------------------------------------- | --------------------------------------- |
+| `BETTER_AUTH_SECRET`          | Falls back to an unsafe development-only secret | Required                                |
+| `BETTER_AUTH_URL`             | Defaults to `http://localhost:3000`             | Required                                |
+| `BETTER_AUTH_TRUSTED_ORIGINS` | Optional comma-separated IdP origins            | Required for every OIDC endpoint origin |
+| `CORS_ORIGIN`                 | Defaults to `http://localhost:5173`             | Used as the trusted browser origin      |
 
 URLs must use `http://` or `https://`. Generate a high-entropy secret for every deployed environment and never rely on the development fallback in production.
+
+OIDC discovery and runtime endpoints are rejected unless their exact origins are trusted. Configure `BETTER_AUTH_TRUSTED_ORIGINS` before registering OIDC providers. See the root [`SSO.md`](../../SSO.md) for the complete OIDC and SAML workflow.
 
 ## Storage
 
@@ -40,7 +50,8 @@ Durable auth entities live in PostgreSQL's `auth` schema:
 
 Sessions and verification state use Better Auth's secondary-storage bridge rather than duplicate PostgreSQL tables. The bridge supports reads, atomic read-and-delete, TTL-aware writes, deletion, and counters through the common KV interface. It uses Redis when `REDIS_URL` is configured and process-local memory otherwise.
 
-Before the API starts listening, `bootstrapInitialAdmin()` counts the durable users. When the count is zero, it uses Better Auth's server API to create this application administrator:
+On an empty database, `bootstrapInitialAdmin()` creates the first application
+administrator before the API listens:
 
 - Email: `admin@meta.com`
 - Name: `Admin`
@@ -81,8 +92,10 @@ Do not hand-maintain duplicate auth tables in another schema.
 ## Public API
 
 ```ts
-import { auth, type Auth, type Session } from '@mba-demo/auth'
+import { auth, hasSsoProviders, type Auth, type Session } from '@mba-demo/auth'
 ```
+
+`hasSsoProviders()` returns only whether the durable SSO provider table contains a domain-verified provider. The API uses it for the guest login capability check without exposing provider configuration or presenting an unusable SSO form while DNS verification is pending.
 
 ## Verification
 

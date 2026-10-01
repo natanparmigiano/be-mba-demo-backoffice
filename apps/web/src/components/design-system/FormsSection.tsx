@@ -1,4 +1,5 @@
 import { Mail } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Checkbox,
@@ -8,11 +9,13 @@ import {
   SectionHeading,
   Select,
   Switch,
+  TagInput,
   Textarea,
 } from '../ui'
 
 export function FormsSection() {
   const { t } = useTranslation()
+  const [tags, setTags] = useState(['support', 'billing'])
 
   return (
     <section id="forms" className="scroll-mt-24 pt-10">
@@ -42,6 +45,14 @@ export function FormsSection() {
               label={t('design.notes')}
               placeholder={t('design.notesPlaceholder')}
               hint={t('design.teamOnly')}
+            />
+            <TagInput
+              getRemoveLabel={(tag) => t('design.removeTag', { tag })}
+              hint={t('design.tagsHint')}
+              label={t('design.tags')}
+              placeholder={t('design.tagsPlaceholder')}
+              value={tags}
+              onValueChange={setTags}
             />
             <div>
               <span className="mb-1.5 block text-sm font-semibold">

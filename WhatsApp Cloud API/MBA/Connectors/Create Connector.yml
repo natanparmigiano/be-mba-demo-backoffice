@@ -1,0 +1,37 @@
+info:
+  name: Create Connector
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Order Management API",
+        "description": "Looks up orders and helps customers manage them.",
+        "base_url": "https://api.example.com",
+        "connector_protocol": "HTTP",
+        "auth_type": "NONE",
+        "requires_certificate": false
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Creates an HTTP or MCP connector. Supported authentication types are `OAUTH2_CLIENT_CREDENTIALS`, `API_KEY`, and `NONE`.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/connectors

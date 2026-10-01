@@ -1,0 +1,34 @@
+info:
+  name: Update UI Skill
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent-ui-skills/{{MBA-UI-Skill-ID}}
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Learn more button",
+        "status": "enabled",
+        "instruction": "When a customer asks to learn more, send a button labeled Learn more that opens https://www.example.com."
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Updates the selected UI skill. Its `component_type` and `flow_id` are not mutable.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/ui-skills

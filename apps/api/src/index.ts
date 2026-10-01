@@ -2,14 +2,20 @@ import { serve } from '@hono/node-server'
 import { bootstrapInitialAdmin } from '@mba-demo/auth'
 import { closeDatabase } from '@mba-demo/db'
 import { events, type Unsubscribe } from '@mba-demo/events'
+import { files } from '@mba-demo/files'
 import { kv } from '@mba-demo/kv'
+import { pubsub } from '@mba-demo/pubsub'
 import { createApp } from './app.js'
+import { parseMcpAllowedHosts } from './routes/mcp.js'
 import { registerSubscribers } from './subscribers.js'
 import { isInProcessWorkerEnabled } from './worker-config.js'
 
 const port = Number.parseInt(process.env.PORT ?? '3000', 10)
 const app = createApp({
   corsOrigin: process.env.CORS_ORIGIN,
+  mcp: {
+    allowedHosts: parseMcpAllowedHosts(process.env.MCP_ALLOWED_HOSTS),
+  },
   webRoot: process.env.WEB_ROOT ?? '../web/dist',
 })
 
@@ -44,13 +50,25 @@ const shutdown = (signal: NodeJS.Signals) => {
   unregisterSubscribers()
 
   server.close((error) => {
-    void Promise.all([closeDatabase(), kv.close(), events.close()])
+    void Promise.all([
+      closeDatabase(),
+      kv.close(),
+      pubsub.close(),
+      events.close(),
+      files.close(),
+    ])
       .then(() => process.exit(error ? 1 : 0))
       .catch((closeError: unknown) => {
         console.error('Failed to close a runtime connection', closeError)
         process.exit(1)
       })
   })
+  if (
+    'closeAllConnections' in server &&
+    typeof server.closeAllConnections === 'function'
+  ) {
+    server.closeAllConnections()
+  }
 }
 
 process.once('SIGINT', shutdown)

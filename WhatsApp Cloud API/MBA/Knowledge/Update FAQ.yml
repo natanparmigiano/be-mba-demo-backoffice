@@ -1,0 +1,36 @@
+info:
+  name: Update FAQ
+  type: http
+  seq: 7
+
+http:
+  method: PUT
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_config/faq/{{MBA-FAQ-ID}}
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "question": "What is your return policy?",
+        "answer": "Returns are accepted within 30 days with proof of purchase.",
+        "metadata": {
+          "category": "returns"
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Replaces the content of the selected FAQ entry.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/agent-knowledge-faqs

@@ -1,0 +1,41 @@
+info:
+  name: Replace Business Info
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_config/business_info
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "payment_method": "Credit card",
+        "return_policy": "Returns are accepted within 30 days.",
+        "purchase_info": "Purchase online or contact our team.",
+        "delivery_and_shipping": "Standard delivery takes 3-5 business days.",
+        "business_description": "Describe your business here.",
+        "contact_info": {
+          "email": "support@example.com",
+          "hours_of_operation": "Monday-Friday, 09:00-17:00",
+          "address": "Business address"
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Fully replaces the business information object with the supplied fields.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/agent-knowledge-business-info

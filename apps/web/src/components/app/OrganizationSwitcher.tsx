@@ -1,9 +1,11 @@
 import { Building2, ChevronsUpDown } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { authClient } from '../../auth/auth-client'
 import { useAuth } from '../../auth/AuthProvider'
 
 export function OrganizationSwitcher() {
+  const { t } = useTranslation()
   const { refetch: refetchSession } = useAuth()
   const organizationsQuery = authClient.useListOrganizations()
   const activeOrganizationQuery = authClient.useActiveOrganization()
@@ -29,10 +31,10 @@ export function OrganizationSwitcher() {
   if (organizations.length === 0) {
     return (
       <div className="grid gap-1.5 p-1 text-[11px] font-semibold text-muted-foreground">
-        <span className="px-2">Organization</span>
+        <span className="px-2">{t('organizations.organization')}</span>
         <div className="flex h-10 items-center gap-2 rounded-xl bg-muted/70 px-3 text-xs">
           <Building2 className="size-4" />
-          No organization
+          {t('organizations.noOrganization')}
         </div>
       </div>
     )
@@ -41,7 +43,7 @@ export function OrganizationSwitcher() {
   return (
     <div className="p-1">
       <label className="grid gap-1.5 text-[11px] font-semibold text-muted-foreground">
-        <span className="px-2">Organization</span>
+        <span className="px-2">{t('organizations.organization')}</span>
         <span className="relative">
           <Building2 className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
           <select
@@ -51,7 +53,7 @@ export function OrganizationSwitcher() {
             onChange={(event) => void setOrganization(event.target.value)}
           >
             <option value="" disabled>
-              Select organization
+              {t('organizations.selectOrganization')}
             </option>
             {organizations.map((organization) => (
               <option key={organization.id} value={organization.id}>

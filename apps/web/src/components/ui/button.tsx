@@ -2,7 +2,8 @@ import { LoaderCircle } from 'lucide-react'
 import { forwardRef, type ButtonHTMLAttributes } from 'react'
 import { cn } from './cn'
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
+type ButtonVariant =
+  'primary' | 'secondary' | 'outline' | 'ghost' | 'success' | 'danger'
 type ButtonSize = 'sm' | 'md' | 'lg' | 'icon'
 
 const buttonVariants: Record<ButtonVariant, string> = {
@@ -14,6 +15,8 @@ const buttonVariants: Record<ButtonVariant, string> = {
     'border-border bg-card text-card-foreground shadow-sm hover:bg-muted/70',
   ghost:
     'border-transparent bg-transparent text-foreground hover:bg-muted/70 active:bg-muted',
+  success:
+    'border-transparent bg-success text-success-foreground shadow-sm hover:bg-success/90 active:bg-success/80',
   danger:
     'border-transparent bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
 }

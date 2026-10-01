@@ -6,11 +6,20 @@ import {
   WhatsAppWebhookChannelMismatchError,
 } from '@mba-demo/db'
 import type { EventBus } from '@mba-demo/events'
-import { whatsappWebhookSchema } from '@mba-demo/schemas/wa-cloud/webhooks'
+import { whatsappWebhookSchema } from '@mba-demo/wa-webhooks'
 import { Hono } from 'hono'
 
 export const WA_CLOUD_WEBHOOK_TOPIC = 'wa-cloud.webhook.v1'
+export const WA_CLOUD_WEBHOOK_FORWARD_TOPIC = 'wa-cloud.webhook-forward.v1'
 export const MAX_WA_CLOUD_WEBHOOK_BYTES = 1024 * 1024
+
+export interface WhatsAppWebhookForwardRequest {
+  body: string
+  channelId: number
+  contentType: string
+  signature: string
+  url: string
+}
 
 type FindWhatsAppChannel = (
   channelId: number,
@@ -74,13 +83,8 @@ export const createWaCloudWebhookRoute = (
       return c.json({ message: 'Webhook payload is too large' }, 413)
     }
 
-    if (
-      !verifyWhatsAppSignature(
-        body,
-        c.req.header('x-hub-signature-256'),
-        channel.waAppSecret,
-      )
-    ) {
+    const signature = c.req.header('x-hub-signature-256')
+    if (!verifyWhatsAppSignature(body, signature, channel.waAppSecret)) {
       return c.json({ message: 'Invalid webhook signature' }, 401)
     }
 
@@ -112,14 +116,33 @@ export const createWaCloudWebhookRoute = (
       throw error
     }
 
-    await eventBus.publish(WA_CLOUD_WEBHOOK_TOPIC, payload, {
+    const eventOptions = {
       key: String(channelId),
       headers: {
         'channel-id': String(channelId),
         'content-type': 'application/json',
         source: 'wa-cloud-webhook',
       },
-    })
+    } as const
+
+    await Promise.all([
+      eventBus.publish(WA_CLOUD_WEBHOOK_TOPIC, payload, eventOptions),
+      ...channel.webhookForwardUrls.map((url) => {
+        const forwardRequest: WhatsAppWebhookForwardRequest = {
+          body: payload,
+          channelId,
+          contentType,
+          signature: signature!,
+          url,
+        }
+
+        return eventBus.publish(
+          WA_CLOUD_WEBHOOK_FORWARD_TOPIC,
+          JSON.stringify(forwardRequest),
+          eventOptions,
+        )
+      }),
+    ])
 
     return c.json(
       {

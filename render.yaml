@@ -2,7 +2,7 @@ services:
   - type: web
     name: mba-demo-backoffice
     runtime: docker
-    plan: free
+    plan: starter
     dockerfilePath: ./Dockerfile
     dockerContext: .
     dockerCommand: app
@@ -23,12 +23,28 @@ services:
         value: 'true'
       - key: SUBSCRIBE_TO_TOPICS
         value: all
+      - key: WA_WEBHOOK_MAX_RETRIES
+        value: '5'
       - key: BETTER_AUTH_SECRET
         generateValue: true
       - key: BETTER_AUTH_URL
         sync: false
       - key: CORS_ORIGIN
         sync: false
+      - key: MCP_ALLOWED_HOSTS
+        sync: false
+      - key: FILES_ADAPTER
+        value: fs
+      - key: FILES_DIRECTORY
+        value: /var/data/files
+      - key: FILES_PUBLIC_URL
+        sync: false
+      - key: FILES_SIGNING_SECRET
+        generateValue: true
+    disk:
+      name: mba-demo-backoffice-files
+      mountPath: /var/data
+      sizeGB: 1
 
   - type: keyvalue
     name: mba-demo-backoffice-redis

@@ -1,12 +1,5 @@
 import { EventEmitter } from 'node:events'
-import {
-  Kafka,
-  logLevel,
-  Partitioners,
-  type Admin,
-  type Consumer,
-  type Producer,
-} from 'kafkajs'
+import { KafkaJS } from '@confluentinc/kafka-javascript'
 import { validateTopic } from './memory.js'
 import type { KafkaConfiguration } from './env.js'
 import type {
@@ -22,25 +15,32 @@ export class KafkaEventBus implements EventBus {
   readonly mode = 'kafka' as const
 
   private readonly emitter = new EventEmitter()
-  private readonly admin: Admin
-  private readonly producer: Producer
-  private readonly consumer: Consumer
+  private readonly admin: KafkaJS.Admin
+  private readonly producer: KafkaJS.Producer
+  private readonly consumer: KafkaJS.Consumer
   private startPromise: Promise<void> | undefined
   private started = false
   private closed = false
 
   constructor(configuration: KafkaConfiguration) {
-    const kafka = new Kafka({
-      clientId: configuration.clientId,
-      brokers: configuration.brokers,
-      logLevel: logLevel.WARN,
+    const kafka = new KafkaJS.Kafka({
+      kafkaJS: {
+        clientId: configuration.clientId,
+        brokers: configuration.brokers,
+        logLevel: KafkaJS.logLevel.WARN,
+      },
     })
 
     this.admin = kafka.admin()
-    this.producer = kafka.producer({
-      createPartitioner: Partitioners.DefaultPartitioner,
+    this.producer = kafka.producer()
+    this.consumer = kafka.consumer({
+      kafkaJS: {
+        groupId: configuration.groupId,
+        fromBeginning: false,
+        autoCommit: true,
+        autoCommitInterval: 5_000,
+      },
     })
-    this.consumer = kafka.consumer({ groupId: configuration.groupId })
   }
 
   subscribe(topic: string, handler: EventHandler): Unsubscribe {
@@ -121,7 +121,6 @@ export class KafkaEventBus implements EventBus {
 
         if (missingTopics.length > 0) {
           await this.admin.createTopics({
-            waitForLeaders: true,
             topics: missingTopics.map((topic) => ({ topic })),
           })
         }
@@ -131,9 +130,7 @@ export class KafkaEventBus implements EventBus {
 
       await this.consumer.connect()
 
-      for (const topic of topics) {
-        await this.consumer.subscribe({ topic, fromBeginning: false })
-      }
+      await this.consumer.subscribe({ topics })
 
       await this.consumer.run({
         eachMessage: async ({ topic, message }) => {

@@ -5,7 +5,11 @@ import type { WhatsAppChannelConfiguration } from '@mba-demo/db'
 import { MemoryEventBus } from '@mba-demo/events'
 import { app, createApp } from './app.js'
 import { DEMO_EVENT_TOPIC } from './routes/events.js'
-import { WA_CLOUD_WEBHOOK_TOPIC } from './routes/wa-cloud.js'
+import {
+  WA_CLOUD_WEBHOOK_FORWARD_TOPIC,
+  WA_CLOUD_WEBHOOK_TOPIC,
+  type WhatsAppWebhookForwardRequest,
+} from './routes/wa-cloud.js'
 
 describe('API', () => {
   it('reports its health', async () => {
@@ -23,6 +27,23 @@ describe('API', () => {
 
     assert.equal(response.status, 200)
     assert.equal(await response.json(), null)
+  })
+
+  it('reports SSO availability without exposing provider details', async () => {
+    const enabledApp = createApp({ hasSsoProviders: async () => true })
+    const disabledApp = createApp({ hasSsoProviders: async () => false })
+
+    const enabledResponse = await enabledApp.request(
+      '/api/auth/sso-availability',
+    )
+    const disabledResponse = await disabledApp.request(
+      '/api/auth/sso-availability',
+    )
+
+    assert.equal(enabledResponse.status, 200)
+    assert.deepEqual(await enabledResponse.json(), { enabled: true })
+    assert.equal(disabledResponse.status, 200)
+    assert.deepEqual(await disabledResponse.json(), { enabled: false })
   })
 
   it('publishes events through the configured event bus', async () => {
@@ -99,6 +120,53 @@ describe('API', () => {
       'channel-id': String(channel.id),
       'content-type': 'application/json',
       source: 'wa-cloud-webhook',
+    })
+    await eventBus.close()
+  })
+
+  it('publishes one forwarding request per channel URL', async () => {
+    const eventBus = new MemoryEventBus()
+    const received: WhatsAppWebhookForwardRequest[] = []
+    eventBus.subscribe(WA_CLOUD_WEBHOOK_FORWARD_TOPIC, (event) => {
+      received.push(JSON.parse(event.value) as WhatsAppWebhookForwardRequest)
+    })
+    await eventBus.start()
+
+    const channel = createTestChannel({
+      webhookForwardUrls: [
+        'https://first.example.com/whatsapp',
+        'https://second.example.com/whatsapp',
+      ],
+    })
+    const webhookApp = createApp({
+      eventBus,
+      waCloudWebhook: { findChannel: async () => channel },
+    })
+    const payload = JSON.stringify(createTestWebhook())
+    const signature = sign(payload, channel.waAppSecret)
+    const response = await webhookApp.request(
+      `/api/wa-cloud/webhook/${channel.id}`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json; charset=utf-8',
+          'x-hub-signature-256': signature,
+        },
+        body: payload,
+      },
+    )
+
+    assert.equal(response.status, 202)
+    assert.deepEqual(
+      received.map((request) => request.url),
+      channel.webhookForwardUrls,
+    )
+    assert.deepEqual(received[0], {
+      body: payload,
+      channelId: channel.id,
+      contentType: 'application/json; charset=utf-8',
+      signature,
+      url: channel.webhookForwardUrls[0],
     })
     await eventBus.close()
   })
@@ -209,15 +277,21 @@ describe('API', () => {
   })
 })
 
-function createTestChannel(): WhatsAppChannelConfiguration {
+function createTestChannel(
+  overrides: Partial<WhatsAppChannelConfiguration> = {},
+): WhatsAppChannelConfiguration {
   return {
     id: 123,
+    organizationId: 'test-organization',
     type: 'whatsapp',
     waAppSecret: 'test-app-secret',
     waWebhookVerifyToken: 'verify-me',
     waPhoneNumber: '15550001111',
     waPhoneNumberId: 'phone-number-id',
+    waSystemUserAccessToken: 'system-user-access-token',
     waWabaId: 'business-account',
+    webhookForwardUrls: [],
+    ...overrides,
   }
 }
 

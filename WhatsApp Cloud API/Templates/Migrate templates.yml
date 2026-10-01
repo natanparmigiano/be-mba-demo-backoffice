@@ -1,0 +1,35 @@
+info:
+  name: Migrate templates
+  type: http
+  seq: 19
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/migrate_message_templates
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "source_waba_id": "<SOURCE_WABA_ID>",
+        "page_number": 0,
+        "count": 200,
+        "template_ids": ["<TEMPLATE_ID_1>", "<TEMPLATE_ID_2>"]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Recreates eligible approved templates from a source WABA in the destination
+  WABA selected by `WABA-ID`. `count` and `template_ids` support at most 500
+  templates per request.
+
+  Canonical guide: [Template migration](https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/template-migration).

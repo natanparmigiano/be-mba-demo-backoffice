@@ -6,11 +6,13 @@ import {
   type ReactNode,
   type SubmitEvent,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { authClient } from '../../auth/auth-client'
 import { useAuth } from '../../auth/AuthProvider'
 import { Button, Dialog, Input } from '../ui'
 
 export function OrganizationGuard({ children }: { children: ReactNode }) {
+  const { t } = useTranslation()
   const { refetch: refetchSession } = useAuth()
   const organizationsQuery = authClient.useListOrganizations()
   const activeOrganizationQuery = authClient.useActiveOrganization()
@@ -55,7 +57,9 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
         await Promise.all([activeOrganizationQuery.refetch(), refetchSession()])
       })
       .catch((reason: unknown) => {
-        setActivationError(getErrorMessage(reason))
+        setActivationError(
+          getErrorMessage(reason, t('organizations.operationFailed')),
+        )
       })
       .finally(() => {
         setIsActivating(false)
@@ -68,6 +72,7 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
     organizationsQuery.isPending,
     refetchSession,
     retryVersion,
+    t,
   ])
 
   const createOrganization = (event: SubmitEvent<HTMLFormElement>) => {
@@ -85,7 +90,8 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
         slug: organizationSlug.trim(),
       })
       if (result.error) throw new Error(result.error.message)
-      if (!result.data) throw new Error('The organization was not created.')
+      if (!result.data)
+        throw new Error(t('organizations.organizationNotCreated'))
 
       const activeResult = await authClient.organization.setActive({
         organizationId: result.data.id,
@@ -102,7 +108,9 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
       setOrganizationSlug('')
       setSlugWasEdited(false)
     } catch (reason) {
-      setCreationError(getErrorMessage(reason))
+      setCreationError(
+        getErrorMessage(reason, t('organizations.organizationNotCreated')),
+      )
     } finally {
       setIsCreating(false)
     }
@@ -114,8 +122,11 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
   if (queryError) {
     return (
       <OrganizationStatus
-        title="We couldn't load your organization"
-        description={getErrorMessage(queryError)}
+        title={t('organizations.loadFailedTitle')}
+        description={getErrorMessage(
+          queryError,
+          t('organizations.operationFailed'),
+        )}
         action={
           <Button
             variant="outline"
@@ -126,7 +137,7 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
               ])
             }}
           >
-            Try again
+            {t('organizations.tryAgain')}
           </Button>
         }
       />
@@ -140,8 +151,8 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
   ) {
     return (
       <OrganizationStatus
-        title="Preparing your workspace"
-        description="Selecting your organization…"
+        title={t('organizations.preparingWorkspace')}
+        description={t('organizations.selectingOrganization')}
         isLoading
       />
     )
@@ -150,8 +161,8 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
   if (organizations.length > 0 && !activeOrganization) {
     return (
       <OrganizationStatus
-        title="We couldn't select your organization"
-        description={activationError ?? 'Select your organization to continue.'}
+        title={t('organizations.selectionFailedTitle')}
+        description={activationError ?? t('organizations.selectToContinue')}
         action={
           <Button
             onClick={() => {
@@ -159,7 +170,7 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
               setRetryVersion((version) => version + 1)
             }}
           >
-            Try again
+            {t('organizations.tryAgain')}
           </Button>
         }
       />
@@ -173,8 +184,8 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
         open={organizations.length === 0}
         onOpenChange={() => undefined}
         dismissible={false}
-        title="Create your organization"
-        description="An organization is required before you can use the backoffice. Create one now to continue."
+        title={t('organizations.createTitle')}
+        description={t('organizations.requiredDescription')}
         icon={
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
             <Building2 className="size-5" aria-hidden />
@@ -183,7 +194,7 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
       >
         <form className="grid w-full gap-4" onSubmit={createOrganization}>
           <Input
-            label="Organization name"
+            label={t('organizations.name')}
             value={organizationName}
             onChange={(event) => {
               const name = event.target.value
@@ -195,8 +206,8 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
             disabled={isCreating}
           />
           <Input
-            label="Slug"
-            hint="Used in URLs and integrations."
+            label={t('organizations.slug')}
+            hint={t('organizations.slugHint')}
             value={organizationSlug}
             onChange={(event) => {
               setSlugWasEdited(true)
@@ -212,7 +223,7 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
             </p>
           )}
           <Button type="submit" isLoading={isCreating}>
-            Create organization
+            {t('organizations.createAction')}
           </Button>
         </form>
       </Dialog>
@@ -256,6 +267,6 @@ function toSlug(value: string) {
     .replace(/^-+|-+$/g, '')
 }
 
-function getErrorMessage(reason: unknown) {
-  return reason instanceof Error ? reason.message : 'Something went wrong.'
+function getErrorMessage(_reason: unknown, fallback: string) {
+  return fallback
 }

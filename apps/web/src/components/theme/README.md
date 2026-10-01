@@ -1,6 +1,9 @@
 # Theme system
 
-The theme system supports `light`, `dark`, and `system` preferences. Color decisions live in semantic CSS variables; components consume the resulting Tailwind utilities.
+Components consume semantic Tailwind utilities and never choose light/dark
+colors directly. The theme system resolves `light`, `dark`, or `system`
+preferences into shared CSS variables, preventing theme logic from spreading
+through component code.
 
 ## Runtime behavior
 

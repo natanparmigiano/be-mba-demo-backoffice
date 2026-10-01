@@ -1,6 +1,12 @@
 # `@mba-demo/events`
 
-A small event-bus abstraction with interchangeable Kafka and in-memory implementations. Application code uses one interface for publishing, subscribing, startup, and shutdown.
+Use one event-bus interface for publishing, subscription, startup, and
+shutdown. Configure Kafka whenever publishers and subscribers run in different
+processes; the memory adapter is process-local, non-durable, and cannot replay
+events.
+
+Register every subscriber before `start()`, and treat an adapter as permanently
+closed after `close()`.
 
 ## Adapter selection
 
@@ -54,15 +60,33 @@ await events.close()
 - Call `close()` during graceful shutdown.
 - Treat an adapter instance as closed permanently after `close()`.
 
-The Kafka adapter connects its producer during startup. When subscribers exist, it creates missing topics, connects the consumer, subscribes to each registered topic, and begins the message loop. Publishing also starts an unstarted producer, which allows API-only processes to publish without registering consumers.
+The Kafka adapter uses Confluent's KafkaJS-compatible API backed by
+`librdkafka`. It connects its producer during startup. When subscribers exist,
+it creates missing topics, connects the consumer, subscribes to each registered
+topic, and begins the message loop. Publishing also starts an unstarted
+producer, which allows API-only processes to publish without registering
+consumers. Consumer offsets are committed automatically every five seconds
+after successful handler processing, so handlers must tolerate redelivery
+after an abrupt process exit.
 
-KafkaJS 2.2.4 has an open Node.js 24 request-queue bug that passes a negative delay to `setTimeout`. The repository's root `postinstall` script applies the narrow upstream fix after every dependency installation. Dependency upgrades must be checked against `scripts/patch-kafkajs.mjs`; installation fails intentionally if the expected KafkaJS source no longer matches.
+The Confluent package installs a platform-specific native binary. Supported
+Node.js and container platforms use its published prebuilt binaries; other
+platforms require the documented C++ and `librdkafka` build toolchain.
 
-The memory adapter uses Node's `EventEmitter`. It preserves the same message shape and awaits handlers, but events never leave the process, are not replayed, and disappear on restart. It is therefore suitable only when publisher and subscribers share one process.
+The memory adapter uses Node's `EventEmitter` and awaits every handler while
+preserving the Kafka message shape. Use it only when the publisher and all
+subscribers share one process; events disappear on restart and are never
+replayed.
 
 ## Worker integration
 
 The event library does not decide which application handlers run. `apps/api/src/subscribers.ts` owns the handler registry, and the API's app or worker entrypoint registers the selected topics before starting this library.
+
+Runner calls publish `runner.execution.requested.v1` with a versioned payload
+containing only the durable execution-log ID. The subscriber atomically claims
+the queued PostgreSQL row and executes it through `@mba-demo/runner`. Memory
+mode therefore requires the in-process worker; separate API and worker
+processes require Kafka.
 
 ## Verification
 

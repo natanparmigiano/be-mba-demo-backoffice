@@ -1,5 +1,8 @@
 type RuntimeEnvironment = Readonly<Record<string, string | undefined>>
 
+export const DEFAULT_WA_WEBHOOK_MAX_RETRIES = 5
+const MAX_WA_WEBHOOK_MAX_RETRIES = 100
+
 export function isInProcessWorkerEnabled(
   env: RuntimeEnvironment = getRuntimeEnvironment(),
 ): boolean {
@@ -38,6 +41,26 @@ export function getSubscribedTopics(
   }
 
   return requestedTopics
+}
+
+export function getWhatsAppWebhookMaxRetries(
+  env: RuntimeEnvironment = getRuntimeEnvironment(),
+): number {
+  const value = env.WA_WEBHOOK_MAX_RETRIES?.trim()
+  if (!value) return DEFAULT_WA_WEBHOOK_MAX_RETRIES
+  if (!/^\d+$/.test(value)) {
+    throw new Error('WA_WEBHOOK_MAX_RETRIES must be an integer from 0 to 100')
+  }
+
+  const parsed = Number(value)
+  if (
+    !Number.isSafeInteger(parsed) ||
+    parsed < 0 ||
+    parsed > MAX_WA_WEBHOOK_MAX_RETRIES
+  ) {
+    throw new Error('WA_WEBHOOK_MAX_RETRIES must be an integer from 0 to 100')
+  }
+  return parsed
 }
 
 function getRuntimeEnvironment(): RuntimeEnvironment {

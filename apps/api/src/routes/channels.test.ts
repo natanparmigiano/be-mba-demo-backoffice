@@ -1,10 +1,29 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import { createAgentExportArchive } from '../agent-export.js'
+import { stringifyYaml } from '../yaml.js'
 import {
+  addMetaAgentAllowlistEntry,
   createChannelManagementRoute,
+  deleteMetaAgent,
+  getMetaAgentBusinessInfo,
+  getMetaAgentEligibility,
+  getMetaAgentSettings,
+  listMetaAgentAllowlist,
+  onboardMetaAgent,
   overrideMetaWebhook,
+  removeMetaAgentAllowlistEntry,
+  replaceMetaAgentBusinessInfo,
+  updateMetaAgentSettings,
 } from './channels.js'
-import type { ChannelManagementRepository, ChannelSummary } from './channels.js'
+import type {
+  AgentConnectorsService,
+  AgentEvaluationsService,
+  AgentKnowledgeService,
+  AgentSkillsService,
+  ChannelManagementRepository,
+  ChannelSummary,
+} from './channels.js'
 
 const channel: ChannelSummary = {
   id: 7,
@@ -14,6 +33,7 @@ const channel: ChannelSummary = {
   waWabaId: 'waba-id',
   waBusinessId: 'business-id',
   waAppId: 'app-id',
+  webhookForwardUrls: ['https://example.com/forward'],
   hasWaAppSecret: true,
   hasWaWebhookVerifyToken: true,
   hasWaSystemUserAccessToken: true,
@@ -85,6 +105,118 @@ describe('channel management route', () => {
     })
   })
 
+  it('only accepts HTTP and HTTPS forwarding URLs', async () => {
+    let createCalled = false
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository({
+        create: async () => {
+          createCalled = true
+          return channel
+        },
+      }),
+    })
+
+    const response = await route.request('/', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ...createChannelInput(),
+        webhookForwardUrls: ['ftp://example.com/webhook'],
+      }),
+    })
+
+    assert.equal(response.status, 400)
+    assert.equal(createCalled, false)
+  })
+
+  it('previews and manually deletes local channel data without calling Meta', async () => {
+    let deletion:
+      | { organizationId: string; channelId: number; confirmation: string }
+      | undefined
+    let metaDeleteCalled = false
+    const impact = { contacts: 12, groups: 3, messages: 480 }
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
+      repository: createRepository({
+        getDeletionPreview: async () => ({
+          confirmationText: channel.waPhoneNumber,
+          ...impact,
+        }),
+        delete: async (organizationId, channelId, confirmation) => {
+          deletion = { organizationId, channelId, confirmation }
+          return { status: 'deleted', impact }
+        },
+      }),
+      deleteAgent: async () => {
+        metaDeleteCalled = true
+        return {}
+      },
+    })
+
+    const previewResponse = await route.request('/7/deletion-impact')
+    const deleteResponse = await route.request('/7', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ confirmation: channel.waPhoneNumber }),
+    })
+
+    assert.equal(previewResponse.status, 200)
+    assert.deepEqual(await previewResponse.json(), {
+      impact: { confirmationText: channel.waPhoneNumber, ...impact },
+    })
+    assert.equal(deleteResponse.status, 200)
+    assert.deepEqual(await deleteResponse.json(), {
+      deleted: true,
+      channelId: 7,
+      impact,
+    })
+    assert.deepEqual(deletion, {
+      organizationId: 'org-one',
+      channelId: 7,
+      confirmation: channel.waPhoneNumber,
+    })
+    assert.equal(metaDeleteCalled, false)
+  })
+
+  it('requires manager access and matching confirmation to delete a channel', async () => {
+    let deleteCalled = false
+    const repository = createRepository({
+      delete: async () => {
+        deleteCalled = true
+        return { status: 'confirmation_mismatch' }
+      },
+    })
+    const memberRoute = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      repository,
+    })
+    const managerRoute = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository,
+    })
+
+    const memberPreview = await memberRoute.request('/7/deletion-impact')
+    const memberDelete = await memberRoute.request('/7', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ confirmation: channel.waPhoneNumber }),
+    })
+    assert.equal(memberPreview.status, 403)
+    assert.equal(memberDelete.status, 403)
+    assert.equal(deleteCalled, false)
+
+    const mismatch = await managerRoute.request('/7', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ confirmation: 'wrong channel' }),
+    })
+    assert.equal(mismatch.status, 400)
+    assert.deepEqual(await mismatch.json(), {
+      message: 'Channel confirmation did not match',
+    })
+  })
+
   it('reveals a verify token only to organization managers', async () => {
     let requestedOrganizationId: string | undefined
     const repository = createRepository({
@@ -109,6 +241,1390 @@ describe('channel management route', () => {
     assert.deepEqual(await managerResponse.json(), { token: 'verify-secret' })
     assert.equal(requestedOrganizationId, 'org-one')
     assert.equal(memberResponse.status, 403)
+  })
+
+  it('reports when a channel has no configured agent', async () => {
+    let receivedPhoneNumberId: string | undefined
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      repository: createRepository(),
+      getAgentSettings: async (configuration) => {
+        receivedPhoneNumberId = configuration.waPhoneNumberId
+        return []
+      },
+    })
+
+    const response = await route.request('/7/agent-settings')
+
+    assert.equal(response.status, 200)
+    assert.equal(receivedPhoneNumberId, 'phone-id')
+    assert.deepEqual(await response.json(), {
+      status: 'not_configured',
+      settings: null,
+    })
+  })
+
+  it('reports when Meta returns a disabled agent configuration', async () => {
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      repository: createRepository(),
+      getAgentSettings: async () => [
+        {
+          agent_id: 'agent-one',
+          channel: 'whatsapp',
+          rollout: { enabled: false },
+        },
+      ],
+    })
+
+    const response = await route.request('/7/agent-settings')
+
+    assert.equal(response.status, 200)
+    assert.deepEqual(await response.json(), {
+      status: 'disabled',
+      settings: {
+        agentId: 'agent-one',
+        rolloutEnabled: false,
+        audience: 'EVERYONE',
+        handoff: {
+          enabled: false,
+          messageSelection: 'DEFAULT',
+          message: '',
+        },
+        neverSayPhrases: [],
+      },
+    })
+  })
+
+  it('reports when Meta returns an enabled agent configuration', async () => {
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      repository: createRepository(),
+      getAgentSettings: async () => [
+        {
+          agent_id: 'agent-one',
+          channel: 'whatsapp',
+          rollout: { enabled: true },
+          ai_audience: 'ALLOWLISTED_ONLY',
+          handoff: {
+            enabled: true,
+            message_selection: 'CUSTOM',
+            message: 'A teammate will join shortly.',
+          },
+          never_say_phrases: ['guaranteed delivery'],
+        },
+      ],
+    })
+
+    const response = await route.request('/7/agent-settings')
+
+    assert.equal(response.status, 200)
+    assert.deepEqual(await response.json(), {
+      status: 'enabled',
+      settings: {
+        agentId: 'agent-one',
+        rolloutEnabled: true,
+        audience: 'ALLOWLISTED_ONLY',
+        handoff: {
+          enabled: true,
+          messageSelection: 'CUSTOM',
+          message: 'A teammate will join shortly.',
+        },
+        neverSayPhrases: ['guaranteed delivery'],
+      },
+    })
+  })
+
+  it('streams an AGTX ZIP with YAML, available files, and missing-file metadata', async () => {
+    const connector = {
+      id: 'connector-one',
+      name: 'orders_connector',
+      description: 'Order service',
+      base_url: 'https://orders.example.com',
+      connector_protocol: 'HTTP' as const,
+      auth_type: 'API_KEY' as const,
+      auth_config: {
+        api_key: {
+          headers: [{ field_name: 'Authorization', value: 'secret-token' }],
+        },
+      },
+      connection_status: { status: 'ACTIVE' as const },
+    }
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      repository: createRepository({ list: async () => [channel] }),
+      getAgentSettings: async () => [
+        {
+          agent_id: 'agent-one',
+          channel: 'whatsapp',
+          rollout: { enabled: true },
+          ai_audience: 'ALLOWLISTED_ONLY',
+          never_say_phrases: ['promise delivery'],
+        },
+      ],
+      listAgentAllowlist: async () => [
+        { id: 'allow-one', consumer_phone_number: '+5511999990000' },
+      ],
+      getAgentBusinessInfo: async () => ({
+        business_description: 'A portable business',
+      }),
+      agentSkills: {
+        list: async () => [
+          {
+            id: 'skill-one',
+            title: 'order-status',
+            description: 'Checks orders',
+            skill: 'Look up the current order state.',
+            channel: 'whatsapp',
+          },
+        ],
+        create: async () => {
+          throw new Error('not used')
+        },
+        update: async () => {
+          throw new Error('not used')
+        },
+        delete: async () => undefined,
+      },
+      agentConnectors: {
+        list: async () => [connector],
+        get: async () => connector,
+        create: async () => connector,
+        update: async () => connector,
+        delete: async () => undefined,
+        logs: async () => ({ data: [] }),
+        listTools: async () => [
+          {
+            id: 'tool-one',
+            name: 'get_order',
+            description: 'Gets an order',
+            request_definition: { method: 'GET', path: '/orders/{id}' },
+            user_auth_required: false,
+          },
+        ],
+        createTool: async () => {
+          throw new Error('not used')
+        },
+        updateTool: async () => {
+          throw new Error('not used')
+        },
+        deleteTool: async () => undefined,
+      },
+      agentEvaluations: {
+        listCases: async () => {
+          throw new Error('Evaluation cases must not be exported')
+        },
+        run: async () => ({ job_id: 'unused', status: 'QUEUED' }),
+        getJob: async () => ({ status: 'RUNNING' }),
+        getDetails: async () => [],
+        getSummaries: async () => [],
+      },
+      agentKnowledge: {
+        listFaqs: async () => [
+          { id: 'faq-one', question: 'Where?', answer: 'Here.' },
+        ],
+        createFaq: async () => {
+          throw new Error('not used')
+        },
+        updateFaq: async () => {
+          throw new Error('not used')
+        },
+        deleteFaq: async () => undefined,
+        listWebsites: async () => [
+          { id: 'site-one', url: 'https://example.com' },
+        ],
+        createWebsite: async () => {
+          throw new Error('not used')
+        },
+        updateWebsite: async () => {
+          throw new Error('not used')
+        },
+        deleteWebsite: async () => undefined,
+        listFiles: async () => [
+          { id: 'file-one', file_name: 'guide.pdf' },
+          { id: 'file-two', file_name: 'external.txt' },
+        ],
+        uploadFile: async () => {
+          throw new Error('not used')
+        },
+        deleteFile: async () => undefined,
+      },
+      knowledgeArchive: {
+        put: async () => undefined,
+        getMany: async (organizationId, providerFileIds) => {
+          assert.equal(organizationId, 'org-one')
+          assert.deepEqual(providerFileIds, ['file-one', 'file-two'])
+          return [
+            {
+              providerFileId: 'file-one',
+              body: new TextEncoder().encode('PDF bytes'),
+              contentType: 'application/pdf',
+              storagePath: 'agent-knowledge/file-one.pdf',
+            },
+            { providerFileId: 'file-two', body: null },
+          ]
+        },
+        delete: async () => undefined,
+      },
+    })
+
+    const response = await route.request('/7/agent-export')
+    const stream = await response.text()
+    const complete = JSON.parse(readSseData(stream, 'complete')) as {
+      fileName: string
+      byteSize: number
+      chunkCount: number
+    }
+    const archive = decodeSseArchive(stream)
+    const entries = readStoredZipEntries(archive)
+    const document = new TextDecoder().decode(entries.get('agent.yaml'))
+
+    assert.equal(response.status, 200)
+    assert.match(
+      response.headers.get('content-type') ?? '',
+      /^text\/event-stream/,
+    )
+    assert.equal(complete.fileName, 'agent-5511999990000.agtx')
+    assert.equal(complete.byteSize, archive.byteLength)
+    assert.equal(
+      complete.chunkCount,
+      readSseDataAll(stream, 'archive-chunk').length,
+    )
+    assert.match(document, /^format: "agtx"\nversion: 1\n/)
+    assert.match(document, /included: 1/)
+    assert.match(document, /missing: 1/)
+    assert.match(document, /requestMissingKnowledgeFiles: true/)
+    assert.match(document, /providerFileId: "file-one"/)
+    assert.match(document, /path: "files\/001-guide.pdf"/)
+    assert.match(document, /providerFileId: "file-two"[\s\S]*?path: null/)
+    assert.match(document, /name: "get_order"/)
+    assert.equal(document.includes('secret-token'), false)
+    assert.equal(
+      new TextDecoder().decode(entries.get('files/001-guide.pdf')),
+      'PDF bytes',
+    )
+    assert.equal(entries.has('files/002-external.txt'), false)
+    assert.deepEqual(
+      Array.from(stream.matchAll(/"step":"([^"]+)"/g), (match) => match[1]),
+      [
+        'settings',
+        'businessData',
+        'skills',
+        'knowledge',
+        'files',
+        'connectors',
+        'packaging',
+      ],
+    )
+  })
+
+  it('inspects and imports an AGTX package through progress SSE', async () => {
+    const calls: string[] = []
+    const importLogs: Array<{
+      event: string
+      details: Record<string, unknown>
+      hasError: boolean
+    }> = []
+    const importedAllowlist: Array<{
+      id: string
+      consumer_phone_number: string
+    }> = []
+    let allowlistAddAttempts = 0
+    let businessAttempts = 0
+    const packageFile = createImportPackage()
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+      agentImportRequestIntervalMs: 0,
+      agentImportRetryBackoffMs: [0, 0, 0, 0, 0],
+      reportImportLog: (event, details, error) => {
+        importLogs.push({ event, details, hasError: error !== undefined })
+      },
+      updateAgentSettings: async (_configuration, input) => {
+        calls.push(`settings:${input.rollout?.enabled}`)
+        return {
+          agent_id: 'agent-target',
+          channel: 'whatsapp',
+          rollout: input.rollout ?? { enabled: false },
+        }
+      },
+      listAgentAllowlist: async () => importedAllowlist,
+      addAgentAllowlistEntry: async (_configuration, input) => {
+        allowlistAddAttempts += 1
+        calls.push(`allowlist:${input.consumer_phone_number}`)
+        importedAllowlist.push({ id: 'allow-new', ...input })
+        throw new Error('Meta response was lost after persisting allowlist')
+      },
+      removeAgentAllowlistEntry: async () => undefined,
+      getAgentBusinessInfo: async () => ({
+        business_description: 'Previous business profile',
+      }),
+      replaceAgentBusinessInfo: async (_configuration, input) => {
+        businessAttempts += 1
+        if (businessAttempts === 1) {
+          throw new Error('Temporary Meta business information failure')
+        }
+        calls.push(`business:${input.business_description}`)
+        return { ...input, imported: true }
+      },
+      agentSkills: {
+        list: async () => [],
+        create: async (_configuration, input) => {
+          calls.push(`skill:${input.title}`)
+          return {
+            id: 'skill-new',
+            skill: input.skill ?? '',
+            title: input.title,
+            description: input.description,
+            channel: 'whatsapp',
+          }
+        },
+        update: async () => {
+          throw new Error('not used')
+        },
+        delete: async () => undefined,
+      },
+      agentKnowledge: {
+        listFaqs: async () => [],
+        createFaq: async (_configuration, input) => {
+          calls.push(`faq:${input.question}`)
+          return { id: 'faq-new', ...input }
+        },
+        updateFaq: async () => {
+          throw new Error('not used')
+        },
+        deleteFaq: async () => undefined,
+        listWebsites: async () => [],
+        createWebsite: async (_configuration, input) => {
+          calls.push(`website:${input.url}`)
+          return { id: 'site-new', ...input }
+        },
+        updateWebsite: async () => {
+          throw new Error('not used')
+        },
+        deleteWebsite: async () => undefined,
+        listFiles: async () => [],
+        uploadFile: async (_configuration, file) => {
+          calls.push(`file:${file.name}:${file.size}`)
+          return { id: 'file-new', file_name: file.name }
+        },
+        deleteFile: async () => undefined,
+      },
+      knowledgeArchive: {
+        put: async (_organizationId, _channelId, providerFile) => {
+          calls.push(`archive:${providerFile.id}`)
+        },
+        getMany: async () => [],
+        delete: async () => undefined,
+      },
+      agentConnectors: {
+        list: async () => [],
+        get: async () => {
+          throw new Error('not used')
+        },
+        create: async (_configuration, input) => {
+          calls.push(`connector:${input.name}`)
+          return {
+            id: 'connector-new',
+            ...input,
+            connection_status: { status: 'ACTIVE' },
+          }
+        },
+        update: async () => {
+          throw new Error('not used')
+        },
+        delete: async () => undefined,
+        logs: async () => ({ data: [] }),
+        listTools: async () => [],
+        createTool: async (_configuration, _connectorId, input) => {
+          calls.push(`tool:${input.name}`)
+          return { id: 'tool-new', ...input }
+        },
+        updateTool: async () => {
+          throw new Error('not used')
+        },
+        deleteTool: async () => undefined,
+      },
+      agentEvaluations: {
+        listCases: async () => {
+          throw new Error('Evaluation cases must not be imported')
+        },
+        run: async () => ({ job_id: 'unused', status: 'QUEUED' }),
+        getJob: async () => ({ status: 'RUNNING' }),
+        getDetails: async () => [],
+        getSummaries: async () => [],
+      },
+    })
+
+    const inspectForm = new FormData()
+    inspectForm.set('package', packageFile)
+    const inspectResponse = await route.request('/7/agent-import/inspect', {
+      method: 'POST',
+      body: inspectForm,
+    })
+    const inspectText = await inspectResponse.text()
+    assert.equal(inspectResponse.status, 200, inspectText)
+    assert.deepEqual(
+      (JSON.parse(inspectText) as { requirements: unknown }).requirements,
+      { files: [], connectors: [] },
+    )
+
+    const importForm = new FormData()
+    importForm.set('package', packageFile)
+    importForm.set('options', JSON.stringify({ connectorCredentials: {} }))
+    const importResponse = await route.request('/7/agent-import', {
+      method: 'POST',
+      body: importForm,
+    })
+    const stream = await importResponse.text()
+    assert.equal(importResponse.status, 200)
+    assert.deepEqual(
+      readSseDataAll(stream, 'progress')
+        .map((data) => JSON.parse(data) as { step: string; resource?: string })
+        .filter(({ resource }) => resource === undefined)
+        .map(({ step }) => step),
+      [
+        'settings',
+        'businessData',
+        'skills',
+        'knowledge',
+        'files',
+        'connectors',
+        'finalizing',
+      ],
+    )
+    assert.deepEqual(
+      readSseDataAll(stream, 'progress')
+        .map(
+          (data) =>
+            JSON.parse(data) as {
+              resource?: string
+              completed?: number
+              resourceTotal?: number
+            },
+        )
+        .filter(({ resource }) => resource === 'faqs')
+        .map(({ completed, resourceTotal }) => ({
+          completed,
+          total: resourceTotal,
+        })),
+      [
+        { completed: 0, total: 1 },
+        { completed: 1, total: 1 },
+      ],
+    )
+    assert.deepEqual(JSON.parse(readSseData(stream, 'complete')), {
+      importedFiles: 1,
+    })
+    assert.deepEqual(calls, [
+      'settings:false',
+      'business:Portable business',
+      'allowlist:+5511999990000',
+      'skill:order-status',
+      'faq:Where?',
+      'website:https://example.com',
+      'file:guide.pdf:9',
+      'archive:file-new',
+      'connector:orders_connector',
+      'tool:get_order',
+      'settings:false',
+    ])
+    assert.equal(allowlistAddAttempts, 1)
+    assert.equal(businessAttempts, 2)
+    const importEvents = importLogs.map(({ event }) => event)
+    for (const event of [
+      'started',
+      'stage_started',
+      'resource_progress',
+      'mutation_failed',
+      'read_succeeded',
+      'mutation_retry_scheduled',
+      'mutation_succeeded',
+      'mutation_verified',
+      'local_archive_saved',
+      'completed',
+    ]) {
+      assert.ok(importEvents.includes(event), `missing import log: ${event}`)
+    }
+    const startedLog = importLogs.find(({ event }) => event === 'started')
+    assert.deepEqual(startedLog?.details.resources, {
+      allowlist: 1,
+      skills: 1,
+      faqs: 1,
+      websites: 1,
+      files: 1,
+      connectors: 1,
+      tools: 1,
+    })
+    assert.equal(
+      importLogs.some(
+        ({ event, details, hasError }) =>
+          event === 'mutation_verified' &&
+          details.label === 'Allowlist addition (+5511999990000)' &&
+          hasError === false,
+      ),
+      true,
+    )
+  })
+
+  it('reports the exact failed import step and reason', async () => {
+    const logged: Array<Record<string, unknown>> = []
+    const providerRequestTimes: number[] = []
+    let loggedError: unknown
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+      agentImportRequestIntervalMs: 25,
+      agentImportRetryBackoffMs: [0, 0, 0, 0, 0],
+      reportImportLog: () => undefined,
+      updateAgentSettings: async (_configuration, input) => {
+        providerRequestTimes.push(Date.now())
+        return {
+          agent_id: 'agent-target',
+          channel: 'whatsapp',
+          rollout: input.rollout ?? { enabled: false },
+        }
+      },
+      replaceAgentBusinessInfo: async () => {
+        providerRequestTimes.push(Date.now())
+        throw new Error('Meta rejected the business profile: field too long')
+      },
+      getAgentBusinessInfo: async () => {
+        providerRequestTimes.push(Date.now())
+        return { business_description: 'Previous business profile' }
+      },
+      reportImportError: (details, error) => {
+        logged.push(details)
+        loggedError = error
+      },
+    })
+    const form = new FormData()
+    form.set('package', createImportPackage())
+    form.set('options', JSON.stringify({ connectorCredentials: {} }))
+
+    const response = await route.request('/7/agent-import', {
+      method: 'POST',
+      body: form,
+    })
+    const stream = await response.text()
+    const failure = JSON.parse(readSseData(stream, 'import-error')) as {
+      message: string
+      partial: boolean
+      step: string
+    }
+
+    assert.equal(response.status, 200)
+    assert.deepEqual(failure, {
+      step: 'businessData',
+      message:
+        'Business information update did not reach the requested state after 6 attempts: Meta rejected the business profile: field too long',
+      partial: true,
+    })
+    assert.deepEqual(logged, [
+      {
+        organizationId: 'org-one',
+        channelId: 7,
+        step: 'businessData',
+        errorName: 'Error',
+        message:
+          'Business information update did not reach the requested state after 6 attempts: Meta rejected the business profile: field too long',
+      },
+    ])
+    assert.equal(
+      loggedError instanceof Error ? loggedError.message : undefined,
+      'Business information update did not reach the requested state after 6 attempts: Meta rejected the business profile: field too long',
+    )
+    assert.equal(providerRequestTimes.length, 13)
+    for (let index = 1; index < providerRequestTimes.length; index += 1) {
+      assert.ok(
+        providerRequestTimes[index]! - providerRequestTimes[index - 1]! >= 20,
+      )
+    }
+  })
+
+  it('rejects AGTX packages that contain evaluation cases', async () => {
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+    })
+    const form = new FormData()
+    form.set('package', createImportPackage(true))
+
+    const response = await route.request('/7/agent-import/inspect', {
+      method: 'POST',
+      body: form,
+    })
+
+    assert.equal(response.status, 400)
+    const body = (await response.json()) as { message: string }
+    assert.match(body.message, /Agent import data is invalid at agent/i)
+  })
+
+  it('updates agent settings for an organization manager', async () => {
+    let receivedInput: unknown
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
+      repository: createRepository(),
+      updateAgentSettings: async (_configuration, input) => {
+        receivedInput = input
+        return {
+          agent_id: 'agent-one',
+          channel: 'whatsapp',
+          rollout: { enabled: false },
+          ai_audience: 'ALLOWLISTED_ONLY',
+          handoff: {
+            enabled: true,
+            message_selection: 'CUSTOM',
+            message: 'A teammate will join shortly.',
+          },
+          never_say_phrases: ['guaranteed delivery', 'always available'],
+        }
+      },
+    })
+
+    const response = await route.request('/7/agent-settings', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        rolloutEnabled: false,
+        audience: 'ALLOWLISTED_ONLY',
+        handoff: {
+          enabled: true,
+          messageSelection: 'CUSTOM',
+          message: 'A teammate will join shortly.',
+        },
+        neverSayPhrases: ['guaranteed delivery', 'always available'],
+      }),
+    })
+
+    assert.equal(response.status, 200)
+    assert.deepEqual(receivedInput, {
+      rollout: { enabled: false },
+      ai_audience: 'ALLOWLISTED_ONLY',
+      handoff: {
+        enabled: true,
+        message_selection: 'CUSTOM',
+        message: 'A teammate will join shortly.',
+      },
+      never_say_phrases: ['guaranteed delivery', 'always available'],
+    })
+  })
+
+  it('requires message text for a custom handoff message', async () => {
+    let updateCalled = false
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
+      repository: createRepository(),
+      updateAgentSettings: async () => {
+        updateCalled = true
+        throw new Error('Unexpected update')
+      },
+    })
+
+    const response = await route.request('/7/agent-settings', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        handoff: {
+          enabled: true,
+          messageSelection: 'CUSTOM',
+          message: '   ',
+        },
+      }),
+    })
+
+    assert.equal(response.status, 400)
+    assert.equal(updateCalled, false)
+  })
+
+  it('lists and updates the organization channel allowlist', async () => {
+    let addedPhoneNumber: string | undefined
+    let removedEntryId: string | undefined
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+      listAgentAllowlist: async () => [
+        { id: 'entry-one', consumer_phone_number: '+5511999990000' },
+      ],
+      addAgentAllowlistEntry: async (_configuration, input) => {
+        addedPhoneNumber = input.consumer_phone_number
+        return { id: 'entry-two', ...input }
+      },
+      removeAgentAllowlistEntry: async (_configuration, entryId) => {
+        removedEntryId = entryId
+      },
+    })
+
+    const listResponse = await route.request('/7/agent-allowlist')
+    const addResponse = await route.request('/7/agent-allowlist', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ phoneNumber: '+5511888880000' }),
+    })
+    const removeResponse = await route.request('/7/agent-allowlist/entry-two', {
+      method: 'DELETE',
+    })
+
+    assert.deepEqual(await listResponse.json(), {
+      entries: [{ id: 'entry-one', phoneNumber: '+5511999990000' }],
+    })
+    assert.equal(addResponse.status, 201)
+    assert.equal(addedPhoneNumber, '+5511888880000')
+    assert.equal(removeResponse.status, 200)
+    assert.equal(removedEntryId, 'entry-two')
+  })
+
+  it('reads and replaces business information for an owned channel', async () => {
+    let receivedInput: unknown
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+      getAgentBusinessInfo: async () => ({
+        business_description: 'Coffee shop',
+        contact_info: { email: 'hello@example.com' },
+      }),
+      replaceAgentBusinessInfo: async (_configuration, input) => {
+        receivedInput = input
+        return {
+          business_description: input.business_description,
+          payment_method: input.payment_method,
+          purchase_info: input.purchase_info,
+          delivery_and_shipping: input.delivery_and_shipping,
+          return_policy: input.return_policy,
+          contact_info: input.contact_info,
+        }
+      },
+    })
+
+    const getResponse = await route.request('/7/agent-business-info')
+    const putResponse = await route.request('/7/agent-business-info', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        businessDescription: 'Updated coffee shop',
+        paymentMethod: 'Credit card',
+        purchaseInfo: 'Order online',
+        deliveryAndShipping: 'Ships in two days',
+        returnPolicy: 'Returns within 30 days',
+        contactEmail: 'support@example.com',
+        hoursOfOperation: '09:00–18:00',
+        address: '1 Main Street',
+      }),
+    })
+
+    assert.deepEqual(await getResponse.json(), {
+      businessInfo: {
+        businessDescription: 'Coffee shop',
+        paymentMethod: '',
+        purchaseInfo: '',
+        deliveryAndShipping: '',
+        returnPolicy: '',
+        contactEmail: 'hello@example.com',
+        hoursOfOperation: '',
+        address: '',
+      },
+    })
+    assert.equal(putResponse.status, 200)
+    assert.deepEqual(receivedInput, {
+      business_description: 'Updated coffee shop',
+      payment_method: 'Credit card',
+      purchase_info: 'Order online',
+      delivery_and_shipping: 'Ships in two days',
+      return_policy: 'Returns within 30 days',
+      contact_info: {
+        email: 'support@example.com',
+        hours_of_operation: '09:00–18:00',
+        address: '1 Main Street',
+      },
+    })
+  })
+
+  it('manages agent skills and rejects titles that are not kebab-case', async () => {
+    const calls: string[] = []
+    const agentSkills: AgentSkillsService = {
+      list: async () => {
+        calls.push('list')
+        return [
+          {
+            id: 'skill-one',
+            title: 'order-status',
+            description: 'Checks an order',
+            skill: 'Look up the order status.',
+            channel: 'whatsapp',
+          },
+        ]
+      },
+      create: async (_configuration, input) => {
+        calls.push(`create:${input.title}`)
+        return {
+          id: 'skill-two',
+          ...input,
+          skill: input.skill ?? '',
+          channel: 'whatsapp',
+        }
+      },
+      update: async (_configuration, skillId, input) => {
+        calls.push(`update:${skillId}:${input.title}`)
+        return {
+          id: skillId,
+          ...input,
+          skill: input.skill ?? '',
+          channel: 'whatsapp',
+        }
+      },
+      delete: async (_configuration, skillId) => {
+        calls.push(`delete:${skillId}`)
+      },
+    }
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+      agentSkills,
+    })
+    const input = {
+      title: 'order-status',
+      description: 'Checks an order',
+      skill: 'Look up the order status.',
+    }
+
+    const listResponse = await route.request('/7/agent-skills')
+    const createResponse = await route.request(
+      '/7/agent-skills',
+      jsonRequest('POST', input),
+    )
+    const updateResponse = await route.request(
+      '/7/agent-skills/skill-one',
+      jsonRequest('PUT', input),
+    )
+    const deleteResponse = await route.request('/7/agent-skills/skill-one', {
+      method: 'DELETE',
+    })
+    const invalidResponse = await route.request(
+      '/7/agent-skills',
+      jsonRequest('POST', { ...input, title: 'Order Status' }),
+    )
+
+    assert.equal(listResponse.status, 200)
+    assert.equal(createResponse.status, 201)
+    assert.equal(updateResponse.status, 200)
+    assert.equal(deleteResponse.status, 200)
+    assert.equal(invalidResponse.status, 400)
+    assert.deepEqual(calls, [
+      'list',
+      'create:order-status',
+      'update:skill-one:order-status',
+      'delete:skill-one',
+    ])
+  })
+
+  it('manages connectors, tools, and logs without exposing credentials', async () => {
+    const calls: string[] = []
+    const connector = {
+      id: 'connector-one',
+      name: 'Orders',
+      description: 'Order service',
+      base_url: 'https://orders.example.com',
+      connector_protocol: 'HTTP' as const,
+      auth_type: 'API_KEY' as const,
+      auth_config: {
+        api_key: {
+          headers: [{ field_name: 'Authorization', value: 'secret-token' }],
+        },
+      },
+      connection_status: { status: 'ACTIVE' as const },
+    }
+    const tool = {
+      id: 'tool-one',
+      name: 'get_order',
+      description: 'Gets an order',
+      request_definition: { method: 'GET' as const, path: '/orders/{id}' },
+      user_auth_required: false,
+    }
+    const agentConnectors: AgentConnectorsService = {
+      list: async () => {
+        calls.push('list')
+        return [connector]
+      },
+      get: async (_configuration, connectorId) => {
+        calls.push(`get:${connectorId}`)
+        return connector
+      },
+      create: async (_configuration, input) => {
+        calls.push(`create:${input.name}`)
+        return { ...connector, ...input, id: 'connector-two' }
+      },
+      update: async (_configuration, connectorId, input) => {
+        calls.push(`update:${connectorId}:${input.name}`)
+        return { ...connector, ...input, id: connectorId }
+      },
+      delete: async (_configuration, connectorId) => {
+        calls.push(`delete:${connectorId}`)
+      },
+      logs: async (_configuration, connectorId) => {
+        calls.push(`logs:${connectorId}`)
+        return {
+          data: [
+            { tool_name: 'get_order', event_time: '2026-09-30T12:00:00Z' },
+          ],
+          stats: {
+            start_count: 1,
+            success_count: 1,
+            exception_count: 0,
+            success_rate: 1,
+            avg_latency_s: 0.1,
+            p95_latency_s: 0.1,
+            p99_latency_s: 0.1,
+            time_window_seconds: 60,
+          },
+        }
+      },
+      listTools: async (_configuration, connectorId) => {
+        calls.push(`listTools:${connectorId}`)
+        return [tool]
+      },
+      createTool: async (_configuration, connectorId, input) => {
+        calls.push(`createTool:${connectorId}:${input.name}`)
+        return { id: 'tool-two', ...input }
+      },
+      updateTool: async (_configuration, connectorId, toolId, input) => {
+        calls.push(`updateTool:${connectorId}:${toolId}`)
+        return { id: toolId, ...input }
+      },
+      deleteTool: async (_configuration, connectorId, toolId) => {
+        calls.push(`deleteTool:${connectorId}:${toolId}`)
+      },
+    }
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+      agentConnectors,
+    })
+    const connectorInput = {
+      name: 'orders_connector',
+      description: 'Order service',
+      baseUrl: 'https://orders.example.com',
+      connectorProtocol: 'HTTP',
+      authType: 'NONE',
+      requiresCertificate: false,
+    }
+    const toolInput = {
+      name: 'get_order',
+      description: 'Gets an order',
+      requestDefinition: {
+        method: 'GET',
+        path: '/orders/{id}',
+        pathParameters: {},
+        queryParameters: {},
+        headers: {},
+        body: null,
+      },
+      userAuthRequired: false,
+      transformationSpec: null,
+    }
+
+    const listResponse = await route.request('/7/agent-connectors')
+    const detailResponse = await route.request(
+      '/7/agent-connectors/connector-one',
+    )
+    const createResponse = await route.request(
+      '/7/agent-connectors',
+      jsonRequest('POST', connectorInput),
+    )
+    const updateResponse = await route.request(
+      '/7/agent-connectors/connector-one',
+      jsonRequest('PUT', connectorInput),
+    )
+    const logsResponse = await route.request(
+      '/7/agent-connectors/connector-one/logs',
+    )
+    const toolsResponse = await route.request(
+      '/7/agent-connectors/connector-one/tools',
+    )
+    const createToolResponse = await route.request(
+      '/7/agent-connectors/connector-one/tools',
+      jsonRequest('POST', toolInput),
+    )
+    const updateToolResponse = await route.request(
+      '/7/agent-connectors/connector-one/tools/tool-one',
+      jsonRequest('PUT', toolInput),
+    )
+    const deleteToolResponse = await route.request(
+      '/7/agent-connectors/connector-one/tools/tool-one',
+      { method: 'DELETE' },
+    )
+    const deleteResponse = await route.request(
+      '/7/agent-connectors/connector-one',
+      { method: 'DELETE' },
+    )
+    const invalidToolNameResponse = await route.request(
+      '/7/agent-connectors/connector-one/tools',
+      jsonRequest('POST', { ...toolInput, name: 'Get Order' }),
+    )
+    const invalidNameResponse = await route.request(
+      '/7/agent-connectors',
+      jsonRequest('POST', { ...connectorInput, name: 'Orders Connector' }),
+    )
+
+    assert.equal(listResponse.status, 200)
+    assert.equal(detailResponse.status, 200)
+    assert.equal(createResponse.status, 201)
+    assert.equal(updateResponse.status, 200)
+    assert.equal(logsResponse.status, 200)
+    assert.equal(toolsResponse.status, 200)
+    assert.equal(createToolResponse.status, 201)
+    assert.equal(updateToolResponse.status, 200)
+    assert.equal(deleteToolResponse.status, 200)
+    assert.equal(deleteResponse.status, 200)
+    assert.equal(invalidNameResponse.status, 400)
+    assert.equal(invalidToolNameResponse.status, 400)
+    assert.equal((await listResponse.text()).includes('secret-token'), false)
+    assert.deepEqual(calls, [
+      'list',
+      'get:connector-one',
+      'create:orders_connector',
+      'get:connector-one',
+      'update:connector-one:orders_connector',
+      'logs:connector-one',
+      'listTools:connector-one',
+      'createTool:connector-one:get_order',
+      'updateTool:connector-one:tool-one',
+      'deleteTool:connector-one:tool-one',
+      'delete:connector-one',
+    ])
+  })
+
+  it('lists and runs agent evaluations for an organization-owned channel', async () => {
+    const calls: string[] = []
+    const agentEvaluations: AgentEvaluationsService = {
+      listCases: async () => {
+        calls.push('listCases')
+        return [
+          {
+            id: 'case-one',
+            scenario: 'Resolve an order issue',
+            categories: ['support'],
+            max_turns: 8,
+            success_criteria: ['The order status is explained'],
+          },
+        ]
+      },
+      run: async (_configuration, evalCaseIds) => {
+        calls.push(`run:${evalCaseIds.join(',')}`)
+        return { job_id: 'job-one', status: 'QUEUED' }
+      },
+      getJob: async (_configuration, jobId) => {
+        calls.push(`getJob:${jobId}`)
+        return {
+          status: 'COMPLETED',
+          result: {
+            summary_id: 'summary-one',
+            avg_conversation_score: 0.9,
+            summary: 'The agent completed the scenario.',
+            creation_time: 1,
+            update_time: 2,
+          },
+        }
+      },
+      getDetails: async (_configuration, evalIds) => {
+        calls.push(`getDetails:${evalIds.join(',')}`)
+        return [
+          {
+            id: 'eval-one',
+            score: 0.9,
+            per_turn_labels: '[]',
+            reasons: '[]',
+            creation_time: 1,
+            update_time: 2,
+          },
+        ]
+      },
+      getSummaries: async (_configuration, summaryIds) => {
+        calls.push(`getSummaries:${summaryIds.join(',')}`)
+        return [
+          {
+            id: 'summary-one',
+            avg_conversation_score: 0.9,
+            summary: 'The agent completed the scenario.',
+            creation_time: 1,
+            update_time: 2,
+          },
+        ]
+      },
+    }
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+      agentEvaluations,
+    })
+
+    const listResponse = await route.request('/7/agent-evals')
+    const runResponse = await route.request(
+      '/7/agent-evals/runs',
+      jsonRequest('POST', { evalCaseIds: ['case-one'] }),
+    )
+    const jobResponse = await route.request('/7/agent-evals/runs/job-one')
+    const detailsResponse = await route.request(
+      '/7/agent-evals/details?ids=eval-one',
+    )
+    const summariesResponse = await route.request(
+      '/7/agent-evals/summaries?ids=summary-one',
+    )
+
+    assert.equal(listResponse.status, 200)
+    assert.equal(runResponse.status, 202)
+    assert.equal(jobResponse.status, 200)
+    assert.equal(detailsResponse.status, 200)
+    assert.equal(summariesResponse.status, 200)
+    assert.deepEqual(await runResponse.json(), {
+      jobId: 'job-one',
+      status: 'QUEUED',
+    })
+    assert.deepEqual(calls, [
+      'listCases',
+      'run:case-one',
+      'getJob:job-one',
+      'getDetails:eval-one',
+      'getSummaries:summary-one',
+    ])
+  })
+
+  it('prevents regular members from starting agent evaluations', async () => {
+    let runCalled = false
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      repository: createRepository(),
+      agentEvaluations: {
+        listCases: async () => [],
+        run: async () => {
+          runCalled = true
+          return { job_id: 'job-one', status: 'QUEUED' }
+        },
+        getJob: async () => ({ status: 'RUNNING' }),
+        getDetails: async () => [],
+        getSummaries: async () => [],
+      },
+    })
+
+    const response = await route.request(
+      '/7/agent-evals/runs',
+      jsonRequest('POST', { evalCaseIds: ['case-one'] }),
+    )
+
+    assert.equal(response.status, 403)
+    assert.equal(runCalled, false)
+  })
+
+  it('manages FAQs, websites, and direct knowledge-file uploads', async () => {
+    const calls: string[] = []
+    const agentKnowledge: AgentKnowledgeService = {
+      listFaqs: async () => {
+        calls.push('listFaqs')
+        return [{ id: 'faq-one', question: 'Q?', answer: 'A.' }]
+      },
+      createFaq: async (_configuration, input) => {
+        calls.push(`createFaq:${input.question}`)
+        return { id: 'faq-two', ...input }
+      },
+      updateFaq: async (_configuration, faqId, input) => {
+        calls.push(`updateFaq:${faqId}`)
+        return { id: faqId, ...input }
+      },
+      deleteFaq: async (_configuration, faqId) => {
+        calls.push(`deleteFaq:${faqId}`)
+      },
+      listWebsites: async () => {
+        calls.push('listWebsites')
+        return [{ id: 'site-one', url: 'https://example.com' }]
+      },
+      createWebsite: async (_configuration, input) => {
+        calls.push(`createWebsite:${input.url}`)
+        return { id: 'site-two', ...input }
+      },
+      updateWebsite: async (_configuration, websiteId, input) => {
+        calls.push(`updateWebsite:${websiteId}`)
+        return { id: websiteId, ...input }
+      },
+      deleteWebsite: async (_configuration, websiteId) => {
+        calls.push(`deleteWebsite:${websiteId}`)
+      },
+      listFiles: async () => {
+        calls.push('listFiles')
+        return [{ id: 'file-one', file_name: 'guide.pdf' }]
+      },
+      uploadFile: async (_configuration, file) => {
+        calls.push(`uploadFile:${file.name}:${file.size}`)
+        return { id: 'file-two', file_name: file.name }
+      },
+      deleteFile: async (_configuration, fileId) => {
+        calls.push(`deleteFile:${fileId}`)
+      },
+    }
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+      agentKnowledge,
+      knowledgeArchive: {
+        put: async (organizationId, channelId, providerFile, file) => {
+          calls.push(
+            `archivePut:${organizationId}:${channelId}:${providerFile.id}:${file.name}`,
+          )
+        },
+        getMany: async () => [],
+        delete: async (organizationId, providerFileId) => {
+          calls.push(`archiveDelete:${organizationId}:${providerFileId}`)
+        },
+      },
+    })
+    const faqInput = { question: 'Question?', answer: 'Answer.' }
+    const websiteInput = {
+      url: 'https://example.com',
+      includedSubDomains: [],
+      includedUrlPatterns: [],
+      excludedSubDomains: [],
+      excludedUrlPatterns: [],
+      singleUrls: [],
+    }
+    const upload = new FormData()
+    upload.set(
+      'file',
+      new File(['knowledge'], 'guide.pdf', { type: 'application/pdf' }),
+    )
+
+    await route.request('/7/agent-knowledge/faqs')
+    await route.request(
+      '/7/agent-knowledge/faqs',
+      jsonRequest('POST', faqInput),
+    )
+    await route.request(
+      '/7/agent-knowledge/faqs/faq-one',
+      jsonRequest('PUT', faqInput),
+    )
+    await route.request('/7/agent-knowledge/faqs/faq-one', { method: 'DELETE' })
+    await route.request('/7/agent-knowledge/websites')
+    await route.request(
+      '/7/agent-knowledge/websites',
+      jsonRequest('POST', websiteInput),
+    )
+    await route.request(
+      '/7/agent-knowledge/websites/site-one',
+      jsonRequest('PUT', websiteInput),
+    )
+    await route.request('/7/agent-knowledge/websites/site-one', {
+      method: 'DELETE',
+    })
+    await route.request('/7/agent-knowledge/files')
+    const uploadResponse = await route.request('/7/agent-knowledge/files', {
+      method: 'POST',
+      body: upload,
+    })
+    await route.request('/7/agent-knowledge/files/file-one', {
+      method: 'DELETE',
+    })
+
+    assert.equal(uploadResponse.status, 201)
+    assert.deepEqual(calls, [
+      'listFaqs',
+      'createFaq:Question?',
+      'updateFaq:faq-one',
+      'deleteFaq:faq-one',
+      'listWebsites',
+      'createWebsite:https://example.com',
+      'updateWebsite:site-one',
+      'deleteWebsite:site-one',
+      'listFiles',
+      'uploadFile:guide.pdf:9',
+      'archivePut:org-one:7:file-two:guide.pdf',
+      'deleteFile:file-one',
+      'archiveDelete:org-one:file-one',
+    ])
+  })
+
+  it('checks agent eligibility for an organization manager', async () => {
+    let receivedPhoneNumberId: string | undefined
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+      getAgentEligibility: async (configuration) => {
+        receivedPhoneNumberId = configuration.waPhoneNumberId
+        return { is_eligible: true }
+      },
+    })
+
+    const response = await route.request('/7/agent-eligibility')
+
+    assert.equal(response.status, 200)
+    assert.equal(receivedPhoneNumberId, 'phone-id')
+    assert.deepEqual(await response.json(), { eligible: true })
+  })
+
+  it('prevents regular members from checking agent eligibility', async () => {
+    let eligibilityCalled = false
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      repository: createRepository(),
+      getAgentEligibility: async () => {
+        eligibilityCalled = true
+        return { is_eligible: true }
+      },
+    })
+
+    const response = await route.request('/7/agent-eligibility')
+
+    assert.equal(response.status, 403)
+    assert.equal(eligibilityCalled, false)
+  })
+
+  it('onboards an agent for an organization-owned channel', async () => {
+    let receivedPhoneNumberId: string | undefined
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+      onboardAgent: async (configuration) => {
+        receivedPhoneNumberId = configuration.waPhoneNumberId
+        return { agent_id: 'agent-one' }
+      },
+    })
+
+    const response = await route.request('/7/agent', { method: 'POST' })
+
+    assert.equal(response.status, 201)
+    assert.equal(receivedPhoneNumberId, 'phone-id')
+    assert.deepEqual(await response.json(), { agentId: 'agent-one' })
+  })
+
+  it('prevents regular members from onboarding an agent', async () => {
+    let onboardCalled = false
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      repository: createRepository(),
+      onboardAgent: async () => {
+        onboardCalled = true
+        return { agent_id: 'agent-one' }
+      },
+    })
+
+    const response = await route.request('/7/agent', { method: 'POST' })
+
+    assert.equal(response.status, 403)
+    assert.equal(onboardCalled, false)
+  })
+
+  it('deletes an agent for an organization-owned channel', async () => {
+    let receivedPhoneNumberId: string | undefined
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
+      repository: createRepository(),
+      deleteAgent: async (configuration) => {
+        receivedPhoneNumberId = configuration.waPhoneNumberId
+        return { deleted_agent_id: 'agent-one' }
+      },
+    })
+
+    const response = await route.request('/7/agent', { method: 'DELETE' })
+
+    assert.equal(response.status, 200)
+    assert.equal(receivedPhoneNumberId, 'phone-id')
+    assert.deepEqual(await response.json(), { deletedAgentId: 'agent-one' })
   })
 
   it('sets the stored channel webhook override for an organization manager', async () => {
@@ -185,7 +1701,18 @@ describe('Meta webhook override', () => {
             ? input.toString()
             : input.url
       requestInit = init
-      return new Response(JSON.stringify({ success: true }), { status: 200 })
+      return new Response(
+        JSON.stringify({
+          data: [
+            {
+              override_callback_uri:
+                'https://example.com/api/wa-cloud/webhook/7',
+              whatsapp_business_api_data: { id: 'app-id' },
+            },
+          ],
+        }),
+        { status: 200 },
+      )
     }) as typeof fetch
 
     await overrideMetaWebhook(
@@ -218,6 +1745,321 @@ describe('Meta webhook override', () => {
   })
 })
 
+describe('Meta agent settings', () => {
+  it('checks eligibility for the channel phone number with its access token', async () => {
+    let requestUrl: string | undefined
+    let authorization: string | null = null
+    const request = (async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      requestUrl =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url
+      authorization = new Headers(init?.headers).get('authorization')
+      return new Response(JSON.stringify({ is_eligible: true }), {
+        status: 200,
+      })
+    }) as typeof fetch
+
+    const eligibility = await getMetaAgentEligibility(
+      {
+        waPhoneNumberId: 'phone/id',
+        waSystemUserAccessToken: 'access-secret',
+      },
+      request,
+    )
+
+    assert.equal(eligibility.is_eligible, true)
+    assert.equal(
+      new URL(requestUrl ?? '').pathname,
+      '/phone%2Fid/agent_eligibility',
+    )
+    assert.equal(authorization, 'Bearer access-secret')
+  })
+
+  it('queries settings for the channel phone number with its access token', async () => {
+    let requestUrl: string | undefined
+    let authorization: string | null = null
+    const request = (async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      requestUrl =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url
+      authorization = new Headers(init?.headers).get('authorization')
+      return new Response(JSON.stringify([]), { status: 200 })
+    }) as typeof fetch
+
+    const settings = await getMetaAgentSettings(
+      {
+        waPhoneNumberId: 'phone/id',
+        waSystemUserAccessToken: 'access-secret',
+      },
+      request,
+    )
+
+    assert.deepEqual(settings, [])
+    assert.equal(
+      new URL(requestUrl ?? '').pathname,
+      '/phone%2Fid/agent_config/settings',
+    )
+    assert.equal(authorization, 'Bearer access-secret')
+  })
+
+  it('updates settings and manages allowlist entries without a client deadline', async () => {
+    const requests: Array<{
+      method: string
+      pathname: string
+      body?: unknown
+      hasSignal: boolean
+    }> = []
+    const request = (async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      const url = new URL(
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url,
+      )
+      const method = init?.method ?? 'GET'
+      requests.push({
+        method,
+        pathname: url.pathname,
+        body:
+          typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
+        hasSignal: init?.signal !== undefined,
+      })
+      if (method === 'DELETE' && url.pathname.endsWith('/delete_agent')) {
+        return new Response(JSON.stringify({ deleted_agent_id: 'agent-one' }), {
+          status: 200,
+        })
+      }
+      if (method === 'DELETE') return new Response(null, { status: 204 })
+      if (method === 'POST') {
+        return new Response(
+          JSON.stringify({
+            id: 'entry-two',
+            consumer_phone_number: '+5511888880000',
+          }),
+          { status: 201 },
+        )
+      }
+      if (method === 'PUT') {
+        return new Response(
+          JSON.stringify({
+            agent_id: 'agent-one',
+            channel: 'whatsapp',
+            rollout: { enabled: false },
+            ai_audience: 'ALLOWLISTED_ONLY',
+          }),
+          { status: 200 },
+        )
+      }
+      return new Response(
+        JSON.stringify([
+          { id: 'entry-one', consumer_phone_number: '+5511999990000' },
+        ]),
+        { status: 200 },
+      )
+    }) as typeof fetch
+    const configuration = {
+      waPhoneNumberId: 'phone/id',
+      waSystemUserAccessToken: 'access-secret',
+    }
+
+    await updateMetaAgentSettings(
+      configuration,
+      { rollout: { enabled: false }, ai_audience: 'ALLOWLISTED_ONLY' },
+      request,
+    )
+    await listMetaAgentAllowlist(configuration, request)
+    await addMetaAgentAllowlistEntry(
+      configuration,
+      { consumer_phone_number: '+5511888880000' },
+      request,
+    )
+    await removeMetaAgentAllowlistEntry(configuration, 'entry-two', request)
+    await deleteMetaAgent(configuration, request)
+
+    assert.deepEqual(requests, [
+      {
+        method: 'PUT',
+        pathname: '/phone%2Fid/agent_config/settings',
+        body: {
+          rollout: { enabled: false },
+          ai_audience: 'ALLOWLISTED_ONLY',
+        },
+        hasSignal: false,
+      },
+      {
+        method: 'GET',
+        pathname: '/phone%2Fid/agent_config/allowlist',
+        body: undefined,
+        hasSignal: false,
+      },
+      {
+        method: 'POST',
+        pathname: '/phone%2Fid/agent_config/allowlist',
+        body: { consumer_phone_number: '+5511888880000' },
+        hasSignal: false,
+      },
+      {
+        method: 'DELETE',
+        pathname: '/phone%2Fid/agent_config/allowlist/entry-two',
+        body: undefined,
+        hasSignal: false,
+      },
+      {
+        method: 'DELETE',
+        pathname: '/phone%2Fid/delete_agent',
+        body: undefined,
+        hasSignal: false,
+      },
+    ])
+  })
+
+  it('gets and replaces business information without a client deadline', async () => {
+    const requests: Array<{
+      method: string
+      pathname: string
+      body?: unknown
+      hasSignal: boolean
+    }> = []
+    const request = (async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      const url = new URL(
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url,
+      )
+      const method = init?.method ?? 'GET'
+      requests.push({
+        method,
+        pathname: url.pathname,
+        body:
+          typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
+        hasSignal: init?.signal !== undefined,
+      })
+      return new Response(
+        JSON.stringify({ business_description: 'Coffee shop' }),
+        { status: 200 },
+      )
+    }) as typeof fetch
+    const configuration = {
+      waPhoneNumberId: 'phone/id',
+      waSystemUserAccessToken: 'access-secret',
+    }
+
+    await getMetaAgentBusinessInfo(configuration, request)
+    await replaceMetaAgentBusinessInfo(
+      configuration,
+      { business_description: 'Coffee shop' },
+      request,
+    )
+
+    assert.deepEqual(requests, [
+      {
+        method: 'GET',
+        pathname: '/phone%2Fid/agent_config/business_info',
+        body: undefined,
+        hasSignal: false,
+      },
+      {
+        method: 'PUT',
+        pathname: '/phone%2Fid/agent_config/business_info',
+        body: { business_description: 'Coffee shop' },
+        hasSignal: false,
+      },
+    ])
+  })
+
+  it('preserves the actual Meta business response error as its cause', async () => {
+    const responseBody = [{ business_description: 'unexpected array' }]
+    const request = (async () =>
+      new Response(JSON.stringify(responseBody), {
+        status: 200,
+      })) as typeof fetch
+
+    await assert.rejects(
+      getMetaAgentBusinessInfo(
+        {
+          waPhoneNumberId: 'phone-id',
+          waSystemUserAccessToken: 'access-secret',
+        },
+        request,
+      ),
+      (error: unknown) => {
+        assert.equal(error instanceof Error, true)
+        const wrapped = error as Error
+        assert.equal(
+          wrapped.message,
+          'Meta returned an unexpected business information response',
+        )
+        assert.equal(wrapped.cause instanceof Error, true)
+        assert.equal((wrapped.cause as Error).name, 'WhatsAppMbaResponseError')
+        assert.deepEqual(
+          (wrapped.cause as Error & { body: unknown }).body,
+          responseBody,
+        )
+        return true
+      },
+    )
+  })
+
+  it('onboards the channel phone number with its access token', async () => {
+    let requestUrl: string | undefined
+    let requestMethod: string | undefined
+    let authorization: string | null = null
+    const request = (async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      requestUrl =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url
+      requestMethod = init?.method
+      authorization = new Headers(init?.headers).get('authorization')
+      return new Response(JSON.stringify({ agent_id: 'agent-one' }), {
+        status: 201,
+      })
+    }) as typeof fetch
+
+    const result = await onboardMetaAgent(
+      {
+        waPhoneNumberId: 'phone/id',
+        waSystemUserAccessToken: 'access-secret',
+      },
+      request,
+    )
+
+    assert.equal(result.agent_id, 'agent-one')
+    assert.equal(
+      new URL(requestUrl ?? '').pathname,
+      '/phone%2Fid/agent_onboarding',
+    )
+    assert.equal(requestMethod, 'POST')
+    assert.equal(authorization, 'Bearer access-secret')
+  })
+})
+
 function createRepository(
   overrides: Partial<ChannelManagementRepository> = {},
 ): ChannelManagementRepository {
@@ -229,11 +2071,153 @@ function createRepository(
       waWebhookVerifyToken: 'verify-secret',
       waSystemUserAccessToken: 'access-secret',
     }),
+    getAgentConfiguration: async () => ({
+      waPhoneNumberId: 'phone-id',
+      waSystemUserAccessToken: 'access-secret',
+    }),
     create: async () => channel,
     update: async () => channel,
-    delete: async () => true,
+    getDeletionPreview: async () => ({
+      confirmationText: channel.waPhoneNumber,
+      contacts: 0,
+      groups: 0,
+      messages: 0,
+    }),
+    delete: async () => ({
+      status: 'deleted',
+      impact: { contacts: 0, groups: 0, messages: 0 },
+    }),
     ...overrides,
   }
+}
+
+function createImportPackage(includeEvaluations = false): File {
+  const document = stringifyYaml({
+    format: 'agtx',
+    version: 1,
+    agent: {
+      settings: {
+        agentId: 'agent-source',
+        rolloutEnabled: true,
+        audience: 'EVERYONE',
+        handoff: {
+          enabled: false,
+          messageSelection: 'DEFAULT',
+          message: '',
+        },
+        neverSayPhrases: [],
+      },
+      allowlist: [{ id: 'allow-source', phoneNumber: '+5511999990000' }],
+      businessInfo: {
+        businessDescription: 'Portable business',
+        paymentMethod: '',
+        purchaseInfo: '',
+        deliveryAndShipping: '',
+        returnPolicy: '',
+        contactEmail: '',
+        hoursOfOperation: '',
+        address: '',
+      },
+      skills: [
+        {
+          id: 'skill-source',
+          title: 'order-status',
+          description: 'Checks an order',
+          skill: 'Check the order.',
+          channel: 'whatsapp',
+          status: 'active',
+        },
+      ],
+      knowledge: {
+        faqs: [
+          {
+            id: 'faq-source',
+            question: 'Where?',
+            answer: 'Here.',
+            createdAt: null,
+          },
+        ],
+        websites: [
+          {
+            id: 'site-source',
+            url: 'https://example.com',
+            includedSubDomains: [],
+            includedUrlPatterns: [],
+            excludedSubDomains: [],
+            excludedUrlPatterns: [],
+            singleUrls: [],
+            crawlStatus: null,
+            crawlError: null,
+            pagesCrawled: null,
+            lastCrawledAt: null,
+          },
+        ],
+        files: [
+          {
+            providerFileId: 'file-source',
+            fileName: 'guide.pdf',
+            path: 'files/001-guide.pdf',
+            included: true,
+          },
+        ],
+      },
+      connectors: [
+        {
+          id: 'connector-source',
+          name: 'orders_connector',
+          description: 'Orders',
+          baseUrl: 'https://orders.example.com',
+          connectorProtocol: 'HTTP',
+          authType: 'NONE',
+          hasAuthConfiguration: false,
+          requiresCertificate: false,
+          hasCertificate: false,
+          connectionStatus: 'ACTIVE',
+          connectionError: null,
+          userAuthInjectionConfig: null,
+          mcpToolSync: null,
+          tools: [
+            {
+              id: 'tool-source',
+              name: 'get_order',
+              description: 'Gets an order',
+              requestDefinition: {
+                method: 'GET',
+                path: '/orders/{id}',
+                pathParameters: {},
+                queryParameters: {},
+                headers: {},
+                body: null,
+              },
+              userAuthRequired: false,
+              userAuthActionConfig: null,
+              transformationSpec: null,
+            },
+          ],
+        },
+      ],
+      ...(includeEvaluations
+        ? {
+            evaluations: [
+              {
+                id: 'case-source',
+                scenario: 'This field is no longer supported.',
+              },
+            ],
+          }
+        : {}),
+    },
+  })
+  const bytes = createAgentExportArchive([
+    { path: 'agent.yaml', body: new TextEncoder().encode(document) },
+    {
+      path: 'files/001-guide.pdf',
+      body: new TextEncoder().encode('PDF bytes'),
+    },
+  ])
+  return new File([bytes.slice().buffer], 'portable.agtx', {
+    type: 'application/vnd.mba.agent+zip',
+  })
 }
 
 function createChannelInput() {
@@ -246,5 +2230,74 @@ function createChannelInput() {
     waAppSecret: 'app-secret',
     waWebhookVerifyToken: 'verify-token',
     waSystemUserAccessToken: 'access-token',
+    webhookForwardUrls: ['https://example.com/forward'],
   }
+}
+
+function jsonRequest(method: string, body: unknown): RequestInit {
+  return {
+    method,
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  }
+}
+
+function readSseData(stream: string, event: string): string {
+  const block = stream
+    .split('\n\n')
+    .find((candidate) => candidate.includes(`event: ${event}`))
+  const data = block
+    ?.split('\n')
+    .find((line) => line.startsWith('data: '))
+    ?.slice('data: '.length)
+  if (!data) throw new Error(`Missing SSE event: ${event}`)
+  return data
+}
+
+function readSseDataAll(stream: string, event: string): string[] {
+  return stream
+    .split('\n\n')
+    .filter((candidate) => candidate.includes(`event: ${event}`))
+    .flatMap((block) => {
+      const data = block
+        .split('\n')
+        .find((line) => line.startsWith('data: '))
+        ?.slice('data: '.length)
+      return data ? [data] : []
+    })
+}
+
+function decodeSseArchive(stream: string): Uint8Array {
+  const chunks = readSseDataAll(stream, 'archive-chunk')
+    .map((data) => JSON.parse(data) as { data: string; index: number })
+    .sort((left, right) => left.index - right.index)
+    .map((chunk) => Buffer.from(chunk.data, 'base64'))
+  return new Uint8Array(Buffer.concat(chunks))
+}
+
+function readStoredZipEntries(archive: Uint8Array): Map<string, Uint8Array> {
+  const entries = new Map<string, Uint8Array>()
+  const view = new DataView(
+    archive.buffer,
+    archive.byteOffset,
+    archive.byteLength,
+  )
+  const decoder = new TextDecoder()
+  let offset = 0
+  while (
+    offset + 30 <= archive.byteLength &&
+    view.getUint32(offset, true) === 0x04034b50
+  ) {
+    const size = view.getUint32(offset + 18, true)
+    const pathLength = view.getUint16(offset + 26, true)
+    const extraLength = view.getUint16(offset + 28, true)
+    const pathStart = offset + 30
+    const bodyStart = pathStart + pathLength + extraLength
+    const path = decoder.decode(
+      archive.subarray(pathStart, pathStart + pathLength),
+    )
+    entries.set(path, archive.slice(bodyStart, bodyStart + size))
+    offset = bodyStart + size
+  }
+  return entries
 }

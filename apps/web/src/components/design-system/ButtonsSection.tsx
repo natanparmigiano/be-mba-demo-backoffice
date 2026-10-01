@@ -40,6 +40,7 @@ export function ButtonsSection() {
             <MoreHorizontal className="size-4" />
             {t('design.more')}
           </Button>
+          <Button variant="success">{t('design.success')}</Button>
           <Button variant="danger">
             <Trash2 className="size-4" />
             {t('design.delete')}

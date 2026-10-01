@@ -1,0 +1,24 @@
+info:
+  name: Get Agent Eligibility
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_eligibility
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Checks whether the WhatsApp Business phone number is eligible for Meta Business Agent. Rate limit: 1,000 requests per hour.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/onboard/agent-eligibility

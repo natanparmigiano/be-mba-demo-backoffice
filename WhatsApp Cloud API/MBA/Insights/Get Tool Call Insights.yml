@@ -1,0 +1,35 @@
+info:
+  name: Get Tool Call Insights
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: https://api.facebook.com/{{Phone-Number-ID}}/insights/tool_calls?start_date={{MBA-Start-Date}}&end_date={{MBA-End-Date}}
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+  params:
+    - name: start_date
+      value: "{{MBA-Start-Date}}"
+      type: query
+    - name: end_date
+      value: "{{MBA-End-Date}}"
+      type: query
+    - name: tool_name
+      value: lookup_order
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Returns per-tool volume, latency, success, error, and timeout metrics for an inclusive date range of at most 30 days.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/insights/tool-call-insights

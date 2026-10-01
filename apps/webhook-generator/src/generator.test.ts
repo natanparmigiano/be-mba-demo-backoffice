@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { whatsappWebhookSchema } from '@mba-demo/schemas/wa-cloud/webhooks'
+import { whatsappWebhookSchema } from '@mba-demo/wa-webhooks'
 import { SyntheticWebhookGenerator } from './generator.js'
 import type { GeneratedWebhook } from './types.js'
 
@@ -50,6 +50,24 @@ describe('SyntheticWebhookGenerator', () => {
 
     assert.ok(firstHandoverIndex >= 0)
     assert.equal(events[firstHandoverIndex + 1]?.kind, 'standby')
+    const firstHandover = events[firstHandoverIndex]
+    assert.ok(firstHandover)
+    const handoverChange = firstHandover.payload.entry[0]?.changes[0]
+    assert.equal(handoverChange?.field, 'messaging_handovers')
+    if (handoverChange?.field === 'messaging_handovers') {
+      assert.equal(handoverChange.value.type, 'control_passed')
+      assert.equal(
+        handoverChange.value.control_passed.new_owner_role,
+        'ai_agent',
+      )
+    }
+
+    const standbyChange =
+      events[firstHandoverIndex + 1]?.payload.entry[0]?.changes[0]
+    assert.equal(standbyChange?.field, 'standby')
+    if (standbyChange?.field === 'standby') {
+      assert.equal(standbyChange.value.standby.messages?.length, 1)
+    }
 
     const secondHandoverIndex = events.findIndex(
       ({ kind }, index) => index > firstHandoverIndex && kind === 'handover',
@@ -68,9 +86,12 @@ describe('SyntheticWebhookGenerator', () => {
     const outboundIds = new Set<string>()
     const messageIds = new Set<string>()
     const statuses = new Map<string, string[]>()
+    const observedKindFields = new Set<string>()
 
     for (let index = 0; index < 150; index += 1) {
       const event = generator.next()
+      const field = event.payload.entry[0]?.changes[0]?.field
+      if (field) observedKindFields.add(`${event.kind}:${field}`)
       const createdId = getCreatedMessageId(event)
       if (createdId) {
         assert.equal(
@@ -92,6 +113,13 @@ describe('SyntheticWebhookGenerator', () => {
     }
 
     assert.ok(statuses.size > 0)
+    assert.equal(
+      observedKindFields.has('message_echo:smb_message_echoes'),
+      true,
+    )
+    assert.equal(observedKindFields.has('message_echo:standby'), true)
+    assert.equal(observedKindFields.has('status:messages'), true)
+    assert.equal(observedKindFields.has('status:standby'), true)
     for (const sequence of statuses.values()) {
       assert.deepEqual(sequence, ['sent', 'delivered', 'read'])
     }
@@ -102,11 +130,12 @@ function getCreatedMessageId(event: GeneratedWebhook): string | undefined {
   const value = firstValue(event)
   const candidate =
     event.kind === 'message_echo'
-      ? firstArrayRecord(value, 'message_echoes')
+      ? (firstArrayRecord(value, 'message_echoes') ??
+        firstArrayRecord(asRecord(value.standby), 'message_echoes'))
       : event.kind === 'message' || event.kind === 'standby'
         ? firstArrayRecord(
-            value,
-            event.kind === 'standby' ? 'standby' : 'messages',
+            event.kind === 'standby' ? asRecord(value.standby) : value,
+            'messages',
           )
         : undefined
   return candidate && typeof candidate.id === 'string'
@@ -118,7 +147,10 @@ function getStatus(
   event: GeneratedWebhook,
 ): { id: string; status: string } | undefined {
   if (event.kind !== 'status') return undefined
-  const candidate = firstArrayRecord(firstValue(event), 'statuses')
+  const value = firstValue(event)
+  const candidate =
+    firstArrayRecord(value, 'statuses') ??
+    firstArrayRecord(asRecord(value.standby), 'statuses')
   if (
     !candidate ||
     typeof candidate.id !== 'string' ||
@@ -148,4 +180,8 @@ function firstArrayRecord(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return isRecord(value) ? value : {}
 }

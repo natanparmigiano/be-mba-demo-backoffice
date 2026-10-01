@@ -1,0 +1,23 @@
+ALTER TABLE "mba"."messages" ADD COLUMN "text_content" text;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "media_id" text;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "media_url" text;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "media_mime_type" text;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "media_sha256" text;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "media_file_name" text;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "media_caption" text;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "media_voice" boolean;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "media_animated" boolean;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "interactive_data" jsonb;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "contact_data" jsonb;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "location_data" jsonb;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "button_data" jsonb;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "order_data" jsonb;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "reaction_data" jsonb;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "template_data" jsonb;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "system_data" jsonb;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "edit_data" jsonb;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "revoke_data" jsonb;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "context_data" jsonb;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "referral_data" jsonb;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "identity_data" jsonb;--> statement-breakpoint
+ALTER TABLE "mba"."messages" ADD COLUMN "errors_data" jsonb;

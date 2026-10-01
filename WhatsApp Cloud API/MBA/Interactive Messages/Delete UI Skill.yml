@@ -1,0 +1,24 @@
+info:
+  name: Delete UI Skill
+  type: http
+  seq: 5
+
+http:
+  method: DELETE
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent-ui-skills/{{MBA-UI-Skill-ID}}
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Deletes the selected UI skill.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/ui-skills

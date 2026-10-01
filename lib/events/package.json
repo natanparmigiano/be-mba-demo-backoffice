@@ -16,7 +16,7 @@
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
-    "kafkajs": "^2.2.4"
+    "@confluentinc/kafka-javascript": "^1.10.1"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",

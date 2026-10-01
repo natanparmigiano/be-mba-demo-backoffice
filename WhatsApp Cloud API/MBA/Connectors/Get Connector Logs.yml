@@ -1,0 +1,55 @@
+info:
+  name: Get Connector Logs
+  type: http
+  seq: 6
+
+http:
+  method: GET
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/logs
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+  params:
+    - name: start_time
+      value: ""
+      type: query
+      disabled: true
+      description: Unix timestamp within the last seven days
+    - name: end_time
+      value: ""
+      type: query
+      disabled: true
+      description: Unix timestamp; range cannot exceed seven days
+    - name: limit
+      value: "100"
+      type: query
+      disabled: true
+    - name: tool_id
+      value: "{{MBA-Tool-ID}}"
+      type: query
+      disabled: true
+    - name: include_stats
+      value: "true"
+      type: query
+      disabled: true
+    - name: summary_only
+      value: "false"
+      type: query
+      disabled: true
+    - name: top_n
+      value: "10"
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Retrieves connector error logs from the last seven days. Enable `summary_only` for ranked failure patterns and `include_stats` for aggregate statistics.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/connectors

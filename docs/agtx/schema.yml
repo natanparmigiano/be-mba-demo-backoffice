@@ -1,0 +1,702 @@
+$schema: 'https://json-schema.org/draft/2020-12/schema'
+$id: 'https://mba-demo.example/schemas/agtx/v1/agent.schema.json'
+title: 'AGTX agent manifest'
+description: 'Schema for agent.yaml inside an AGTX version 1 package.'
+type: object
+additionalProperties: false
+required:
+  - format
+  - version
+  - exportedAt
+  - source
+  - security
+  - importRequirements
+  - agent
+properties:
+  format:
+    const: agtx
+  version:
+    const: 1
+  exportedAt:
+    type: string
+    format: date-time
+  source:
+    type: object
+    additionalProperties: false
+    required:
+      - channel
+    properties:
+      channel:
+        $ref: '#/$defs/sourceChannel'
+  security:
+    $ref: '#/$defs/security'
+  importRequirements:
+    $ref: '#/$defs/importRequirements'
+  agent:
+    $ref: '#/$defs/agent'
+$defs:
+  sourceChannel:
+    type: object
+    additionalProperties: false
+    required:
+      - type
+      - phoneNumber
+      - phoneNumberId
+      - wabaId
+      - businessId
+      - appId
+    properties:
+      type:
+        const: whatsapp
+      phoneNumber:
+        type: string
+      phoneNumberId:
+        type: string
+      wabaId:
+        type: string
+      businessId:
+        type: string
+      appId:
+        type: string
+  security:
+    type: object
+    additionalProperties: false
+    required:
+      - connectorCredentialsIncluded
+      - connectorCertificatesIncluded
+      - knowledgeFiles
+    properties:
+      connectorCredentialsIncluded:
+        const: false
+      connectorCertificatesIncluded:
+        const: false
+      knowledgeFiles:
+        type: object
+        additionalProperties: false
+        required:
+          - total
+          - included
+          - missing
+        properties:
+          total:
+            type: integer
+            minimum: 0
+          included:
+            type: integer
+            minimum: 0
+          missing:
+            type: integer
+            minimum: 0
+  importRequirements:
+    type: object
+    additionalProperties: false
+    required:
+      - requestConnectorCredentials
+      - requestConnectorCertificates
+      - requestMissingKnowledgeFiles
+    properties:
+      requestConnectorCredentials:
+        type: boolean
+      requestConnectorCertificates:
+        type: boolean
+      requestMissingKnowledgeFiles:
+        type: boolean
+  agent:
+    type: object
+    additionalProperties: false
+    required:
+      - settings
+      - allowlist
+      - businessInfo
+      - skills
+      - knowledge
+      - connectors
+    properties:
+      settings:
+        $ref: '#/$defs/settings'
+      allowlist:
+        type: array
+        maxItems: 10000
+        items:
+          $ref: '#/$defs/allowlistEntry'
+      businessInfo:
+        $ref: '#/$defs/businessInfo'
+      skills:
+        type: array
+        maxItems: 1000
+        items:
+          $ref: '#/$defs/skill'
+      knowledge:
+        $ref: '#/$defs/knowledge'
+      connectors:
+        type: array
+        maxItems: 1000
+        items:
+          $ref: '#/$defs/connector'
+  settings:
+    type: object
+    additionalProperties: false
+    required:
+      - agentId
+      - rolloutEnabled
+      - audience
+      - handoff
+      - neverSayPhrases
+    properties:
+      agentId:
+        type: string
+        minLength: 1
+      rolloutEnabled:
+        type: boolean
+        description: 'Source rollout state retained for provenance; import always leaves the destination disabled.'
+      audience:
+        enum:
+          - EVERYONE
+          - ALLOWLISTED_ONLY
+      handoff:
+        type: object
+        additionalProperties: false
+        required:
+          - enabled
+          - messageSelection
+          - message
+        properties:
+          enabled:
+            type: boolean
+          messageSelection:
+            enum:
+              - AGENT
+              - CUSTOM
+              - DEFAULT
+          message:
+            type: string
+            maxLength: 10000
+      neverSayPhrases:
+        type: array
+        maxItems: 100
+        uniqueItems: true
+        items:
+          type: string
+          minLength: 1
+          maxLength: 500
+  allowlistEntry:
+    type: object
+    additionalProperties: false
+    required:
+      - id
+      - phoneNumber
+    properties:
+      id:
+        type: string
+        minLength: 1
+      phoneNumber:
+        type:
+          - string
+          - 'null'
+  businessInfo:
+    type: object
+    additionalProperties: false
+    required:
+      - businessDescription
+      - paymentMethod
+      - purchaseInfo
+      - deliveryAndShipping
+      - returnPolicy
+      - contactEmail
+      - hoursOfOperation
+      - address
+    properties:
+      businessDescription:
+        type: string
+        maxLength: 10000
+      paymentMethod:
+        type: string
+        maxLength: 10000
+      purchaseInfo:
+        type: string
+        maxLength: 10000
+      deliveryAndShipping:
+        type: string
+        maxLength: 10000
+      returnPolicy:
+        type: string
+        maxLength: 10000
+      contactEmail:
+        type: string
+        maxLength: 500
+      hoursOfOperation:
+        type: string
+        maxLength: 10000
+      address:
+        type: string
+        maxLength: 10000
+  skill:
+    type: object
+    additionalProperties: false
+    required:
+      - id
+      - title
+      - description
+      - skill
+      - channel
+      - status
+    properties:
+      id:
+        type: string
+        minLength: 1
+      title:
+        type: string
+        pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+        maxLength: 64
+      description:
+        type: string
+        maxLength: 1024
+      skill:
+        type: string
+        minLength: 1
+        maxLength: 20000
+      channel:
+        type: string
+      status:
+        type:
+          - string
+          - 'null'
+  knowledge:
+    type: object
+    additionalProperties: false
+    required:
+      - faqs
+      - websites
+      - files
+    properties:
+      faqs:
+        type: array
+        maxItems: 10000
+        items:
+          $ref: '#/$defs/faq'
+      websites:
+        type: array
+        maxItems: 1000
+        items:
+          $ref: '#/$defs/website'
+      files:
+        type: array
+        maxItems: 1000
+        items:
+          $ref: '#/$defs/knowledgeFile'
+  faq:
+    type: object
+    additionalProperties: false
+    required:
+      - id
+      - question
+      - answer
+      - createdAt
+    properties:
+      id:
+        type: string
+        minLength: 1
+      question:
+        type: string
+        minLength: 1
+        maxLength: 10000
+      answer:
+        type: string
+        minLength: 1
+        maxLength: 50000
+      createdAt:
+        type:
+          - integer
+          - 'null'
+  website:
+    type: object
+    additionalProperties: false
+    required:
+      - id
+      - url
+      - includedSubDomains
+      - includedUrlPatterns
+      - excludedSubDomains
+      - excludedUrlPatterns
+      - singleUrls
+      - crawlStatus
+      - crawlError
+      - pagesCrawled
+      - lastCrawledAt
+    properties:
+      id:
+        type: string
+        minLength: 1
+      url:
+        type: string
+        format: uri
+      includedSubDomains:
+        $ref: '#/$defs/stringList'
+      includedUrlPatterns:
+        $ref: '#/$defs/stringList'
+      excludedSubDomains:
+        $ref: '#/$defs/stringList'
+      excludedUrlPatterns:
+        $ref: '#/$defs/stringList'
+      singleUrls:
+        $ref: '#/$defs/stringList'
+      crawlStatus:
+        type:
+          - string
+          - 'null'
+      crawlError:
+        type:
+          - string
+          - 'null'
+      pagesCrawled:
+        type:
+          - integer
+          - 'null'
+      lastCrawledAt:
+        type:
+          - integer
+          - 'null'
+  stringList:
+    type: array
+    maxItems: 100
+    items:
+      type: string
+      minLength: 1
+      maxLength: 2048
+  knowledgeFile:
+    type: object
+    additionalProperties: false
+    required:
+      - providerFileId
+      - fileName
+      - path
+      - included
+    properties:
+      providerFileId:
+        type: string
+        minLength: 1
+        maxLength: 500
+      fileName:
+        type: string
+        minLength: 1
+        maxLength: 500
+      path:
+        oneOf:
+          - type: string
+            pattern: '^files/'
+            maxLength: 1024
+          - type: 'null'
+      included:
+        type: boolean
+  connector:
+    type: object
+    additionalProperties: false
+    required:
+      - id
+      - name
+      - description
+      - baseUrl
+      - connectorProtocol
+      - authType
+      - hasAuthConfiguration
+      - requiresCertificate
+      - hasCertificate
+      - connectionStatus
+      - connectionError
+      - userAuthInjectionConfig
+      - mcpToolSync
+      - tools
+    properties:
+      id:
+        type: string
+        minLength: 1
+      name:
+        type: string
+        pattern: '^[a-z0-9]+(?:_[a-z0-9]+)*$'
+        maxLength: 64
+      description:
+        type: string
+        minLength: 1
+        maxLength: 10000
+      baseUrl:
+        type: string
+        format: uri
+      connectorProtocol:
+        enum:
+          - HTTP
+          - MCP
+      authType:
+        enum:
+          - API_KEY
+          - OAUTH2_CLIENT_CREDENTIALS
+          - NONE
+      hasAuthConfiguration:
+        type: boolean
+      requiresCertificate:
+        type: boolean
+      hasCertificate:
+        type: boolean
+      connectionStatus:
+        type: string
+      connectionError:
+        type:
+          - string
+          - 'null'
+      userAuthInjectionConfig:
+        oneOf:
+          - $ref: '#/$defs/userAuthInjectionConfig'
+          - type: 'null'
+      mcpToolSync:
+        oneOf:
+          - $ref: '#/$defs/mcpToolSync'
+          - type: 'null'
+      tools:
+        type: array
+        maxItems: 500
+        items:
+          $ref: '#/$defs/connectorTool'
+  userAuthInjectionConfig:
+    type: object
+    additionalProperties: false
+    required:
+      - location
+      - fieldName
+      - prefix
+    properties:
+      location:
+        enum:
+          - body
+          - headers
+          - path
+          - query
+      fieldName:
+        type: string
+      prefix:
+        type: string
+  mcpToolSync:
+    type: object
+    additionalProperties: false
+    required:
+      - status
+      - toolCount
+      - lastAttemptedAt
+      - lastSuccessfulAt
+    properties:
+      status:
+        type: string
+      toolCount:
+        type:
+          - integer
+          - 'null'
+      lastAttemptedAt:
+        type:
+          - integer
+          - 'null'
+      lastSuccessfulAt:
+        type:
+          - integer
+          - 'null'
+  connectorTool:
+    type: object
+    additionalProperties: false
+    required:
+      - id
+      - name
+      - description
+      - requestDefinition
+      - userAuthRequired
+      - userAuthActionConfig
+      - transformationSpec
+    properties:
+      id:
+        type: string
+        minLength: 1
+      name:
+        type: string
+        pattern: '^[a-z0-9]+(?:_[a-z0-9]+)*$'
+        maxLength: 64
+      description:
+        type: string
+        minLength: 1
+        maxLength: 10000
+      requestDefinition:
+        $ref: '#/$defs/requestDefinition'
+      userAuthRequired:
+        type: boolean
+      userAuthActionConfig:
+        oneOf:
+          - $ref: '#/$defs/userAuthActionConfig'
+          - type: 'null'
+      transformationSpec:
+        oneOf:
+          - $ref: '#/$defs/transformationSpec'
+          - type: 'null'
+  requestDefinition:
+    type: object
+    additionalProperties: false
+    required:
+      - method
+      - path
+      - pathParameters
+      - queryParameters
+      - headers
+      - body
+    properties:
+      method:
+        enum:
+          - DELETE
+          - GET
+          - PATCH
+          - POST
+          - PUT
+      path:
+        type: string
+        minLength: 1
+        maxLength: 2048
+      pathParameters:
+        $ref: '#/$defs/parameterRecord'
+      queryParameters:
+        $ref: '#/$defs/parameterRecord'
+      headers:
+        $ref: '#/$defs/parameterRecord'
+      body:
+        oneOf:
+          - $ref: '#/$defs/requestBody'
+          - type: 'null'
+  parameterRecord:
+    type: object
+    additionalProperties:
+      $ref: '#/$defs/parameterNode'
+  parameterNode:
+    type: object
+    additionalProperties: false
+    required:
+      - type
+    properties:
+      type:
+        enum:
+          - boolean
+          - integer
+          - number
+          - string
+      description:
+        type: string
+        maxLength: 10000
+      required:
+        type: boolean
+      binding:
+        $ref: '#/$defs/parameterBinding'
+  parameterBinding:
+    type: object
+    additionalProperties: false
+    required:
+      - kind
+    properties:
+      kind:
+        enum:
+          - default
+          - macro
+      value:
+        type: string
+      macro:
+        type: string
+  requestBody:
+    type: object
+    additionalProperties: false
+    required:
+      - contentType
+      - params
+      - required
+    properties:
+      contentType:
+        const: application/json
+      params:
+        type: object
+        additionalProperties:
+          $ref: '#/$defs/bodyNode'
+      required:
+        type: array
+        items:
+          type: string
+  bodyNode:
+    type: object
+    additionalProperties: false
+    required:
+      - type
+    properties:
+      type:
+        enum:
+          - array
+          - boolean
+          - integer
+          - number
+          - object
+          - string
+      description:
+        type: string
+        maxLength: 10000
+      required:
+        type: array
+        items:
+          type: string
+      properties:
+        type: object
+        additionalProperties:
+          $ref: '#/$defs/bodyNode'
+      items:
+        $ref: '#/$defs/bodyNode'
+      binding:
+        $ref: '#/$defs/parameterBinding'
+  userAuthActionConfig:
+    type: object
+    additionalProperties: false
+    required:
+      - userActionToolType
+      - userAuthTokenPath
+    properties:
+      userActionToolType:
+        enum:
+          - auth
+          - refresh
+      userAuthTokenPath:
+        type: string
+      refreshTokenPath:
+        type:
+          - string
+          - 'null'
+      expiresAtPath:
+        type:
+          - string
+          - 'null'
+      expiresAtType:
+        type:
+          - string
+          - 'null'
+        enum:
+          - absolute
+          - relative_seconds
+          - null
+  transformationSpec:
+    type: object
+    additionalProperties: false
+    required:
+      - version
+      - steps
+    properties:
+      version:
+        const: 1
+      steps:
+        type: array
+        maxItems: 5
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - kind
+          properties:
+            kind:
+              type: string
+            target:
+              type: string
+            params:
+              type: string

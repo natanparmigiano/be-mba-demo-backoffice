@@ -4,4 +4,4 @@
 **/*.tsbuildinfo
 lib/db/src/schema/auth.ts
 lib/db/drizzle/meta/
-Wa Cloud Collection/
+WhatsApp Cloud API/

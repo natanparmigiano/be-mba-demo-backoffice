@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ChatShowcase } from '../chat'
+import { ChatComposer, ChatShowcase } from '../chat'
 import { SectionCard, SectionHeading } from '../ui'
 
 export function ChatSection() {
@@ -17,7 +17,47 @@ export function ChatSection() {
         description={t('design.messageRendererDescription')}
         className="mx-auto max-w-3xl"
       >
-        <ChatShowcase />
+        <ChatShowcase
+          showComposer={false}
+          footer={
+            <ChatComposer
+              loadTemplates={() =>
+                Promise.resolve({
+                  templates: [
+                    {
+                      id: 'order-ready-pt-br',
+                      name: 'order_ready',
+                      language: 'pt_BR',
+                      category: 'UTILITY',
+                      parameterFormat: 'NAMED',
+                      components: [
+                        {
+                          type: 'HEADER',
+                          format: 'TEXT',
+                          text: 'Order update',
+                        },
+                        {
+                          type: 'BODY',
+                          text: 'Hello {{customer_name}}, order {{order_number}} is ready.',
+                          example: {
+                            body_text_named_params: [
+                              { param_name: 'customer_name', example: 'Maya' },
+                              { param_name: 'order_number', example: '1042' },
+                            ],
+                          },
+                        },
+                        { type: 'FOOTER', text: 'MBA Support' },
+                      ],
+                    },
+                  ],
+                  nextCursor: null,
+                })
+              }
+              onSend={() => Promise.resolve()}
+            />
+          }
+          onMessageReaction={() => Promise.resolve()}
+        />
       </SectionCard>
     </section>
   )

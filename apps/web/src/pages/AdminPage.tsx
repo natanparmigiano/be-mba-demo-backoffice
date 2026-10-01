@@ -11,6 +11,7 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react'
+import type { TFunction } from 'i18next'
 import {
   useCallback,
   useEffect,
@@ -18,6 +19,7 @@ import {
   type ReactNode,
   type SubmitEvent,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { authClient } from '../auth/auth-client'
 import { useAuth } from '../auth/AuthProvider'
@@ -69,6 +71,7 @@ interface AdminOrganizationDetails extends AdminOrganizationSummary {
 }
 
 export function AdminPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { session, user: currentUser, refetch } = useAuth()
   const organizationMembershipsQuery = authClient.useListOrganizations()
@@ -102,6 +105,13 @@ export function AdminPage() {
     null,
   )
 
+  useEffect(() => {
+    document.title = `${t('admin.title')} · ${t('design.brand')}`
+    document
+      .querySelector<HTMLMetaElement>('meta[name="description"]')
+      ?.setAttribute('content', t('admin.metaDescription'))
+  }, [t])
+
   const loadUsers = useCallback(async () => {
     const result = await authClient.admin.listUsers({
       query: {
@@ -123,9 +133,9 @@ export function AdminPage() {
 
   useEffect(() => {
     void loadUsers().catch((reason: unknown) => {
-      setError(getErrorMessage(reason))
+      setError(getErrorMessage(reason, t('admin.operationFailed')))
     })
-  }, [loadUsers])
+  }, [loadUsers, t])
 
   const loadOrganizations = useCallback(async () => {
     setIsLoadingOrganizations(true)
@@ -134,14 +144,17 @@ export function AdminPage() {
       const response = await apiClient.api.admin.organizations.$get({
         query: { search: organizationQuery },
       })
-      if (!response.ok) throw new Error(await getResponseError(response))
+      if (!response.ok)
+        throw new Error(
+          await getResponseError(response, t('admin.requestFailed')),
+        )
       setOrganizations(await response.json())
     } catch (reason) {
-      setOrganizationError(getErrorMessage(reason))
+      setOrganizationError(getErrorMessage(reason, t('admin.operationFailed')))
     } finally {
       setIsLoadingOrganizations(false)
     }
-  }, [organizationQuery])
+  }, [organizationQuery, t])
 
   useEffect(() => {
     void loadOrganizations()
@@ -156,10 +169,13 @@ export function AdminPage() {
       const response = await apiClient.api.admin.organizations[':id'].$get({
         param: { id: organizationId },
       })
-      if (!response.ok) throw new Error(await getResponseError(response))
+      if (!response.ok)
+        throw new Error(
+          await getResponseError(response, t('admin.requestFailed')),
+        )
       setSelectedOrganization(await response.json())
     } catch (reason) {
-      setOrganizationError(getErrorMessage(reason))
+      setOrganizationError(getErrorMessage(reason, t('admin.operationFailed')))
     } finally {
       setIsLoadingOrganization(false)
     }
@@ -175,15 +191,18 @@ export function AdminPage() {
       ].members.self.$post({
         param: { id: selectedOrganizationId },
       })
-      if (!response.ok) throw new Error(await getResponseError(response))
+      if (!response.ok)
+        throw new Error(
+          await getResponseError(response, t('admin.requestFailed')),
+        )
       await Promise.all([
         loadOrganizations(),
         loadOrganization(selectedOrganizationId),
         organizationMembershipsQuery.refetch(),
       ])
-      setNotice('You are now an administrator of this organization.')
+      setNotice(t('admin.nowOrganizationAdmin'))
     } catch (reason) {
-      setOrganizationError(getErrorMessage(reason))
+      setOrganizationError(getErrorMessage(reason, t('admin.operationFailed')))
     } finally {
       setIsJoiningOrganization(false)
     }
@@ -201,7 +220,7 @@ export function AdminPage() {
       await refetch()
       void navigate('/organization')
     } catch (reason) {
-      setOrganizationError(getErrorMessage(reason))
+      setOrganizationError(getErrorMessage(reason, t('admin.operationFailed')))
     } finally {
       setIsJoiningOrganization(false)
     }
@@ -216,7 +235,10 @@ export function AdminPage() {
       const response = await apiClient.api.admin.organizations[':id'].$delete({
         param: { id: selectedOrganizationId },
       })
-      if (!response.ok) throw new Error(await getResponseError(response))
+      if (!response.ok)
+        throw new Error(
+          await getResponseError(response, t('admin.requestFailed')),
+        )
 
       if (session?.session.activeOrganizationId === selectedOrganizationId) {
         const activeResult = await authClient.organization.setActive({
@@ -233,9 +255,9 @@ export function AdminPage() {
       setSelectedOrganizationId(null)
       setSelectedOrganization(null)
       setIsDeleteOrganizationOpen(false)
-      setNotice('Organization deleted.')
+      setNotice(t('admin.organizationDeleted'))
     } catch (reason) {
-      setOrganizationError(getErrorMessage(reason))
+      setOrganizationError(getErrorMessage(reason, t('admin.operationFailed')))
     } finally {
       setIsDeletingOrganization(false)
     }
@@ -250,7 +272,7 @@ export function AdminPage() {
       await loadUsers()
       setNotice(success)
     } catch (reason) {
-      setError(getErrorMessage(reason))
+      setError(getErrorMessage(reason, t('admin.operationFailed')))
     } finally {
       setIsBusy(false)
     }
@@ -271,7 +293,7 @@ export function AdminPage() {
       setPassword('')
       setRole('user')
       setIsCreateUserOpen(false)
-    }, 'User created.')
+    }, t('admin.userCreated'))
   }
 
   return (
@@ -279,14 +301,13 @@ export function AdminPage() {
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
-            Application administration
+            {t('admin.eyebrow')}
           </p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
-            Administration
+            {t('admin.title')}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Manage organizations, application access, credentials, sessions, and
-            support impersonation.
+            {t('admin.description')}
           </p>
         </div>
         <Button
@@ -297,7 +318,7 @@ export function AdminPage() {
           }}
         >
           <UserPlus className="size-4" aria-hidden />
-          Add user
+          {t('admin.addUser')}
         </Button>
       </header>
 
@@ -317,9 +338,9 @@ export function AdminPage() {
       <section className="grid gap-4 rounded-2xl border bg-card p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="font-bold">Users</h2>
+            <h2 className="font-bold">{t('admin.users')}</h2>
             <p className="text-sm text-muted-foreground">
-              Application administrators are separate from organization owners.
+              {t('admin.usersDescription')}
             </p>
           </div>
           <form
@@ -330,12 +351,16 @@ export function AdminPage() {
             }}
           >
             <Input
-              aria-label="Search users by name"
+              aria-label={t('admin.searchUsersLabel')}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search users"
+              placeholder={t('admin.searchUsers')}
             />
-            <Button type="submit" variant="outline" aria-label="Search">
+            <Button
+              type="submit"
+              variant="outline"
+              aria-label={t('admin.search')}
+            >
               <Search className="size-4" />
             </Button>
           </form>
@@ -344,10 +369,10 @@ export function AdminPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{t('admin.user')}</TableHead>
+              <TableHead>{t('admin.role')}</TableHead>
+              <TableHead>{t('admin.status')}</TableHead>
+              <TableHead className="text-right">{t('admin.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -363,7 +388,9 @@ export function AdminPage() {
                   </TableCell>
                   <TableCell>
                     <Select
-                      aria-label={`Application role for ${user.name}`}
+                      aria-label={t('admin.applicationRoleFor', {
+                        name: user.name,
+                      })}
                       value={user.role ?? 'user'}
                       disabled={isBusy || isSelf}
                       onChange={(event) =>
@@ -374,11 +401,11 @@ export function AdminPage() {
                           })
                           if (result.error)
                             throw new Error(result.error.message)
-                        }, 'Application role updated.')
+                        }, t('admin.applicationRoleUpdated'))
                       }
                     >
-                      <option value="user">User</option>
-                      <option value="admin">Admin</option>
+                      <option value="user">{t('admin.roles.user')}</option>
+                      <option value="admin">{t('admin.roles.admin')}</option>
                     </Select>
                   </TableCell>
                   <TableCell>
@@ -389,7 +416,9 @@ export function AdminPage() {
                           : 'bg-success/10 text-success'
                       }`}
                     >
-                      {user.banned ? 'Banned' : 'Active'}
+                      {user.banned
+                        ? t('admin.statuses.banned')
+                        : t('admin.statuses.active')}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -408,19 +437,22 @@ export function AdminPage() {
                               throw new Error(result.error.message)
                             await refetch()
                             void navigate('/', { replace: true })
-                          }, 'Impersonation started.')
+                          }, t('admin.impersonationStarted'))
                         }
                       >
-                        Impersonate
+                        {t('admin.impersonate')}
                       </Button>
                       <Button
                         size="icon"
                         variant="ghost"
                         className="size-8"
                         disabled={isBusy}
-                        aria-label={`Rename ${user.name}`}
+                        aria-label={t('admin.renameNamed', { name: user.name })}
                         onClick={() => {
-                          const nextName = window.prompt('User name', user.name)
+                          const nextName = window.prompt(
+                            t('admin.userName'),
+                            user.name,
+                          )
                           if (!nextName?.trim()) return
                           void run(async () => {
                             const result = await authClient.admin.updateUser({
@@ -429,7 +461,7 @@ export function AdminPage() {
                             })
                             if (result.error)
                               throw new Error(result.error.message)
-                          }, 'User updated.')
+                          }, t('admin.userUpdated'))
                         }}
                       >
                         <Pencil className="size-4" />
@@ -439,10 +471,12 @@ export function AdminPage() {
                         variant="ghost"
                         className="size-8"
                         disabled={isBusy}
-                        aria-label={`Reset password for ${user.name}`}
+                        aria-label={t('admin.resetPasswordFor', {
+                          name: user.name,
+                        })}
                         onClick={() => {
                           const newPassword = window.prompt(
-                            `New password for ${user.email}`,
+                            t('admin.newPasswordFor', { email: user.email }),
                           )
                           if (!newPassword) return
                           void run(async () => {
@@ -453,7 +487,7 @@ export function AdminPage() {
                               })
                             if (result.error)
                               throw new Error(result.error.message)
-                          }, 'Password updated.')
+                          }, t('admin.passwordUpdated'))
                         }}
                       >
                         <KeyRound className="size-4" />
@@ -463,7 +497,9 @@ export function AdminPage() {
                         variant="ghost"
                         className="size-8"
                         disabled={isBusy || isSelf}
-                        aria-label={`Revoke sessions for ${user.name}`}
+                        aria-label={t('admin.revokeSessionsFor', {
+                          name: user.name,
+                        })}
                         onClick={() =>
                           void run(async () => {
                             const result =
@@ -472,7 +508,7 @@ export function AdminPage() {
                               })
                             if (result.error)
                               throw new Error(result.error.message)
-                          }, 'User sessions revoked.')
+                          }, t('admin.sessionsRevoked'))
                         }
                       >
                         <LogOut className="size-4" />
@@ -484,8 +520,8 @@ export function AdminPage() {
                         disabled={isBusy || isSelf}
                         aria-label={
                           user.banned
-                            ? `Unban ${user.name}`
-                            : `Ban ${user.name}`
+                            ? t('admin.unbanNamed', { name: user.name })
+                            : t('admin.banNamed', { name: user.name })
                         }
                         onClick={() =>
                           void run(
@@ -496,12 +532,14 @@ export function AdminPage() {
                                   })
                                 : await authClient.admin.banUser({
                                     userId: user.id,
-                                    banReason: 'Disabled by an administrator',
+                                    banReason: t('admin.banReason'),
                                   })
                               if (result.error)
                                 throw new Error(result.error.message)
                             },
-                            user.banned ? 'User unbanned.' : 'User banned.',
+                            user.banned
+                              ? t('admin.userUnbanned')
+                              : t('admin.userBanned'),
                           )
                         }
                       >
@@ -512,10 +550,12 @@ export function AdminPage() {
                         variant="ghost"
                         className="size-8 text-destructive"
                         disabled={isBusy || isSelf}
-                        aria-label={`Remove ${user.name}`}
+                        aria-label={t('admin.removeNamed', { name: user.name })}
                         onClick={() => {
                           if (
-                            !window.confirm(`Permanently remove ${user.email}?`)
+                            !window.confirm(
+                              t('admin.confirmRemove', { email: user.email }),
+                            )
                           )
                             return
                           void run(async () => {
@@ -524,7 +564,7 @@ export function AdminPage() {
                             })
                             if (result.error)
                               throw new Error(result.error.message)
-                          }, 'User removed.')
+                          }, t('admin.userRemoved'))
                         }}
                       >
                         <Trash2 className="size-4" />
@@ -541,10 +581,9 @@ export function AdminPage() {
       <section className="grid gap-4 rounded-2xl border bg-card p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="font-bold">Organizations</h2>
+            <h2 className="font-bold">{t('admin.organizations')}</h2>
             <p className="text-sm text-muted-foreground">
-              Find any organization, inspect its members, or join it as an
-              organization administrator.
+              {t('admin.organizationsDescription')}
             </p>
           </div>
           <form
@@ -555,12 +594,16 @@ export function AdminPage() {
             }}
           >
             <Input
-              aria-label="Search organizations"
+              aria-label={t('admin.searchOrganizations')}
               value={organizationSearch}
               onChange={(event) => setOrganizationSearch(event.target.value)}
-              placeholder="Search organizations"
+              placeholder={t('admin.searchOrganizations')}
             />
-            <Button type="submit" variant="outline" aria-label="Search">
+            <Button
+              type="submit"
+              variant="outline"
+              aria-label={t('admin.search')}
+            >
               <Search className="size-4" aria-hidden />
             </Button>
           </form>
@@ -580,7 +623,7 @@ export function AdminPage() {
             className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
             role="status"
           >
-            <span className="sr-only">Loading organizations</span>
+            <span className="sr-only">{t('admin.loadingOrganizations')}</span>
             {[0, 1, 2].map((item) => (
               <div
                 key={item}
@@ -591,11 +634,11 @@ export function AdminPage() {
         ) : organizations.length === 0 ? (
           <EmptyState
             icon={<Building2 className="size-5" aria-hidden />}
-            title="No organizations found"
+            title={t('admin.noOrganizations')}
             description={
               organizationQuery
-                ? 'Try another organization name or slug.'
-                : 'Organizations will appear here after they are created.'
+                ? t('admin.noOrganizationsSearchHint')
+                : t('admin.noOrganizationsHint')
             }
           />
         ) : (
@@ -616,7 +659,9 @@ export function AdminPage() {
                   </span>
                   <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                     {organization.slug} · {organization.memberCount}{' '}
-                    {organization.memberCount === 1 ? 'member' : 'members'}
+                    {t('admin.memberCount', {
+                      count: organization.memberCount,
+                    })}
                   </span>
                   <span className="mt-2 block">
                     <Pill
@@ -625,8 +670,13 @@ export function AdminPage() {
                       }
                     >
                       {organization.currentUserRole
-                        ? `Your role: ${organization.currentUserRole}`
-                        : 'Not a member'}
+                        ? t('admin.yourRole', {
+                            role: translateOrganizationRole(
+                              organization.currentUserRole,
+                              t,
+                            ),
+                          })
+                        : t('admin.notMember')}
                     </Pill>
                   </span>
                 </span>
@@ -642,8 +692,8 @@ export function AdminPage() {
         onOpenChange={(open) => {
           if (!open && !isBusy) setIsCreateUserOpen(false)
         }}
-        title="Add user"
-        description="Create an email and password account with its initial application role."
+        title={t('admin.addUser')}
+        description={t('admin.addUserDescription')}
         icon={
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
             <UserPlus className="size-5" aria-hidden />
@@ -652,7 +702,7 @@ export function AdminPage() {
       >
         <form className="grid w-full gap-4" onSubmit={createUser}>
           <Input
-            label="Name"
+            label={t('admin.name')}
             value={name}
             onChange={(event) => setName(event.target.value)}
             autoFocus
@@ -660,7 +710,7 @@ export function AdminPage() {
             disabled={isBusy}
           />
           <Input
-            label="Email"
+            label={t('admin.email')}
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -668,7 +718,7 @@ export function AdminPage() {
             disabled={isBusy}
           />
           <Input
-            label="Temporary password"
+            label={t('admin.temporaryPassword')}
             type="password"
             minLength={8}
             value={password}
@@ -677,15 +727,15 @@ export function AdminPage() {
             disabled={isBusy}
           />
           <Select
-            label="Application role"
+            label={t('admin.applicationRole')}
             value={role}
             onChange={(event) =>
               setRole(event.target.value as 'admin' | 'user')
             }
             disabled={isBusy}
           >
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
+            <option value="user">{t('admin.roles.user')}</option>
+            <option value="admin">{t('admin.roles.admin')}</option>
           </Select>
           {error && (
             <p
@@ -705,10 +755,10 @@ export function AdminPage() {
                 setError(null)
               }}
             >
-              Cancel
+              {t('admin.cancel')}
             </Button>
             <Button type="submit" isLoading={isBusy}>
-              Add user
+              {t('admin.addUser')}
             </Button>
           </div>
         </form>
@@ -724,11 +774,13 @@ export function AdminPage() {
           }
         }}
         className="max-w-3xl"
-        title={selectedOrganization?.name ?? 'Organization details'}
+        title={selectedOrganization?.name ?? t('admin.organizationDetails')}
         description={
           selectedOrganization
-            ? `Review ${selectedOrganization.slug} and its organization membership.`
-            : 'Loading organization details…'
+            ? t('admin.organizationDetailsDescription', {
+                slug: selectedOrganization.slug,
+              })
+            : t('admin.loadingOrganizationDetails')
         }
         icon={
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -739,20 +791,22 @@ export function AdminPage() {
         <div className="grid w-full gap-5">
           {isLoadingOrganization ? (
             <div className="grid gap-3" role="status">
-              <span className="sr-only">Loading organization details</span>
+              <span className="sr-only">
+                {t('admin.loadingOrganizationDetails')}
+              </span>
               <div className="h-20 animate-pulse rounded-xl bg-muted" />
               <div className="h-48 animate-pulse rounded-xl bg-muted" />
             </div>
           ) : selectedOrganization ? (
             <>
               <section className="grid gap-3 rounded-xl bg-muted/55 p-4 sm:grid-cols-3">
-                <OrganizationDetail label="Name">
+                <OrganizationDetail label={t('admin.name')}>
                   {selectedOrganization.name}
                 </OrganizationDetail>
-                <OrganizationDetail label="Slug">
+                <OrganizationDetail label={t('admin.slug')}>
                   {selectedOrganization.slug}
                 </OrganizationDetail>
-                <OrganizationDetail label="Your access">
+                <OrganizationDetail label={t('admin.yourAccess')}>
                   <Pill
                     tone={
                       selectedOrganization.currentUserRole
@@ -760,7 +814,12 @@ export function AdminPage() {
                         : 'neutral'
                     }
                   >
-                    {selectedOrganization.currentUserRole ?? 'Not a member'}
+                    {selectedOrganization.currentUserRole
+                      ? translateOrganizationRole(
+                          selectedOrganization.currentUserRole,
+                          t,
+                        )
+                      : t('admin.notMember')}
                   </Pill>
                 </OrganizationDetail>
               </section>
@@ -768,13 +827,11 @@ export function AdminPage() {
               <section className="grid gap-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h3 className="font-bold">Members</h3>
+                    <h3 className="font-bold">{t('admin.members')}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {selectedOrganization.memberCount}{' '}
-                      {selectedOrganization.memberCount === 1
-                        ? 'person'
-                        : 'people'}{' '}
-                      in this organization
+                      {t('admin.peopleInOrganization', {
+                        count: selectedOrganization.memberCount,
+                      })}
                     </p>
                   </div>
                   <Users className="size-5 text-muted-foreground" aria-hidden />
@@ -783,15 +840,15 @@ export function AdminPage() {
                 {selectedOrganization.members.length === 0 ? (
                   <EmptyState
                     icon={<Users className="size-5" aria-hidden />}
-                    title="No members"
-                    description="This organization does not have any members."
+                    title={t('admin.noMembers')}
+                    description={t('admin.noMembersDescription')}
                   />
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Member</TableHead>
-                        <TableHead>Organization role</TableHead>
+                        <TableHead>{t('admin.member')}</TableHead>
+                        <TableHead>{t('admin.organizationRole')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -812,7 +869,7 @@ export function AdminPage() {
                           </TableCell>
                           <TableCell>
                             <Pill tone={roleTone(member.role)}>
-                              {member.role}
+                              {translateOrganizationRole(member.role, t)}
                             </Pill>
                           </TableCell>
                         </TableRow>
@@ -844,7 +901,7 @@ export function AdminPage() {
               }}
             >
               <Trash2 className="size-4" aria-hidden />
-              Delete organization
+              {t('admin.deleteOrganization')}
             </Button>
             <div className="flex flex-wrap justify-end gap-2">
               <Button
@@ -856,7 +913,7 @@ export function AdminPage() {
                   setOrganizationError(null)
                 }}
               >
-                Close
+                {t('admin.close')}
               </Button>
               {selectedOrganization &&
                 (canManageOrganization(selectedOrganization.currentUserRole) ? (
@@ -864,7 +921,7 @@ export function AdminPage() {
                     isLoading={isJoiningOrganization}
                     onClick={() => void manageSelectedOrganization()}
                   >
-                    Manage organization
+                    {t('admin.manageOrganization')}
                     <ChevronRight className="size-4" aria-hidden />
                   </Button>
                 ) : (
@@ -874,8 +931,8 @@ export function AdminPage() {
                   >
                     <ShieldCheck className="size-4" aria-hidden />
                     {selectedOrganization.currentUserRole
-                      ? 'Promote myself to admin'
-                      : 'Add myself as admin'}
+                      ? t('admin.promoteSelf')
+                      : t('admin.addSelf')}
                   </Button>
                 ))}
             </div>
@@ -891,8 +948,10 @@ export function AdminPage() {
             setOrganizationError(null)
           }
         }}
-        title="Delete organization?"
-        description={`This permanently deletes ${selectedOrganization?.name ?? 'this organization'} and removes access for every member.`}
+        title={t('admin.deleteOrganizationTitle')}
+        description={t('admin.deleteOrganizationDescription', {
+          name: selectedOrganization?.name ?? t('admin.thisOrganization'),
+        })}
         icon={
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-destructive/10 text-destructive">
             <Trash2 className="size-5" aria-hidden />
@@ -901,8 +960,7 @@ export function AdminPage() {
       >
         <div className="grid w-full gap-4">
           <p className="text-sm leading-6 text-muted-foreground">
-            Organizations that still own channels or related business data
-            cannot be deleted until that data is removed.
+            {t('admin.deleteOrganizationConstraint')}
           </p>
           {organizationError && (
             <p
@@ -921,14 +979,14 @@ export function AdminPage() {
                 setOrganizationError(null)
               }}
             >
-              Cancel
+              {t('admin.cancel')}
             </Button>
             <Button
               variant="danger"
               isLoading={isDeletingOrganization}
               onClick={() => void deleteSelectedOrganization()}
             >
-              Delete organization
+              {t('admin.deleteOrganization')}
             </Button>
           </div>
         </div>
@@ -969,19 +1027,27 @@ function roleTone(role: string): 'primary' | 'neutral' {
     : 'neutral'
 }
 
-async function getResponseError(response: { json: () => Promise<unknown> }) {
-  const body = await response.json().catch(() => null)
-  if (
-    body &&
-    typeof body === 'object' &&
-    'message' in body &&
-    typeof body.message === 'string'
-  ) {
-    return body.message
-  }
-  return 'The request failed.'
+function translateOrganizationRole(role: string, t: TFunction): string {
+  return role
+    .split(',')
+    .map((value) => {
+      const normalized = value.trim()
+      if (normalized === 'owner') return t('admin.organizationRoles.owner')
+      if (normalized === 'admin') return t('admin.organizationRoles.admin')
+      if (normalized === 'member') return t('admin.organizationRoles.member')
+      return normalized
+    })
+    .join(', ')
 }
 
-function getErrorMessage(reason: unknown): string {
-  return reason instanceof Error ? reason.message : 'The operation failed.'
+async function getResponseError(
+  response: { json: () => Promise<unknown> },
+  fallback: string,
+) {
+  await response.json().catch(() => null)
+  return fallback
+}
+
+function getErrorMessage(_reason: unknown, fallback: string): string {
+  return fallback
 }

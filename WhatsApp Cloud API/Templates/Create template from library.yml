@@ -1,0 +1,43 @@
+info:
+  name: Create template from library
+  type: http
+  seq: 21
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/{{WABA-ID}}/message_templates
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "name": "my_delivery_update",
+        "language": "en_US",
+        "category": "UTILITY",
+        "library_template_name": "delivery_update_1",
+        "library_template_button_inputs": [
+          {
+            "type": "URL",
+            "url": {
+              "base_url": "https://www.example.com/orders/{{1}}",
+              "url_suffix_example": "https://www.example.com/orders/1234"
+            }
+          }
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Creates a WABA template from a pre-written Template Library entry. Use the
+  exact library template name returned by the browse endpoint.
+
+  Canonical guide: [Creating templates from the library](https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/template-library#creating-templates).

@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import signifierDarkUrl from '../assets/signifier-mono-dark.svg'
 import signifierLightUrl from '../assets/signifier-mono-light.svg'
+import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
 import { useAuth } from '../auth/AuthProvider'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
@@ -28,6 +29,7 @@ export function LoginPage() {
   const [ssoEmail, setSsoEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [hasSsoProviders, setHasSsoProviders] = useState(false)
 
   useEffect(() => {
     document.title = `${t('auth.loginTitle')} · ${t('design.brand')}`
@@ -35,6 +37,25 @@ export function LoginPage() {
       .querySelector<HTMLMetaElement>('meta[name="description"]')
       ?.setAttribute('content', t('auth.metaDescription'))
   }, [t])
+
+  useEffect(() => {
+    let isCurrent = true
+
+    void apiClient.api.auth['sso-availability']
+      .$get()
+      .then(async (response) => {
+        if (!response.ok) return
+        const result = await response.json()
+        if (isCurrent) setHasSsoProviders(result.enabled)
+      })
+      .catch(() => {
+        if (isCurrent) setHasSsoProviders(false)
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
 
   const signIn = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -78,7 +99,7 @@ export function LoginPage() {
         errorCallbackURL: `${window.location.origin}/login`,
       })
       if (result.error) {
-        setError(result.error.message ?? t('auth.unexpectedError'))
+        setError(t('auth.unexpectedError'))
       }
     } catch {
       setError(t('auth.unexpectedError'))
@@ -183,35 +204,39 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <div className="my-6 flex items-center gap-3 text-xs font-semibold text-muted-foreground">
-            <span className="h-px flex-1 bg-border" />
-            or use company SSO
-            <span className="h-px flex-1 bg-border" />
-          </div>
+          {hasSsoProviders && (
+            <>
+              <div className="my-6 flex items-center gap-3 text-xs font-semibold text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />
+                {t('auth.ssoDivider')}
+                <span className="h-px flex-1 bg-border" />
+              </div>
 
-          <form
-            className="grid gap-3"
-            onSubmit={(event) => void signInWithSso(event)}
-          >
-            <Input
-              label="Work email"
-              type="email"
-              value={ssoEmail}
-              onChange={(event) => setSsoEmail(event.target.value)}
-              placeholder="you@company.com"
-              leadingIcon={Building2}
-              autoComplete="email"
-              required
-            />
-            <Button
-              type="submit"
-              variant="outline"
-              size="lg"
-              isLoading={isSubmitting}
-            >
-              Continue with SSO
-            </Button>
-          </form>
+              <form
+                className="grid gap-3"
+                onSubmit={(event) => void signInWithSso(event)}
+              >
+                <Input
+                  label={t('auth.workEmail')}
+                  type="email"
+                  value={ssoEmail}
+                  onChange={(event) => setSsoEmail(event.target.value)}
+                  placeholder={t('auth.emailPlaceholder')}
+                  leadingIcon={Building2}
+                  autoComplete="email"
+                  required
+                />
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="lg"
+                  isLoading={isSubmitting}
+                >
+                  {t('auth.continueWithSso')}
+                </Button>
+              </form>
+            </>
+          )}
 
           <div className="mt-8 border-t pt-6 text-center">
             <Link

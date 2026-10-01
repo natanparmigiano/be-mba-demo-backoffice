@@ -1,0 +1,61 @@
+info:
+  name: Standby Message Echo
+  type: http
+  seq: 26
+
+http:
+  method: VIEW
+  url: http://
+  body:
+    type: json
+    data: |-
+      {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "WHATSAPP_BUSINESS_ACCOUNT_ID",
+            "changes": [
+              {
+                "field": "standby",
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "16505553333",
+                    "phone_number_id": "PHONE_NUMBER_ID"
+                  },
+                  "standby": {
+                    "message_echoes": [
+                      {
+                        "id": "wamid.STANDBY_OUTBOUND",
+                        "timestamp": "1790807000",
+                        "message": {
+                          "to": "16315551234",
+                          "recipient": "16315551234",
+                          "recipient_type": "individual",
+                          "type": "text",
+                          "text": {
+                            "body": "A Business AI response",
+                            "preview_url": false
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Observed Business AI outbound echo shape. The message identity and timestamp
+  wrap the outbound message under `message`.

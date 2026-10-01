@@ -9,6 +9,7 @@ import {
   Users,
 } from 'lucide-react'
 import { useCallback, useEffect, useState, type SubmitEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { authClient } from '../auth/auth-client'
 import {
   Avatar,
@@ -47,6 +48,7 @@ interface RunOptions {
 }
 
 export function OrganizationPage() {
+  const { t } = useTranslation()
   const organizationsQuery = authClient.useListOrganizations()
   const activeOrganizationQuery = authClient.useActiveOrganization()
   const activeMemberRoleQuery = authClient.useActiveMemberRole()
@@ -79,6 +81,13 @@ export function OrganizationPage() {
   const [error, setError] = useState<string | null>(null)
   const [dialogError, setDialogError] = useState<string | null>(null)
 
+  useEffect(() => {
+    document.title = `${t('organizations.title')} · ${t('design.brand')}`
+    document
+      .querySelector<HTMLMetaElement>('meta[name="description"]')
+      ?.setAttribute('content', t('organizations.metaDescription'))
+  }, [t])
+
   const refreshOrganization = useCallback(async () => {
     if (!activeOrganization?.id) {
       setMembers([])
@@ -100,9 +109,9 @@ export function OrganizationPage() {
 
   useEffect(() => {
     void refreshOrganization().catch((reason: unknown) => {
-      setError(getErrorMessage(reason))
+      setError(getErrorMessage(reason, t('organizations.operationFailed')))
     })
-  }, [refreshOrganization])
+  }, [refreshOrganization, t])
 
   const run = async (
     action: () => Promise<void>,
@@ -124,7 +133,10 @@ export function OrganizationPage() {
       if (closeDialog) setDialog(null)
       setNotice(success)
     } catch (reason) {
-      const message = getErrorMessage(reason)
+      const message = getErrorMessage(
+        reason,
+        t('organizations.operationFailed'),
+      )
       if (dialog) setDialogError(message)
       else setError(message)
     } finally {
@@ -153,7 +165,8 @@ export function OrganizationPage() {
           slug: organizationSlug.trim(),
         })
         if (result.error) throw new Error(result.error.message)
-        if (!result.data) throw new Error('The organization was not created.')
+        if (!result.data)
+          throw new Error(t('organizations.organizationNotCreated'))
 
         const activeResult = await authClient.organization.setActive({
           organizationId: result.data.id,
@@ -164,7 +177,7 @@ export function OrganizationPage() {
         setOrganizationSlug('')
         setSlugWasEdited(false)
       },
-      'Organization created.',
+      t('organizations.created'),
       { closeDialog: true, refreshMembers: false },
     )
   }
@@ -184,7 +197,7 @@ export function OrganizationPage() {
         setInvitationEmail('')
         setInvitationRole('member')
       },
-      'Invitation created.',
+      t('organizations.invitationCreated'),
       { closeDialog: true },
     )
   }
@@ -201,7 +214,7 @@ export function OrganizationPage() {
         })
         if (result.error) throw new Error(result.error.message)
       },
-      'Organization renamed.',
+      t('organizations.renamed'),
       { closeDialog: true, refreshMembers: false },
     )
   }
@@ -216,7 +229,7 @@ export function OrganizationPage() {
         })
         if (result.error) throw new Error(result.error.message)
       },
-      'Organization deleted.',
+      t('organizations.deleted'),
       { closeDialog: true, refreshMembers: false },
     )
   }
@@ -233,7 +246,7 @@ export function OrganizationPage() {
         if (result.error) throw new Error(result.error.message)
         setMemberToRemove(null)
       },
-      'Member removed.',
+      t('organizations.memberRemoved'),
       { closeDialog: true },
     )
   }
@@ -243,14 +256,13 @@ export function OrganizationPage() {
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
-            Workspace access
+            {t('organizations.eyebrow')}
           </p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
-            Organizations
+            {t('organizations.title')}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Choose the workspace you want to manage, invite members, and control
-            their access.
+            {t('organizations.description')}
           </p>
         </div>
         <Button
@@ -258,7 +270,7 @@ export function OrganizationPage() {
           onClick={() => openDialog('create')}
         >
           <Plus className="size-4" aria-hidden />
-          New organization
+          {t('organizations.newOrganization')}
         </Button>
       </header>
 
@@ -280,10 +292,13 @@ export function OrganizationPage() {
         <section className="overflow-hidden rounded-2xl border bg-card">
           <div className="flex items-center justify-between border-b px-4 py-3.5">
             <div>
-              <h2 className="text-sm font-bold">Your organizations</h2>
+              <h2 className="text-sm font-bold">
+                {t('organizations.yourOrganizations')}
+              </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {organizations.length}{' '}
-                {organizations.length === 1 ? 'workspace' : 'workspaces'}
+                {t('organizations.workspaceCount', {
+                  count: organizations.length,
+                })}
               </p>
             </div>
             <Button
@@ -292,7 +307,7 @@ export function OrganizationPage() {
               size="icon"
               disabled={isBusy}
               onClick={() => void organizationsQuery.refetch()}
-              aria-label="Refresh organizations"
+              aria-label={t('organizations.refreshOrganizations')}
             >
               <RefreshCw className="size-4" aria-hidden />
             </Button>
@@ -322,7 +337,9 @@ export function OrganizationPage() {
                         })
                         if (result.error) throw new Error(result.error.message)
                       },
-                      `${organization.name} is now active.`,
+                      t('organizations.nowActive', {
+                        name: organization.name,
+                      }),
                       { refreshMembers: false },
                     )
                   }
@@ -367,7 +384,7 @@ export function OrganizationPage() {
                       {activeOrganization.name}
                     </h2>
                     <Pill tone="primary" dot>
-                      Active
+                      {t('organizations.active')}
                     </Pill>
                   </div>
                   <p className="mt-1 truncate text-sm text-muted-foreground">
@@ -387,11 +404,11 @@ export function OrganizationPage() {
                     }}
                   >
                     <Pencil className="size-3.5" aria-hidden />
-                    Rename
+                    {t('organizations.renameAction')}
                   </Button>
                   <Button size="sm" onClick={() => openDialog('invite')}>
                     <UserPlus className="size-3.5" aria-hidden />
-                    Invite member
+                    {t('organizations.inviteMemberAction')}
                   </Button>
                   {canDelete && (
                     <Button
@@ -399,7 +416,9 @@ export function OrganizationPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openDialog('delete')}
-                      aria-label={`Delete ${activeOrganization.name}`}
+                      aria-label={t('organizations.deleteNamed', {
+                        name: activeOrganization.name,
+                      })}
                     >
                       <Trash2 className="size-4" aria-hidden />
                     </Button>
@@ -411,11 +430,11 @@ export function OrganizationPage() {
             <div className="border-t p-5 sm:p-6">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="font-bold">Members</h3>
+                  <h3 className="font-bold">{t('organizations.members')}</h3>
                   <p className="mt-0.5 text-sm text-muted-foreground">
-                    {members.length}{' '}
-                    {members.length === 1 ? 'person' : 'people'} in this
-                    organization
+                    {t('organizations.peopleInOrganization', {
+                      count: members.length,
+                    })}
                   </p>
                 </div>
                 <Button
@@ -424,7 +443,7 @@ export function OrganizationPage() {
                   size="icon"
                   disabled={isLoadingMembers}
                   onClick={() => void refreshOrganization()}
-                  aria-label="Refresh members"
+                  aria-label={t('organizations.refreshMembers')}
                 >
                   <RefreshCw
                     className={cn('size-4', isLoadingMembers && 'animate-spin')}
@@ -435,7 +454,9 @@ export function OrganizationPage() {
 
               {isLoadingMembers && members.length === 0 ? (
                 <div className="grid gap-2" role="status">
-                  <span className="sr-only">Loading members</span>
+                  <span className="sr-only">
+                    {t('organizations.loadingMembers')}
+                  </span>
                   {[0, 1, 2].map((item) => (
                     <div
                       key={item}
@@ -446,13 +467,13 @@ export function OrganizationPage() {
               ) : members.length === 0 ? (
                 <EmptyState
                   icon={<Users className="size-5" aria-hidden />}
-                  title="No members yet"
-                  description="Invite someone to collaborate in this organization."
+                  title={t('organizations.noMembersYet')}
+                  description={t('organizations.noMembersDescription')}
                   action={
                     canManage ? (
                       <Button size="sm" onClick={() => openDialog('invite')}>
                         <UserPlus className="size-4" aria-hidden />
-                        Invite member
+                        {t('organizations.inviteMemberAction')}
                       </Button>
                     ) : undefined
                   }
@@ -461,9 +482,13 @@ export function OrganizationPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Member</TableHead>
-                      <TableHead>Organization role</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t('organizations.member')}</TableHead>
+                      <TableHead>
+                        {t('organizations.organizationRole')}
+                      </TableHead>
+                      <TableHead className="text-right">
+                        {t('organizations.actions')}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -485,7 +510,9 @@ export function OrganizationPage() {
                         <TableCell>
                           <Select
                             className="min-w-32"
-                            aria-label={`Role for ${member.user.name}`}
+                            aria-label={t('organizations.roleFor', {
+                              name: member.user.name,
+                            })}
                             value={member.role}
                             disabled={
                               isBusy || !canManage || member.role === 'owner'
@@ -502,12 +529,18 @@ export function OrganizationPage() {
                                   )
                                 if (result.error)
                                   throw new Error(result.error.message)
-                              }, 'Member role updated.')
+                              }, t('organizations.memberRoleUpdated'))
                             }
                           >
-                            <option value="owner">Owner</option>
-                            <option value="admin">Admin</option>
-                            <option value="member">Member</option>
+                            <option value="owner">
+                              {t('organizations.roles.owner')}
+                            </option>
+                            <option value="admin">
+                              {t('organizations.roles.admin')}
+                            </option>
+                            <option value="member">
+                              {t('organizations.roles.member')}
+                            </option>
                           </Select>
                         </TableCell>
                         <TableCell className="text-right">
@@ -517,7 +550,9 @@ export function OrganizationPage() {
                               size="icon"
                               className="size-8 text-destructive"
                               disabled={isBusy}
-                              aria-label={`Remove ${member.user.name}`}
+                              aria-label={t('organizations.removeNamed', {
+                                name: member.user.name,
+                              })}
                               onClick={() => {
                                 setMemberToRemove(member)
                                 openDialog('remove-member')
@@ -537,8 +572,8 @@ export function OrganizationPage() {
         ) : (
           <EmptyState
             icon={<Building2 className="size-5" aria-hidden />}
-            title="No organization selected"
-            description="Choose an organization to view its members and settings."
+            title={t('organizations.noSelection')}
+            description={t('organizations.noSelectionDescription')}
           />
         )}
       </div>
@@ -546,13 +581,13 @@ export function OrganizationPage() {
       <Dialog
         open={dialog === 'create'}
         onOpenChange={(open) => !open && closeDialog()}
-        title="Create an organization"
-        description="Set up a separate workspace for members and backoffice data."
+        title={t('organizations.createTitle')}
+        description={t('organizations.createDescription')}
         icon={<DialogIcon icon={<Building2 className="size-5" />} />}
       >
         <form className="grid w-full gap-4" onSubmit={createOrganization}>
           <Input
-            label="Organization name"
+            label={t('organizations.name')}
             value={organizationName}
             onChange={(event) => {
               const name = event.target.value
@@ -564,8 +599,8 @@ export function OrganizationPage() {
             disabled={isBusy}
           />
           <Input
-            label="Slug"
-            hint="Used in URLs and integrations."
+            label={t('organizations.slug')}
+            hint={t('organizations.slugHint')}
             value={organizationSlug}
             onChange={(event) => {
               setSlugWasEdited(true)
@@ -579,7 +614,7 @@ export function OrganizationPage() {
           <DialogActions
             onCancel={closeDialog}
             isBusy={isBusy}
-            submit="Create"
+            submit={t('organizations.create')}
           />
         </form>
       </Dialog>
@@ -587,13 +622,15 @@ export function OrganizationPage() {
       <Dialog
         open={dialog === 'invite'}
         onOpenChange={(open) => !open && closeDialog()}
-        title="Invite a member"
-        description={`Send an invitation to join ${activeOrganization?.name ?? 'this organization'}.`}
+        title={t('organizations.inviteTitle')}
+        description={t('organizations.inviteDescription', {
+          name: activeOrganization?.name ?? t('organizations.thisOrganization'),
+        })}
         icon={<DialogIcon icon={<UserPlus className="size-5" />} />}
       >
         <form className="grid w-full gap-4" onSubmit={inviteMember}>
           <Input
-            label="Email address"
+            label={t('organizations.emailAddress')}
             type="email"
             value={invitationEmail}
             onChange={(event) => setInvitationEmail(event.target.value)}
@@ -602,21 +639,21 @@ export function OrganizationPage() {
             disabled={isBusy}
           />
           <Select
-            label="Organization role"
+            label={t('organizations.organizationRole')}
             value={invitationRole}
             onChange={(event) =>
               setInvitationRole(event.target.value as 'admin' | 'member')
             }
             disabled={isBusy}
           >
-            <option value="member">Member</option>
-            <option value="admin">Admin</option>
+            <option value="member">{t('organizations.roles.member')}</option>
+            <option value="admin">{t('organizations.roles.admin')}</option>
           </Select>
           <DialogError message={dialogError} />
           <DialogActions
             onCancel={closeDialog}
             isBusy={isBusy}
-            submit="Create invitation"
+            submit={t('organizations.createInvitation')}
           />
         </form>
       </Dialog>
@@ -624,13 +661,13 @@ export function OrganizationPage() {
       <Dialog
         open={dialog === 'rename'}
         onOpenChange={(open) => !open && closeDialog()}
-        title="Rename organization"
-        description="Update the display name. The organization slug will stay the same."
+        title={t('organizations.renameTitle')}
+        description={t('organizations.renameDescription')}
         icon={<DialogIcon icon={<Pencil className="size-5" />} />}
       >
         <form className="grid w-full gap-4" onSubmit={renameOrganization}>
           <Input
-            label="Organization name"
+            label={t('organizations.name')}
             value={renameName}
             onChange={(event) => setRenameName(event.target.value)}
             autoFocus
@@ -638,29 +675,35 @@ export function OrganizationPage() {
             disabled={isBusy}
           />
           <DialogError message={dialogError} />
-          <DialogActions onCancel={closeDialog} isBusy={isBusy} submit="Save" />
+          <DialogActions
+            onCancel={closeDialog}
+            isBusy={isBusy}
+            submit={t('organizations.save')}
+          />
         </form>
       </Dialog>
 
       <Dialog
         open={dialog === 'delete'}
         onOpenChange={(open) => !open && closeDialog()}
-        title="Delete organization?"
-        description={`This permanently deletes ${activeOrganization?.name ?? 'this organization'} and removes access for every member.`}
+        title={t('organizations.deleteTitle')}
+        description={t('organizations.deleteDescription', {
+          name: activeOrganization?.name ?? t('organizations.thisOrganization'),
+        })}
         icon={<DialogIcon icon={<Trash2 className="size-5" />} danger />}
       >
         <div className="grid w-full gap-4">
           <DialogError message={dialogError} />
           <div className="flex justify-end gap-2">
             <Button variant="ghost" disabled={isBusy} onClick={closeDialog}>
-              Cancel
+              {t('organizations.cancel')}
             </Button>
             <Button
               variant="danger"
               isLoading={isBusy}
               onClick={deleteOrganization}
             >
-              Delete organization
+              {t('organizations.deleteAction')}
             </Button>
           </div>
         </div>
@@ -669,18 +712,22 @@ export function OrganizationPage() {
       <Dialog
         open={dialog === 'remove-member'}
         onOpenChange={(open) => !open && closeDialog()}
-        title="Remove member?"
-        description={`${memberToRemove?.user.name ?? 'This member'} will immediately lose access to ${activeOrganization?.name ?? 'this organization'}.`}
+        title={t('organizations.removeTitle')}
+        description={t('organizations.removeDescription', {
+          member: memberToRemove?.user.name ?? t('organizations.thisMember'),
+          organization:
+            activeOrganization?.name ?? t('organizations.thisOrganization'),
+        })}
         icon={<DialogIcon icon={<Trash2 className="size-5" />} danger />}
       >
         <div className="grid w-full gap-4">
           <DialogError message={dialogError} />
           <div className="flex justify-end gap-2">
             <Button variant="ghost" disabled={isBusy} onClick={closeDialog}>
-              Cancel
+              {t('organizations.cancel')}
             </Button>
             <Button variant="danger" isLoading={isBusy} onClick={removeMember}>
-              Remove member
+              {t('organizations.removeAction')}
             </Button>
           </div>
         </div>
@@ -720,6 +767,8 @@ function DialogActions({
   isBusy: boolean
   submit: string
 }) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex justify-end gap-2">
       <Button
@@ -728,7 +777,7 @@ function DialogActions({
         disabled={isBusy}
         onClick={onCancel}
       >
-        Cancel
+        {t('organizations.cancel')}
       </Button>
       <Button type="submit" isLoading={isBusy}>
         {submit}
@@ -757,6 +806,6 @@ function toSlug(value: string) {
     .replace(/^-+|-+$/g, '')
 }
 
-function getErrorMessage(reason: unknown): string {
-  return reason instanceof Error ? reason.message : 'The operation failed.'
+function getErrorMessage(_reason: unknown, fallback: string): string {
+  return fallback
 }

@@ -68,6 +68,29 @@ services:
     volumes:
       - kafka-data:/var/lib/kafka/data
 
+  minio:
+    image: alpine/minio:RELEASE.2025-10-15T17-29-55Z
+    command: ['server', '/data', '--console-address', ':9001']
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - '127.0.0.1:${MINIO_API_PORT:-9000}:9000'
+      - '127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001'
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget --quiet --spider http://localhost:9000/minio/health/live',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    volumes:
+      - minio-data:/data
+
   app:
     <<: *app
     command: ['app']
@@ -78,16 +101,29 @@ services:
       REDIS_URL: redis://redis:6379
       KAFKA_CLIENT_ID: mba-demo-app
       KAFKA_BROKERS: kafka:9092
+      FILES_ADAPTER: s3
+      FILES_S3_BUCKET: ${FILES_S3_BUCKET:-mba-demo-files}
+      FILES_S3_CREATE_BUCKET: 'true'
+      FILES_S3_REGION: us-east-1
+      FILES_S3_ENDPOINT: http://minio:9000
+      FILES_S3_PUBLIC_ENDPOINT: ${FILES_S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+      FILES_S3_FORCE_PATH_STYLE: 'true'
+      FILES_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      FILES_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       ENABLE_WORKER_IN_PROCESS: 'false'
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-development-only-secret-change-before-production}
       BETTER_AUTH_URL: ${COMPOSE_BETTER_AUTH_URL:-http://localhost:8080}
+      BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-}
       CORS_ORIGIN: ${COMPOSE_CORS_ORIGIN:-http://localhost:8080}
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost,127.0.0.1}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     ports:
       - '${WEB_PORT:-8080}:8080'
@@ -112,13 +148,26 @@ services:
       KAFKA_BROKERS: kafka:9092
       KAFKA_GROUP_ID: mba-demo-worker-consumer
       SUBSCRIBE_TO_TOPICS: ${SUBSCRIBE_TO_TOPICS:-all}
+      WA_WEBHOOK_MAX_RETRIES: ${WA_WEBHOOK_MAX_RETRIES:-5}
+      FILES_ADAPTER: s3
+      FILES_S3_BUCKET: ${FILES_S3_BUCKET:-mba-demo-files}
+      FILES_S3_CREATE_BUCKET: 'true'
+      FILES_S3_REGION: us-east-1
+      FILES_S3_ENDPOINT: http://minio:9000
+      FILES_S3_PUBLIC_ENDPOINT: ${FILES_S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+      FILES_S3_FORCE_PATH_STYLE: 'true'
+      FILES_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      FILES_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
     depends_on:
       app:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      minio:
+        condition: service_healthy
 
 volumes:
   kafka-data:
+  minio-data:
   postgres-data:
   redis-data:

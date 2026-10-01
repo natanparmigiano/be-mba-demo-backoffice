@@ -1,0 +1,37 @@
+info:
+  name: Update Connector
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Order Management API",
+        "description": "Looks up orders and helps customers manage them.",
+        "base_url": "https://api.example.com",
+        "connector_protocol": "HTTP",
+        "auth_type": "NONE",
+        "requires_certificate": false
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Updates the selected connector. Connector protocol cannot be changed after creation.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/connectors

@@ -1,8 +1,17 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { DesignSystemPage } from '../DesignSystemPage'
 import { AppShell } from '../components/app/AppShell'
 import { AdminPage } from '../pages/AdminPage'
+import { AgentPage } from '../pages/AgentPage'
+import { AgentConnectorPage } from '../pages/AgentConnectorPage'
+import { AgentEvalPage } from '../pages/AgentEvalPage'
+import { ApiPlaygroundPage } from '../pages/ApiPlaygroundPage'
+import { AgentsPage } from '../pages/AgentsPage'
 import { ChannelsPage } from '../pages/ChannelsPage'
+import { ChatPage } from '../pages/ChatPage'
+import { ContactsPage } from '../pages/ContactsPage'
+import { GroupsPage } from '../pages/GroupsPage'
 import { HomePage } from '../pages/HomePage'
 import { LoginPage } from '../pages/LoginPage'
 import { OrganizationPage } from '../pages/OrganizationPage'
@@ -13,6 +22,21 @@ import {
   PrivateRoute,
   PublicRoute,
 } from './RouteGuards'
+
+const FunctionsPage = lazy(async () => {
+  const module = await import('../pages/FunctionsPage')
+  return { default: module.FunctionsPage }
+})
+
+const ApiKeysPage = lazy(async () => {
+  const module = await import('../pages/ApiKeysPage')
+  return { default: module.ApiKeysPage }
+})
+
+const McpsPage = lazy(async () => {
+  const module = await import('../pages/McpsPage')
+  return { default: module.McpsPage }
+})
 
 export function AppRouter() {
   return (
@@ -30,8 +54,47 @@ export function AppRouter() {
           <Route element={<PrivateRoute />}>
             <Route element={<AppShell />}>
               <Route path="/" element={<HomePage />} />
+              <Route path="/chat" element={<ChatPage />} />
+              <Route path="/chat/:chatId" element={<ChatPage />} />
               <Route path="/organization" element={<OrganizationPage />} />
+              <Route path="/agents" element={<AgentsPage />} />
+              <Route path="/agents/:id" element={<AgentPage />} />
+              <Route
+                path="/agents/:id/connectors/:connectorId"
+                element={<AgentConnectorPage />}
+              />
+              <Route
+                path="/agents/:id/evals/:evalCaseId"
+                element={<AgentEvalPage />}
+              />
               <Route path="/channels" element={<ChannelsPage />} />
+              <Route path="/contacts" element={<ContactsPage />} />
+              <Route path="/groups" element={<GroupsPage />} />
+              <Route
+                path="/functions"
+                element={
+                  <Suspense fallback={null}>
+                    <FunctionsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/mcps"
+                element={
+                  <Suspense fallback={null}>
+                    <McpsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/api-keys"
+                element={
+                  <Suspense fallback={null}>
+                    <ApiKeysPage />
+                  </Suspense>
+                }
+              />
+              <Route path="/api-playground" element={<ApiPlaygroundPage />} />
               <Route element={<AdminRoute />}>
                 <Route path="/admin" element={<AdminPage />} />
               </Route>

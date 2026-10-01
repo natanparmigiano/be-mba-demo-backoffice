@@ -1,0 +1,1 @@
+ALTER TABLE "mba"."channels" ADD COLUMN "webhook_forward_urls" text[] DEFAULT ARRAY[]::text[] NOT NULL;

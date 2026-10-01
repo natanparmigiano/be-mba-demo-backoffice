@@ -1,0 +1,31 @@
+info:
+  name: Update template time-to-live
+  type: http
+  seq: 22
+
+http:
+  method: POST
+  url: https://graph.facebook.com/{{Version}}/<TEMPLATE_ID>
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "message_send_ttl_seconds": 3600
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Updates the delivery time-to-live for a template. Valid ranges depend on its
+  category; authentication and utility templates also accept `-1` for 30 days.
+
+  Canonical guide: [Configure message time-to-live](https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/time-to-live).

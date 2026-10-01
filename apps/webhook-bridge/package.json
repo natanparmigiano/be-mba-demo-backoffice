@@ -1,0 +1,26 @@
+{
+  "name": "@mba-demo/webhook-bridge",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "mba-webhook-bridge": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "NODE_OPTIONS=--no-node-snapshot tsx --conditions=development src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node --no-node-snapshot dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "NODE_OPTIONS=--no-node-snapshot tsx --conditions=development --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@mba-demo/events": "0.0.0",
+    "@mba-demo/wa-webhooks": "0.0.0",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

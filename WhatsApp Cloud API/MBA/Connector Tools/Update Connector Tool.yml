@@ -1,0 +1,46 @@
+info:
+  name: Update Connector Tool
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/tools/{{MBA-Tool-ID}}
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "name": "lookup_order",
+        "description": "Use when a customer asks for an order status. Requires an order ID and returns status and delivery information.",
+        "request_definition": {
+          "method": "GET",
+          "path": "/orders/{order_id}",
+          "path_parameters": {
+            "order_id": {
+              "type": "string",
+              "description": "The customer's order identifier."
+            }
+          },
+          "query_parameters": {},
+          "headers": {}
+        },
+        "user_auth_required": false
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Updates the selected connector tool. Omit `transformation_spec` to retain it, or send `null` to remove it.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/connector-tools

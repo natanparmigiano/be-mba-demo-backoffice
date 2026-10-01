@@ -1,0 +1,3 @@
+ALTER TABLE "runner"."execution_logs" DROP CONSTRAINT "execution_logs_terminal_state_check";--> statement-breakpoint
+ALTER TABLE "runner"."execution_logs" ALTER COLUMN "status" SET DEFAULT 'queued';--> statement-breakpoint
+ALTER TABLE "runner"."execution_logs" ADD CONSTRAINT "execution_logs_terminal_state_check" CHECK (("runner"."execution_logs"."status" IN ('queued', 'running') AND "runner"."execution_logs"."finished_at" IS NULL AND "runner"."execution_logs"."duration_ms" IS NULL) OR ("runner"."execution_logs"."status" NOT IN ('queued', 'running') AND "runner"."execution_logs"."finished_at" IS NOT NULL AND "runner"."execution_logs"."duration_ms" IS NOT NULL));

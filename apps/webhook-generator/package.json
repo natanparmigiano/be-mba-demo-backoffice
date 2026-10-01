@@ -14,7 +14,7 @@
     "test": "tsx --conditions=development --test src/**/*.test.ts"
   },
   "dependencies": {
-    "@mba-demo/schemas": "0.0.0"
+    "@mba-demo/wa-webhooks": "0.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",

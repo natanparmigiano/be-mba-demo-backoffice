@@ -1,0 +1,1 @@
+ALTER TABLE "mba"."messages" ADD COLUMN "media_file_path" text;

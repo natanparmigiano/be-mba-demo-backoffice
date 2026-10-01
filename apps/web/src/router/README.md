@@ -1,6 +1,9 @@
 # Routing and access guards
 
-React Router owns navigation. Routes are grouped by access policy rather than embedding session checks into individual pages.
+Group every route under one explicit access policy: public, guest, private, or
+an additional authorization guard such as admin. React Router owns navigation;
+pages must not duplicate session redirects. Client guards improve navigation
+but never replace server-side authorization.
 
 ## Route classes
 
@@ -40,7 +43,19 @@ BrowserRouter
 │   ├── GuestRoute
 │   │   └── /login -> LoginPage
 │   └── PrivateRoute
-│       └── / -> HomePage
+│       └── AppShell
+│           ├── / -> HomePage
+│           ├── /chat -> ChatPage
+│           ├── /chat/:chatId -> ChatPage
+│           ├── /organization -> OrganizationPage
+│           ├── /channels -> ChannelsPage
+│           ├── /contacts -> ContactsPage
+│           ├── /groups -> GroupsPage
+│           ├── /functions -> FunctionsPage
+│           ├── /mcps -> McpsPage
+│           ├── /api-keys -> ApiKeysPage
+│           ├── /api-playground -> ApiPlaygroundPage
+│           └── /admin -> AdminPage (AdminRoute)
 └── * -> /
 ```
 
@@ -48,7 +63,7 @@ During the initial session check, both guest and private guards render the local
 
 ## Adding routes
 
-Add each route under exactly one policy:
+Add each route under exactly one session policy:
 
 ```tsx
 <Route element={<PublicRoute />}>

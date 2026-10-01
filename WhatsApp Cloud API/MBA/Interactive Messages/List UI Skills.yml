@@ -1,0 +1,37 @@
+info:
+  name: List UI Skills
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent-ui-skills
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+  params:
+    - name: before
+      value: ""
+      type: query
+      disabled: true
+    - name: after
+      value: ""
+      type: query
+      disabled: true
+    - name: limit
+      value: "25"
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Lists UI skills with cursor pagination.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/ui-skills

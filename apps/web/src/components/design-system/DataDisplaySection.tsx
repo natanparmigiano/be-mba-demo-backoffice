@@ -28,25 +28,25 @@ import {
 
 const people = [
   {
-    name: 'Maya Chen',
+    nameKey: 'design.demoPeople.maya',
     email: 'maya@example.com',
     role: 'admin',
     status: 'active',
   },
   {
-    name: 'Alex Morgan',
+    nameKey: 'design.demoPeople.alex',
     email: 'alex@example.com',
     role: 'editor',
     status: 'active',
   },
   {
-    name: 'Sam Rivera',
+    nameKey: 'design.demoPeople.sam',
     email: 'sam@example.com',
     role: 'viewer',
     status: 'invited',
   },
   {
-    name: 'Jordan Lee',
+    nameKey: 'design.demoPeople.jordan',
     email: 'jordan@example.com',
     role: 'editor',
     status: 'inactive',
@@ -56,24 +56,30 @@ const people = [
 export function DataDisplaySection() {
   const { t, i18n } = useTranslation()
   const [search, setSearch] = useState('')
-  const [selectedPeople, setSelectedPeople] = useState<string[]>(['Maya Chen'])
+  const [selectedPeople, setSelectedPeople] = useState<string[]>([
+    'maya@example.com',
+  ])
 
   const filteredPeople = useMemo(() => {
     const query = search.trim().toLowerCase()
-    if (!query) return people
+    const translatedPeople = people.map((person) => ({
+      ...person,
+      name: t(person.nameKey),
+    }))
+    if (!query) return translatedPeople
 
-    return people.filter((person) =>
+    return translatedPeople.filter((person) =>
       `${person.name} ${person.email} ${t(`design.roles.${person.role}`)}`
         .toLowerCase()
         .includes(query),
     )
   }, [search, t])
 
-  const togglePerson = (name: string) => {
+  const togglePerson = (email: string) => {
     setSelectedPeople((current) =>
-      current.includes(name)
-        ? current.filter((person) => person !== name)
-        : [...current, name],
+      current.includes(email)
+        ? current.filter((person) => person !== email)
+        : [...current, email],
     )
   }
 
@@ -136,8 +142,8 @@ export function DataDisplaySection() {
                   <input
                     type="checkbox"
                     className="size-4 cursor-pointer accent-primary"
-                    checked={selectedPeople.includes(person.name)}
-                    onChange={() => togglePerson(person.name)}
+                    checked={selectedPeople.includes(person.email)}
+                    onChange={() => togglePerson(person.email)}
                     aria-label={`${t('design.select')} ${person.name}`}
                   />
                 </TableCell>

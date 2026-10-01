@@ -1,4 +1,8 @@
 import type {
+  WhatsAppOutboundMessage,
+  WhatsAppSendMessageResponse,
+} from '@mba-demo/wa-messaging'
+import type {
   Call,
   CallStatus,
   GroupUpdate,
@@ -8,14 +12,16 @@ import type {
   MessagesValue,
   MessagingHandoverEvent,
   MessagingHandoversValue,
+  StandbyMessageEcho,
+  StandbyValue,
   UserPreference,
   WhatsAppContact,
   WhatsAppMessage,
   WhatsAppMessageStatus,
   WhatsAppWebhook,
   WhatsAppWebhookEntry,
-} from '@mba-demo/schemas/wa-cloud/webhooks'
-import { and, eq, isNull, lt, lte, or, sql } from 'drizzle-orm'
+} from '@mba-demo/wa-webhooks'
+import { and, eq, isNull, lt, lte, ne, or, sql } from 'drizzle-orm'
 import { db, type Database } from './client.js'
 import {
   channels,
@@ -26,8 +32,10 @@ import {
   messages,
   messageStatusEvents,
   whatsappMessageTypes,
+  type ChatHandler,
   type ChatEventType,
   type NewChatEvent,
+  type StoredWhatsAppMessagePayload,
   type StoredWhatsAppContact,
   type WhatsAppGroupWebhookField,
   type WhatsAppInteractiveType,
@@ -48,25 +56,90 @@ type PersistedMessage = Pick<
   'chatId' | 'contactId' | 'id'
 >
 
-type IngestibleMessage = HistoryMessage | MessageEcho | WhatsAppMessage
+export type IngestibleMessage = HistoryMessage | MessageEcho | WhatsAppMessage
+export type ProjectableWhatsAppMessage =
+  IngestibleMessage | WhatsAppOutboundMessage
+
+export type WhatsAppMessageContentProjection = Pick<
+  typeof messages.$inferSelect,
+  | 'textContent'
+  | 'mediaId'
+  | 'mediaUrl'
+  | 'mediaMimeType'
+  | 'mediaSha256'
+  | 'mediaFileName'
+  | 'mediaCaption'
+  | 'mediaVoice'
+  | 'mediaAnimated'
+  | 'interactiveData'
+  | 'contactData'
+  | 'locationData'
+  | 'buttonData'
+  | 'orderData'
+  | 'reactionData'
+  | 'templateData'
+  | 'systemData'
+  | 'editData'
+  | 'revokeData'
+  | 'contextData'
+  | 'referralData'
+  | 'identityData'
+  | 'errorsData'
+  | 'forwarded'
+  | 'frequentlyForwarded'
+>
 
 export type WhatsAppChannelConfiguration = Pick<
   typeof channels.$inferSelect,
   | 'id'
+  | 'organizationId'
   | 'type'
   | 'waAppSecret'
   | 'waWebhookVerifyToken'
+  | 'webhookForwardUrls'
   | 'waPhoneNumber'
   | 'waPhoneNumberId'
+  | 'waSystemUserAccessToken'
   | 'waWabaId'
 >
 
+export interface WhatsAppWebhookIngestionOptions {
+  mediaFilePaths?: ReadonlyMap<string, string>
+}
+
 export interface WhatsAppWebhookIngestionSummary {
+  organizationId: string
   chatEvents: number
   contacts: number
   groups: number
   messages: number
   statuses: number
+  updates: WhatsAppChatUpdate[]
+}
+
+export interface PersistWhatsAppOutboundMessageInput {
+  chatId: number
+  clientMessageId: string
+  contactId?: number
+  mediaFilePath?: string
+  mediaMimeType?: string
+  message: WhatsAppOutboundMessage
+  recipientType?: 'group' | 'individual'
+  response: WhatsAppSendMessageResponse
+}
+
+export interface PersistedWhatsAppOutboundMessage {
+  chatId: number
+  id: number
+  providerMessageId: string
+}
+
+export type WhatsAppChatUpdateType =
+  'conversation.updated' | 'message.created' | 'message.status.updated'
+
+export interface WhatsAppChatUpdate {
+  chatId: number
+  type: WhatsAppChatUpdateType
 }
 
 export class WhatsAppChannelNotFoundError extends Error {
@@ -90,11 +163,14 @@ export async function findWhatsAppChannelById(
   const [channel] = await database
     .select({
       id: channels.id,
+      organizationId: channels.organizationId,
       type: channels.type,
       waAppSecret: channels.waAppSecret,
       waWebhookVerifyToken: channels.waWebhookVerifyToken,
+      webhookForwardUrls: channels.webhookForwardUrls,
       waPhoneNumber: channels.waPhoneNumber,
       waPhoneNumberId: channels.waPhoneNumberId,
+      waSystemUserAccessToken: channels.waSystemUserAccessToken,
       waWabaId: channels.waWabaId,
     })
     .from(channels)
@@ -125,7 +201,15 @@ export function assertWhatsAppWebhookMatchesChannel(
         )
       }
 
-      if (metadata.display_phone_number !== channel.waPhoneNumber) {
+      const webhookPhoneNumber = normalizePhoneNumber(
+        metadata.display_phone_number,
+      )
+      const channelPhoneNumber = normalizePhoneNumber(channel.waPhoneNumber)
+      if (
+        !webhookPhoneNumber ||
+        !channelPhoneNumber ||
+        webhookPhoneNumber !== channelPhoneNumber
+      ) {
         throw new WhatsAppWebhookChannelMismatchError(
           `Webhook display phone number does not belong to channel ${channel.id}`,
         )
@@ -134,17 +218,26 @@ export function assertWhatsAppWebhookMatchesChannel(
   }
 }
 
+function normalizePhoneNumber(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
 export async function ingestWhatsAppWebhook(
   channelId: number,
   webhook: WhatsAppWebhook,
   database: Database = db,
+  options: WhatsAppWebhookIngestionOptions = {},
 ): Promise<WhatsAppWebhookIngestionSummary> {
   return database.transaction(async (transaction) => {
     const channel = await findChannel(transaction, channelId)
     if (!channel) throw new WhatsAppChannelNotFoundError(channelId)
     assertWhatsAppWebhookMatchesChannel(webhook, channel)
 
-    const context = new IngestionContext(transaction, channel)
+    const context = new IngestionContext(
+      transaction,
+      channel,
+      options.mediaFilePaths,
+    )
 
     for (const entry of webhook.entry) {
       await context.ingestEntry(entry)
@@ -154,24 +247,120 @@ export async function ingestWhatsAppWebhook(
   })
 }
 
-class IngestionContext {
-  readonly summary: WhatsAppWebhookIngestionSummary = {
-    chatEvents: 0,
-    contacts: 0,
-    groups: 0,
-    messages: 0,
-    statuses: 0,
+export async function persistWhatsAppOutboundMessage(
+  input: PersistWhatsAppOutboundMessageInput,
+  database: Database = db,
+): Promise<PersistedWhatsAppOutboundMessage> {
+  const providerMessageId = input.response.messages[0]?.id
+  if (!providerMessageId) {
+    throw new Error('WhatsApp send response did not include a message ID')
   }
+
+  return database.transaction(async (transaction) => {
+    const now = new Date()
+    const record = asRecord(input.message)
+    const projection = projectWhatsAppMessageContent(input.message)
+    const values = {
+      chatId: input.chatId,
+      contactId: input.contactId,
+      clientMessageId: input.clientMessageId,
+      providerMessageId,
+      source: 'outbound_api' as const,
+      direction: 'outbound' as const,
+      messageType: input.message.type,
+      interactiveType: getInteractiveType(record),
+      ...projection,
+      ...(input.mediaFilePath ? { mediaFilePath: input.mediaFilePath } : {}),
+      ...(input.mediaMimeType ? { mediaMimeType: input.mediaMimeType } : {}),
+      dispatchStatus: 'accepted' as const,
+      recipientId: input.message.to,
+      recipientType: input.recipientType ?? 'individual',
+      occurredAt: now,
+      contextMessageId: getContextMessageId(record),
+      targetMessageId: getTargetMessageId(record),
+      rawMessage: input.message,
+      sendResponse: input.response,
+      updatedAt: now,
+    }
+
+    let [stored] = await transaction
+      .insert(messages)
+      .values(values)
+      .onConflictDoNothing()
+      .returning({
+        chatId: messages.chatId,
+        id: messages.id,
+        providerMessageId: messages.providerMessageId,
+      })
+
+    if (!stored) {
+      ;[stored] = await transaction
+        .select({
+          chatId: messages.chatId,
+          id: messages.id,
+          providerMessageId: messages.providerMessageId,
+        })
+        .from(messages)
+        .where(
+          or(
+            eq(messages.providerMessageId, providerMessageId),
+            and(
+              eq(messages.chatId, input.chatId),
+              eq(messages.clientMessageId, input.clientMessageId),
+            ),
+          ),
+        )
+        .limit(1)
+    }
+
+    if (!stored?.providerMessageId) {
+      throw new Error(`Failed to persist outbound message ${providerMessageId}`)
+    }
+
+    await transaction
+      .update(chats)
+      .set({
+        latestMessageId: sql`case
+          when ${chats.latestMessageId} is null or ${chats.latestMessageId} < ${stored.id}
+            then ${stored.id}
+          else ${chats.latestMessageId}
+        end`,
+        updatedAt: now,
+      })
+      .where(eq(chats.id, input.chatId))
+
+    return {
+      chatId: stored.chatId,
+      id: stored.id,
+      providerMessageId: stored.providerMessageId,
+    }
+  })
+}
+
+class IngestionContext {
+  readonly summary: WhatsAppWebhookIngestionSummary
 
   private readonly contactsByIdentity = new Map<string, PersistedContact>()
   private readonly groupsByProviderId = new Map<string, number>()
   private readonly directChatsByContactId = new Map<number, number>()
   private readonly groupChatsByGroupId = new Map<number, number>()
+  private readonly updateKeys = new Set<string>()
 
   constructor(
     private readonly transaction: DatabaseTransaction,
     private readonly channel: WhatsAppChannelConfiguration,
-  ) {}
+    private readonly mediaFilePaths: ReadonlyMap<string, string> = new Map(),
+  ) {
+    this.summary = {
+      organizationId: channel.organizationId,
+      chatEvents: 0,
+      contacts: 0,
+      groups: 0,
+      messages: 0,
+      statuses: 0,
+      updates: [],
+    }
+  }
 
   async ingestEntry(entry: WhatsAppWebhookEntry): Promise<void> {
     const webhookEntryTime = parseOptionalTimestamp(entry.time)
@@ -180,6 +369,9 @@ class IngestionContext {
       switch (change.field) {
         case 'messages':
           await this.ingestMessagesChange(change.value, webhookEntryTime)
+          break
+        case 'standby':
+          await this.ingestStandbyChange(change.value, webhookEntryTime)
           break
         case 'history':
           await this.ingestHistoryChange(change.value, webhookEntryTime)
@@ -273,17 +465,6 @@ class IngestionContext {
       }
     }
 
-    if ('standby' in value && value.standby) {
-      for (const message of value.standby) {
-        await this.ingestInboundMessage(
-          message,
-          'standby',
-          webhookEntryTime,
-          contactMap,
-        )
-      }
-    }
-
     if ('statuses' in value && value.statuses) {
       for (const status of value.statuses) {
         if (status.type === 'payment') continue
@@ -292,43 +473,83 @@ class IngestionContext {
     }
   }
 
+  private async ingestStandbyChange(
+    value: StandbyValue,
+    webhookEntryTime: Date | undefined,
+  ): Promise<void> {
+    const payload = value.standby
+    const contactMap = await this.upsertContacts(payload.contacts ?? [])
+
+    for (const message of payload.messages ?? []) {
+      await this.ingestInboundMessage(
+        message,
+        'standby',
+        webhookEntryTime,
+        contactMap,
+      )
+    }
+
+    for (const status of payload.statuses ?? []) {
+      if (status.type === 'payment') continue
+      await this.ingestStatus(status, contactMap, webhookEntryTime)
+    }
+
+    for (const echo of payload.message_echoes ?? []) {
+      const message = normalizeStandbyMessageEcho(
+        echo,
+        this.channel.waPhoneNumber,
+      )
+      await this.ingestMessage(
+        message,
+        'message_echo',
+        'outbound',
+        webhookEntryTime,
+        message.to,
+        undefined,
+        undefined,
+        echo,
+        true,
+      )
+    }
+  }
+
   private async ingestMessagingHandovers(
     value: MessagingHandoversValue,
     webhookEntryTime: Date | undefined,
   ): Promise<void> {
-    const knownContacts = await this.upsertContacts(value.contacts ?? [])
-
-    for (const event of value.messaging_handovers) {
-      const contact = await this.resolveDirectEventContact(
-        event.user_id,
-        knownContacts,
-      )
-      if (!contact) {
-        throw new Error(
-          `Cannot resolve contact for messaging handover ${event.id}`,
-        )
-      }
-
-      const chatId = await this.upsertDirectChat(contact.id)
-      await this.persistChatEvent({
-        chatId,
-        eventType: normalizeHandoverEventType(event),
-        source: 'messaging_handovers',
-        providerEventId: event.id,
-        deduplicationKey: `${chatId}:messaging_handovers:${event.id}`,
-        providerEventType: event.event_type ?? event.event,
-        providerConversationId: event.conversation_id,
-        actorContactId: contact.id,
-        agentId: event.agent?.id,
-        agentName: event.agent?.name,
-        previousOwner: event.previous_owner,
-        newOwner: event.new_owner,
-        providerTimestamp: String(event.timestamp),
-        occurredAt: parseRequiredTimestamp(event.timestamp),
-        webhookEntryTime,
-        rawEvent: event,
-      })
+    const contact = await this.resolveDirectEventContact(
+      value.sender.phone_number,
+      new Map(),
+    )
+    if (!contact) {
+      throw new Error('Cannot resolve contact for messaging handover')
     }
+
+    const chatId = await this.upsertDirectChat(contact.id)
+    const handover = value.control_passed
+    const handledBy = getChatHandlerForHandoverRole(handover.new_owner_role)
+    if (handledBy) {
+      await this.transaction
+        .update(chats)
+        .set({ handledBy, updatedAt: new Date() })
+        .where(and(eq(chats.id, chatId), ne(chats.handledBy, handledBy)))
+    }
+
+    await this.persistChatEvent({
+      chatId,
+      eventType: 'handover',
+      source: 'messaging_handovers',
+      deduplicationKey: handoverDeduplicationKey(chatId, value),
+      providerEventType: value.type,
+      actorContactId: contact.id,
+      agentId: handover.previous_owner_app_id,
+      previousOwner: handover.previous_owner_role,
+      newOwner: handover.new_owner_role,
+      providerTimestamp: String(value.timestamp),
+      occurredAt: parseRequiredTimestamp(value.timestamp),
+      webhookEntryTime,
+      rawEvent: value,
+    })
   }
 
   private async ingestCallsChange(
@@ -511,6 +732,8 @@ class IngestionContext {
     remoteIdentity: string,
     knownContactId?: number,
     providerGroupId?: string,
+    rawMessage: StoredWhatsAppMessagePayload = message,
+    aiGenerated = false,
   ): Promise<PersistedMessage> {
     const record = asRecord(message)
     const senderPhone = getString(record, 'from')
@@ -533,23 +756,44 @@ class IngestionContext {
       chatId = await this.upsertDirectChat(contactId)
     }
 
+    const sourceHandler = getChatHandlerForMessageSource(source)
+    if (sourceHandler) {
+      await this.transaction
+        .update(chats)
+        .set({ handledBy: sourceHandler, updatedAt: new Date() })
+        .where(and(eq(chats.id, chatId), ne(chats.handledBy, sourceHandler)))
+    }
+
+    const effectiveHandler =
+      sourceHandler ??
+      (direction === 'inbound' ? await this.findChatHandler(chatId) : undefined)
+
     const messageType = normalizeMessageType(message.type)
+    const contentProjection = projectWhatsAppMessageContent(message)
+    const mediaFilePath = this.mediaFilePaths.get(message.id)
     const occurredAt = parseOptionalTimestamp(message.timestamp)
     const recipientId =
       direction === 'outbound'
         ? (getString(record, 'to') ?? remoteIdentity)
         : (providerGroupId ?? this.channel.waPhoneNumber)
     const now = new Date()
+    const initialStatus = getInitialMessageStatus(direction, effectiveHandler)
+    const isReadByAgent = direction === 'inbound' && initialStatus === 'read'
     const values = {
       chatId,
       contactId,
       providerMessageId: message.id,
       source,
       direction,
+      aiGenerated,
       messageType,
       interactiveType: getInteractiveType(record),
+      ...contentProjection,
+      ...(mediaFilePath ? { mediaFilePath } : {}),
       dispatchStatus:
         source === 'message_echo' ? ('accepted' as const) : undefined,
+      status: initialStatus,
+      statusUpdatedAt: initialStatus ? now : undefined,
       senderPhone,
       senderUserId,
       senderParentUserId,
@@ -562,28 +806,68 @@ class IngestionContext {
       webhookEntryTime,
       contextMessageId: getContextMessageId(record),
       targetMessageId: getTargetMessageId(record),
-      rawMessage: message,
+      rawMessage,
       updatedAt: now,
     }
 
-    const [storedMessage] = await this.transaction
+    let [storedMessage] = await this.transaction
       .insert(messages)
       .values(values)
-      .onConflictDoUpdate({
-        target: messages.providerMessageId,
-        set: values,
-      })
+      .onConflictDoNothing({ target: messages.providerMessageId })
       .returning({
         id: messages.id,
         chatId: messages.chatId,
         contactId: messages.contactId,
       })
+    const wasInserted = Boolean(storedMessage)
+
+    if (!storedMessage) {
+      ;[storedMessage] = await this.transaction
+        .update(messages)
+        .set({
+          ...values,
+          status:
+            initialStatus === 'read'
+              ? sql<StoredMessageStatus>`case
+                  when ${messages.status} is null or ${messages.status} = 'delivered'
+                    then 'read'
+                  else ${messages.status}
+                end`
+              : initialStatus
+                ? sql<StoredMessageStatus>`coalesce(${messages.status}, ${initialStatus})`
+                : undefined,
+          statusUpdatedAt:
+            initialStatus === 'read'
+              ? sql<Date>`case
+                  when ${messages.status} is null or ${messages.status} = 'delivered'
+                    then ${now}
+                  else ${messages.statusUpdatedAt}
+                end`
+              : initialStatus
+                ? sql<Date>`coalesce(${messages.statusUpdatedAt}, ${now})`
+                : undefined,
+        })
+        .where(eq(messages.providerMessageId, message.id))
+        .returning({
+          id: messages.id,
+          chatId: messages.chatId,
+          contactId: messages.contactId,
+        })
+    }
 
     if (!storedMessage)
       throw new Error(`Failed to persist message ${message.id}`)
 
-    await this.advanceLatestMessage(storedMessage.chatId, storedMessage.id)
+    if (wasInserted || isReadByAgent) {
+      await this.advanceLatestMessage(
+        storedMessage.chatId,
+        storedMessage.id,
+        wasInserted && direction === 'inbound' && !isReadByAgent,
+        isReadByAgent,
+      )
+    }
     this.summary.messages += 1
+    this.recordUpdate(storedMessage.chatId, 'message.created')
     return storedMessage
   }
 
@@ -621,12 +905,15 @@ class IngestionContext {
           contactId: messages.contactId,
         })
 
+      const wasInserted = Boolean(storedMessage)
       storedMessage ??= await this.findMessageByProviderId(status.id)
       if (!storedMessage) {
         throw new Error(`Failed to persist status-first message ${status.id}`)
       }
 
-      await this.advanceLatestMessage(storedMessage.chatId, storedMessage.id)
+      if (wasInserted) {
+        await this.advanceLatestMessage(storedMessage.chatId, storedMessage.id)
+      }
     }
 
     const recipientType = status.recipient_type ?? 'individual'
@@ -737,6 +1024,7 @@ class IngestionContext {
       )
 
     this.summary.statuses += 1
+    this.recordUpdate(storedMessage.chatId, 'message.status.updated')
   }
 
   private async resolveStatusChat(
@@ -830,6 +1118,14 @@ class IngestionContext {
         },
       })
     this.summary.chatEvents += 1
+    this.recordUpdate(event.chatId, 'conversation.updated')
+  }
+
+  private recordUpdate(chatId: number, type: WhatsAppChatUpdateType): void {
+    const key = `${chatId}:${type}`
+    if (this.updateKeys.has(key)) return
+    this.updateKeys.add(key)
+    this.summary.updates.push({ chatId, type })
   }
 
   private async upsertContacts(
@@ -1061,7 +1357,12 @@ class IngestionContext {
 
     const [chat] = await this.transaction
       .insert(chats)
-      .values({ kind: 'direct', contactId })
+      .values({
+        kind: 'direct',
+        channelId: this.channel.id,
+        organizationId: this.channel.organizationId,
+        contactId,
+      })
       .onConflictDoUpdate({
         target: chats.contactId,
         set: { updatedAt: new Date() },
@@ -1079,7 +1380,12 @@ class IngestionContext {
 
     const [chat] = await this.transaction
       .insert(chats)
-      .values({ kind: 'group', groupId })
+      .values({
+        kind: 'group',
+        channelId: this.channel.id,
+        organizationId: this.channel.organizationId,
+        groupId,
+      })
       .onConflictDoUpdate({
         target: chats.groupId,
         set: { updatedAt: new Date() },
@@ -1106,22 +1412,48 @@ class IngestionContext {
     return message
   }
 
+  private async findChatHandler(chatId: number): Promise<ChatHandler> {
+    const [chat] = await this.transaction
+      .select({ handledBy: chats.handledBy })
+      .from(chats)
+      .where(eq(chats.id, chatId))
+      .limit(1)
+    if (!chat) throw new Error(`Cannot resolve handler for chat ${chatId}`)
+    return chat.handledBy
+  }
+
   private async advanceLatestMessage(
     chatId: number,
     messageId: number,
+    incrementUnread = false,
+    markRead = false,
   ): Promise<void> {
     await this.transaction
       .update(chats)
-      .set({ latestMessageId: messageId, updatedAt: new Date() })
-      .where(
-        and(
-          eq(chats.id, chatId),
-          or(
-            isNull(chats.latestMessageId),
-            lt(chats.latestMessageId, messageId),
-          ),
-        ),
-      )
+      .set({
+        latestMessageId: sql`case
+          when ${chats.latestMessageId} is null or ${chats.latestMessageId} < ${messageId}
+            then ${messageId}
+          else ${chats.latestMessageId}
+        end`,
+        updatedAt: new Date(),
+        ...(markRead
+          ? {
+              latestReadMessageId: sql`case
+                when ${chats.latestReadMessageId} is null or ${chats.latestReadMessageId} < ${messageId}
+                  then ${messageId}
+                else ${chats.latestReadMessageId}
+              end`,
+              unreadMessageCount: 0,
+            }
+          : {}),
+        ...(incrementUnread
+          ? {
+              unreadMessageCount: sql`${chats.unreadMessageCount} + 1`,
+            }
+          : {}),
+      })
+      .where(eq(chats.id, chatId))
   }
 
   private isBusinessIdentity(value: string): boolean {
@@ -1139,11 +1471,14 @@ async function findChannel(
   const [channel] = await transaction
     .select({
       id: channels.id,
+      organizationId: channels.organizationId,
       type: channels.type,
       waAppSecret: channels.waAppSecret,
       waWebhookVerifyToken: channels.waWebhookVerifyToken,
+      webhookForwardUrls: channels.webhookForwardUrls,
       waPhoneNumber: channels.waPhoneNumber,
       waPhoneNumberId: channels.waPhoneNumberId,
+      waSystemUserAccessToken: channels.waSystemUserAccessToken,
       waWabaId: channels.waWabaId,
     })
     .from(channels)
@@ -1152,14 +1487,59 @@ async function findChannel(
   return channel
 }
 
+export function getChatHandlerForMessageSource(
+  source: WhatsAppMessageSource,
+): ChatHandler | undefined {
+  if (source === 'standby') return 'mba'
+  if (source === 'messages') return 'application'
+  return undefined
+}
+
+export function getChatHandlerForHandoverRole(
+  role: string,
+): ChatHandler | undefined {
+  if (role === 'ai_agent') return 'mba'
+  if (role === 'escalation') return 'application'
+  return undefined
+}
+
+export function getInitialMessageStatus(
+  direction: 'inbound' | 'outbound',
+  handledBy?: ChatHandler,
+): StoredMessageStatus | undefined {
+  if (direction === 'outbound') return undefined
+  return handledBy === 'mba' ? 'read' : 'delivered'
+}
+
 const messageTypeSet = new Set<string>(whatsappMessageTypes)
 
-function normalizeHandoverEventType(
+function normalizeStandbyMessageEcho(
+  echo: StandbyMessageEcho,
+  businessPhoneNumber: string,
+): MessageEcho {
+  return {
+    ...echo.message,
+    id: echo.id,
+    timestamp: String(echo.timestamp),
+    from: businessPhoneNumber,
+  }
+}
+
+function handoverDeduplicationKey(
+  chatId: number,
   event: MessagingHandoverEvent,
-): ChatEventType {
-  if (event.event === 'handover') return 'handover'
-  if (event.event === 'agent_event' || event.event_type) return 'agent_event'
-  return 'other'
+): string {
+  const handover = event.control_passed
+  return [
+    chatId,
+    'messaging_handovers',
+    event.type,
+    String(event.timestamp),
+    handover.previous_owner_role,
+    handover.new_owner_role,
+    handover.previous_owner_app_id ?? '',
+    handover.metadata ?? '',
+  ].join(':')
 }
 
 function groupChatEventType(field: WhatsAppGroupWebhookField): ChatEventType {
@@ -1188,6 +1568,144 @@ function groupEventDeduplicationKey(
 
 function normalizeMessageType(type: string): WhatsAppMessageType {
   return messageTypeSet.has(type) ? (type as WhatsAppMessageType) : 'unknown'
+}
+
+export function projectWhatsAppMessageContent(
+  message: ProjectableWhatsAppMessage,
+): WhatsAppMessageContentProjection {
+  const record = asRecord(message)
+  const editData = getRecord(record, 'edit')
+  const editedMessage = editData ? getRecord(editData, 'message') : undefined
+  const content = editedMessage ?? record
+  const interactiveData = getRecord(content, 'interactive')
+  const contactData = getArray(content, 'contacts')
+  const locationData = getRecord(content, 'location')
+  const buttonData = getRecord(content, 'button')
+  const orderData = getRecord(content, 'order')
+  const reactionData = getRecord(content, 'reaction')
+  const templateData = getRecord(content, 'template')
+  const systemData = getRecord(content, 'system')
+  const revokeData = getRecord(record, 'revoke')
+  const mediaData = getMediaData(content, interactiveData)
+  const contextData =
+    getRecord(content, 'context') ?? getRecord(record, 'context')
+
+  return {
+    textContent: getTextContent(content),
+    mediaId: mediaData ? (getString(mediaData, 'id') ?? null) : null,
+    mediaUrl: mediaData
+      ? (getString(mediaData, 'url') ?? getString(mediaData, 'link') ?? null)
+      : null,
+    mediaMimeType: mediaData
+      ? (getString(mediaData, 'mime_type') ?? null)
+      : null,
+    mediaSha256: mediaData ? (getString(mediaData, 'sha256') ?? null) : null,
+    mediaFileName: mediaData
+      ? (getString(mediaData, 'filename') ?? null)
+      : null,
+    mediaCaption: mediaData ? (getString(mediaData, 'caption') ?? null) : null,
+    mediaVoice: mediaData ? (getBoolean(mediaData, 'voice') ?? null) : null,
+    mediaAnimated: mediaData
+      ? (getBoolean(mediaData, 'animated') ?? null)
+      : null,
+    interactiveData: projectionValue<'interactiveData'>(interactiveData),
+    contactData: projectionValue<'contactData'>(contactData),
+    locationData: projectionValue<'locationData'>(locationData),
+    buttonData: projectionValue<'buttonData'>(buttonData),
+    orderData: projectionValue<'orderData'>(orderData),
+    reactionData: projectionValue<'reactionData'>(reactionData),
+    templateData: projectionValue<'templateData'>(templateData),
+    systemData: projectionValue<'systemData'>(systemData),
+    editData: projectionValue<'editData'>(editData),
+    revokeData: projectionValue<'revokeData'>(revokeData),
+    contextData: projectionValue<'contextData'>(contextData),
+    forwarded: contextData
+      ? (getBoolean(contextData, 'forwarded') ?? null)
+      : null,
+    frequentlyForwarded: contextData
+      ? (getBoolean(contextData, 'frequently_forwarded') ?? null)
+      : null,
+    referralData: projectionValue<'referralData'>(
+      getRecord(record, 'referral'),
+    ),
+    identityData: projectionValue<'identityData'>(
+      getRecord(record, 'identity'),
+    ),
+    errorsData: projectionValue<'errorsData'>(getArray(record, 'errors')),
+  }
+}
+
+function getMediaData(
+  message: Record<string, unknown>,
+  interactive: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  for (const key of ['audio', 'document', 'image', 'sticker', 'video']) {
+    const media = getRecord(message, key)
+    if (media) return media
+  }
+
+  const header = interactive ? getRecord(interactive, 'header') : undefined
+  const headerType = header ? getString(header, 'type') : undefined
+  return header && headerType ? getRecord(header, headerType) : undefined
+}
+
+function getTextContent(message: Record<string, unknown>): string | null {
+  const text = getRecord(message, 'text')
+  const button = getRecord(message, 'button')
+  const interactive = getRecord(message, 'interactive')
+  const buttonReply = interactive
+    ? getRecord(interactive, 'button_reply')
+    : undefined
+  const listReply = interactive
+    ? getRecord(interactive, 'list_reply')
+    : undefined
+  const flowReply = interactive
+    ? getRecord(interactive, 'nfm_reply')
+    : undefined
+  const interactiveBody = interactive
+    ? getRecord(interactive, 'body')
+    : undefined
+  const document = getRecord(message, 'document')
+  const image = getRecord(message, 'image')
+  const video = getRecord(message, 'video')
+  const location = getRecord(message, 'location')
+  const order = getRecord(message, 'order')
+  const reaction = getRecord(message, 'reaction')
+  const system = getRecord(message, 'system')
+  const template = getRecord(message, 'template')
+  const contacts = getArray(message, 'contacts')
+  const firstContact = contacts?.[0] ? asRecord(contacts[0]) : undefined
+  const contactName = firstContact ? getRecord(firstContact, 'name') : undefined
+
+  return firstString(
+    text && getString(text, 'body'),
+    button && getString(button, 'text'),
+    buttonReply && getString(buttonReply, 'title'),
+    listReply && getString(listReply, 'title'),
+    flowReply && getString(flowReply, 'body'),
+    interactiveBody && getString(interactiveBody, 'text'),
+    document && getString(document, 'caption'),
+    document && getString(document, 'filename'),
+    image && getString(image, 'caption'),
+    video && getString(video, 'caption'),
+    location && getString(location, 'name'),
+    location && getString(location, 'address'),
+    order && getString(order, 'text'),
+    reaction && getString(reaction, 'emoji'),
+    system && getString(system, 'body'),
+    template && getString(template, 'name'),
+    contactName && getString(contactName, 'formatted_name'),
+  )
+}
+
+function projectionValue<Key extends keyof WhatsAppMessageContentProjection>(
+  value: unknown,
+): WhatsAppMessageContentProjection[Key] {
+  return (value ?? null) as WhatsAppMessageContentProjection[Key]
+}
+
+function firstString(...values: (string | undefined)[]): string | null {
+  return values.find((value): value is string => value !== undefined) ?? null
 }
 
 function getInteractiveType(
@@ -1239,7 +1757,8 @@ function getWebhookMetadata(
   value: unknown,
 ): { display_phone_number: string; phone_number_id: string } | undefined {
   const record = asRecord(value)
-  const metadata = getRecord(record, 'metadata')
+  const metadata =
+    getRecord(record, 'metadata') ?? getRecord(record, 'recipient')
   const displayPhoneNumber = metadata
     ? getString(metadata, 'display_phone_number')
     : undefined
@@ -1288,12 +1807,28 @@ function getRecord(
     : undefined
 }
 
+function getArray(
+  record: Record<string, unknown>,
+  key: string,
+): unknown[] | undefined {
+  const value = record[key]
+  return Array.isArray(value) ? value : undefined
+}
+
 function getString(
   record: Record<string, unknown>,
   key: string,
 ): string | undefined {
   const value = record[key]
   return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
+function getBoolean(
+  record: Record<string, unknown>,
+  key: string,
+): boolean | undefined {
+  const value = record[key]
+  return typeof value === 'boolean' ? value : undefined
 }
 
 const statusRank: Record<StoredMessageStatus, number> = {

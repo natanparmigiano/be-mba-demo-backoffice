@@ -1,6 +1,16 @@
 # Authentication
 
-This folder contains the frontend boundary for Better Auth. It exposes a configured client and a small React context used by route guards and authenticated pages.
+Use this folder as the only frontend boundary for Better Auth. The configured
+client owns session transport, and `AuthProvider` exposes session state to
+guards and authenticated pages. Never store credentials or session tokens in
+application storage.
+
+## Session boundary
+
+`AppRouter` installs `AuthProvider` once around guest and private routes. Public
+routes stay outside it and therefore do not trigger session loading. Use
+`useAuth()` only below the provider; it intentionally throws outside that
+boundary.
 
 ## Files
 
@@ -10,6 +20,8 @@ This folder contains the frontend boundary for Better Auth. It exposes a configu
 ## Client behavior
 
 The auth client uses the current browser origin. Better Auth requests therefore travel through the same `/api` origin as the application; Vite proxies those requests to the backend during local development.
+
+Before rendering the guest SSO form, `LoginPage` requests `/api/auth/sso-availability`. The endpoint returns only an `enabled` boolean and becomes true only when at least one domain-verified provider exists; provider details remain behind Better Auth's authenticated provider-management endpoint. A failed availability request keeps the optional SSO form hidden.
 
 ```ts
 import { authClient } from './auth-client'
@@ -33,8 +45,6 @@ Do not duplicate auth response interfaces. `AuthSession` and `AuthUser` are infe
 | `isRefetching` | A later session refresh is in progress.                           |
 | `error`        | Session-fetch error from Better Auth.                             |
 | `refetch()`    | Refreshes session data after sign-in or sign-out.                 |
-
-Use `useAuth()` only below `AuthProvider`; it intentionally throws outside that boundary. `AppRouter` installs the provider around guest and private routes but not around public routes.
 
 ## Authentication flow
 

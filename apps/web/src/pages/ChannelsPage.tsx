@@ -13,10 +13,26 @@ import {
   Trash2,
   Webhook,
 } from 'lucide-react'
-import { useCallback, useEffect, useState, type SubmitEvent } from 'react'
+import type { InferResponseType } from 'hono/client'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type SubmitEvent,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
-import { Button, cn, Dialog, EmptyState, Input, Pill } from '../components/ui'
+import {
+  Button,
+  cn,
+  Dialog,
+  EmptyState,
+  Input,
+  Pill,
+  Textarea,
+} from '../components/ui'
 
 interface ChannelSummary {
   id: number
@@ -26,6 +42,7 @@ interface ChannelSummary {
   waWabaId: string
   waBusinessId: string
   waAppId: string
+  webhookForwardUrls: string[]
   hasWaAppSecret: boolean
   hasWaWebhookVerifyToken: boolean
   hasWaSystemUserAccessToken: boolean
@@ -42,9 +59,14 @@ interface ChannelFormValues {
   waAppSecret: string
   waWebhookVerifyToken: string
   waSystemUserAccessToken: string
+  webhookForwardUrls: string
 }
 
 type ChannelDialog = 'create' | 'edit' | 'delete' | 'set-webhook' | null
+type ChannelDeletionPreview = InferResponseType<
+  (typeof apiClient.api.channels)[':id']['deletion-impact']['$get'],
+  200
+>['impact']
 
 const emptyForm: ChannelFormValues = {
   waPhoneNumber: '',
@@ -55,9 +77,11 @@ const emptyForm: ChannelFormValues = {
   waAppSecret: '',
   waWebhookVerifyToken: '',
   waSystemUserAccessToken: '',
+  webhookForwardUrls: '',
 }
 
 export function ChannelsPage() {
+  const { t } = useTranslation()
   const activeOrganizationQuery = authClient.useActiveOrganization()
   const activeMemberRoleQuery = authClient.useActiveMemberRole()
   const activeOrganization = activeOrganizationQuery.data
@@ -77,6 +101,19 @@ export function ChannelsPage() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [dialogError, setDialogError] = useState<string | null>(null)
+  const [deletionPreview, setDeletionPreview] =
+    useState<ChannelDeletionPreview | null>(null)
+  const [deleteConfirmation, setDeleteConfirmation] = useState('')
+  const [isLoadingDeletionPreview, setIsLoadingDeletionPreview] =
+    useState(false)
+  const deletionPreviewRequestId = useRef(0)
+
+  useEffect(() => {
+    document.title = `${t('channels.title')} · ${t('design.brand')}`
+    document
+      .querySelector<HTMLMetaElement>('meta[name="description"]')
+      ?.setAttribute('content', t('channels.metaDescription'))
+  }, [t])
 
   const refreshChannels = useCallback(async () => {
     if (!activeOrganization?.id) {
@@ -89,15 +126,18 @@ export function ChannelsPage() {
     setError(null)
     try {
       const response = await apiClient.api.channels.$get()
-      if (!response.ok) throw new Error(await readApiError(response))
+      if (!response.ok)
+        throw new Error(
+          await readApiError(response, t('channels.requestFailed')),
+        )
       const data = await response.json()
       setChannels(data.channels)
     } catch (reason) {
-      setError(getErrorMessage(reason))
+      setError(getErrorMessage(reason, t('channels.operationFailed')))
     } finally {
       setIsLoading(false)
     }
-  }, [activeOrganization?.id])
+  }, [activeOrganization?.id, t])
 
   useEffect(() => {
     void refreshChannels()
@@ -105,9 +145,13 @@ export function ChannelsPage() {
 
   const closeDialog = () => {
     if (isBusy) return
+    deletionPreviewRequestId.current += 1
     setDialog(null)
     setSelectedChannel(null)
     setDialogError(null)
+    setDeletionPreview(null)
+    setDeleteConfirmation('')
+    setIsLoadingDeletionPreview(false)
   }
 
   const openCreateDialog = () => {
@@ -128,9 +172,43 @@ export function ChannelsPage() {
       waAppSecret: '',
       waWebhookVerifyToken: '',
       waSystemUserAccessToken: '',
+      webhookForwardUrls: channel.webhookForwardUrls.join('\n'),
     })
     setDialogError(null)
     setDialog('edit')
+  }
+
+  const openDeleteDialog = async (channel: ChannelSummary) => {
+    const requestId = ++deletionPreviewRequestId.current
+    setSelectedChannel(channel)
+    setDeletionPreview(null)
+    setDeleteConfirmation('')
+    setDialogError(null)
+    setIsLoadingDeletionPreview(true)
+    setDialog('delete')
+
+    try {
+      const response = await apiClient.api.channels[':id'][
+        'deletion-impact'
+      ].$get({ param: { id: String(channel.id) } })
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, t('channels.deletionPreviewFailed')),
+        )
+      }
+      if (deletionPreviewRequestId.current !== requestId) return
+      setDeletionPreview((await response.json()).impact)
+    } catch (reason) {
+      if (deletionPreviewRequestId.current === requestId) {
+        setDialogError(
+          getErrorMessage(reason, t('channels.deletionPreviewFailed')),
+        )
+      }
+    } finally {
+      if (deletionPreviewRequestId.current === requestId) {
+        setIsLoadingDeletionPreview(false)
+      }
+    }
   }
 
   const saveChannel = async (event: SubmitEvent<HTMLFormElement>) => {
@@ -162,27 +240,41 @@ export function ChannelsPage() {
             waWabaId: values.waWabaId,
             waBusinessId: values.waBusinessId,
             waAppId: values.waAppId,
+            webhookForwardUrls: values.webhookForwardUrls,
             ...secrets,
           },
         })
       } else {
-        throw new Error('No channel selected.')
+        throw new Error(t('channels.noChannelSelected'))
       }
 
-      if (!response.ok) throw new Error(await readApiError(response))
+      if (!response.ok)
+        throw new Error(
+          await readApiError(response, t('channels.requestFailed')),
+        )
       await refreshChannels()
       setDialog(null)
       setSelectedChannel(null)
-      setNotice(dialog === 'create' ? 'Channel created.' : 'Channel updated.')
+      setNotice(
+        dialog === 'create'
+          ? t('channels.channelCreated')
+          : t('channels.channelUpdated'),
+      )
     } catch (reason) {
-      setDialogError(getErrorMessage(reason))
+      setDialogError(getErrorMessage(reason, t('channels.operationFailed')))
     } finally {
       setIsBusy(false)
     }
   }
 
   const deleteChannel = async () => {
-    if (!selectedChannel) return
+    if (
+      !selectedChannel ||
+      !deletionPreview ||
+      deleteConfirmation !== deletionPreview.confirmationText
+    ) {
+      return
+    }
     setIsBusy(true)
     setDialogError(null)
     setNotice(null)
@@ -190,14 +282,20 @@ export function ChannelsPage() {
     try {
       const response = await apiClient.api.channels[':id'].$delete({
         param: { id: String(selectedChannel.id) },
+        json: { confirmation: deleteConfirmation },
       })
-      if (!response.ok) throw new Error(await readApiError(response))
+      if (!response.ok)
+        throw new Error(
+          await readApiError(response, t('channels.requestFailed')),
+        )
       await refreshChannels()
       setDialog(null)
       setSelectedChannel(null)
-      setNotice('Channel deleted.')
+      setDeletionPreview(null)
+      setDeleteConfirmation('')
+      setNotice(t('channels.channelDeleted'))
     } catch (reason) {
-      setDialogError(getErrorMessage(reason))
+      setDialogError(getErrorMessage(reason, t('channels.operationFailed')))
     } finally {
       setIsBusy(false)
     }
@@ -217,13 +315,16 @@ export function ChannelsPage() {
           json: { callbackUrl },
         },
       )
-      if (!response.ok) throw new Error(await readApiError(response))
+      if (!response.ok)
+        throw new Error(
+          await readApiError(response, t('channels.requestFailed')),
+        )
       const result = await response.json()
       setDialog(null)
       setSelectedChannel(null)
-      setNotice(`${result.message}: ${result.callbackUrl}`)
+      setNotice(t('channels.webhookSet', { url: result.callbackUrl }))
     } catch (reason) {
-      setDialogError(getErrorMessage(reason))
+      setDialogError(getErrorMessage(reason, t('channels.operationFailed')))
     } finally {
       setIsBusy(false)
     }
@@ -234,17 +335,16 @@ export function ChannelsPage() {
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
-            Workspace channels
+            {t('channels.eyebrow')}
           </p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
-            Channels
+            {t('channels.title')}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Manage the WhatsApp Cloud API connections for{' '}
-            <span className="font-semibold text-foreground">
-              {activeOrganization?.name ?? 'your active organization'}
-            </span>
-            .
+            {t('channels.description', {
+              organization:
+                activeOrganization?.name ?? t('channels.activeOrganization'),
+            })}
           </p>
         </div>
         {canManage && (
@@ -253,7 +353,7 @@ export function ChannelsPage() {
             onClick={openCreateDialog}
           >
             <Plus className="size-4" aria-hidden />
-            New channel
+            {t('channels.newChannel')}
           </Button>
         )}
       </header>
@@ -275,9 +375,9 @@ export function ChannelsPage() {
       <section className="rounded-2xl border bg-card p-5 sm:p-6">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
-            <h2 className="font-bold">Connected channels</h2>
+            <h2 className="font-bold">{t('channels.connectedChannels')}</h2>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              {channels.length} {channels.length === 1 ? 'channel' : 'channels'}
+              {t('channels.channelCount', { count: channels.length })}
             </p>
           </div>
           <Button
@@ -286,7 +386,7 @@ export function ChannelsPage() {
             size="icon"
             disabled={isLoading}
             onClick={() => void refreshChannels()}
-            aria-label="Refresh channels"
+            aria-label={t('channels.refreshChannels')}
           >
             <RefreshCw
               className={cn('size-4', isLoading && 'animate-spin')}
@@ -297,7 +397,7 @@ export function ChannelsPage() {
 
         {isLoading && channels.length === 0 ? (
           <div className="flex flex-wrap gap-4" role="status">
-            <span className="sr-only">Loading channels</span>
+            <span className="sr-only">{t('channels.loadingChannels')}</span>
             {[0, 1].map((item) => (
               <div
                 key={item}
@@ -308,13 +408,13 @@ export function ChannelsPage() {
         ) : channels.length === 0 ? (
           <EmptyState
             icon={<RadioTower className="size-5" aria-hidden />}
-            title="No channels yet"
-            description="Connect a WhatsApp number to start receiving webhooks for this organization."
+            title={t('channels.noChannels')}
+            description={t('channels.noChannelsDescription')}
             action={
               canManage ? (
                 <Button size="sm" onClick={openCreateDialog}>
                   <Plus className="size-4" aria-hidden />
-                  Create channel
+                  {t('channels.createChannel')}
                 </Button>
               ) : undefined
             }
@@ -333,11 +433,7 @@ export function ChannelsPage() {
                   setDialogError(null)
                   setDialog('set-webhook')
                 }}
-                onDelete={() => {
-                  setSelectedChannel(channel)
-                  setDialogError(null)
-                  setDialog('delete')
-                }}
+                onDelete={() => void openDeleteDialog(channel)}
               />
             ))}
           </div>
@@ -368,20 +464,19 @@ export function ChannelsPage() {
       <Dialog
         open={dialog === 'set-webhook'}
         onOpenChange={(open) => !open && closeDialog()}
-        title="Set this webhook for the WABA?"
-        description="This overrides the callback URL for the entire WhatsApp Business Account, not only this phone number."
+        title={t('channels.setWebhookTitle')}
+        description={t('channels.setWebhookDescription')}
         icon={<DialogIcon icon={<AlertTriangle className="size-5" />} danger />}
       >
         <div className="grid w-full gap-4">
           <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm leading-6 text-warning-foreground">
-            All webhook events for WABA{' '}
-            <strong>{selectedChannel?.waWabaId}</strong> will be pointed to this
-            application. Other integrations using the current callback may stop
-            receiving events.
+            {t('channels.setWebhookWarning', {
+              wabaId: selectedChannel?.waWabaId,
+            })}
           </div>
           <div className="rounded-lg border bg-muted/30 p-3">
             <p className="text-xs font-semibold text-muted-foreground">
-              New webhook URL
+              {t('channels.newWebhookUrl')}
             </p>
             <code className="mt-1 block break-all text-xs">
               {selectedChannel
@@ -392,14 +487,14 @@ export function ChannelsPage() {
           <DialogError message={dialogError} />
           <div className="flex justify-end gap-2">
             <Button variant="ghost" disabled={isBusy} onClick={closeDialog}>
-              Cancel
+              {t('channels.cancel')}
             </Button>
             <Button
               variant="danger"
               isLoading={isBusy}
               onClick={() => void setChannelWebhook()}
             >
-              Set webhook
+              {t('channels.setWebhook')}
             </Button>
           </div>
         </div>
@@ -408,26 +503,88 @@ export function ChannelsPage() {
       <Dialog
         open={dialog === 'delete'}
         onOpenChange={(open) => !open && closeDialog()}
-        title="Delete channel?"
-        description={`This removes ${selectedChannel?.waPhoneNumber ?? 'this channel'} from the active organization. Channels with persisted messages or contacts cannot be deleted.`}
+        title={t('channels.deleteTitle')}
+        description={t('channels.deleteDescription', {
+          channel: selectedChannel?.waPhoneNumber ?? t('channels.thisChannel'),
+        })}
         icon={<DialogIcon icon={<Trash2 className="size-5" />} danger />}
       >
         <div className="grid w-full gap-4">
+          {isLoadingDeletionPreview ? (
+            <p
+              className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground"
+              role="status"
+            >
+              {t('channels.loadingDeletionPreview')}
+            </p>
+          ) : deletionPreview ? (
+            <>
+              <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm leading-6 text-destructive">
+                {t('channels.deleteWarning')}
+              </div>
+              <dl className="grid grid-cols-3 gap-2">
+                <DeletionImpact
+                  label={t('channels.deletionImpact.contacts')}
+                  value={deletionPreview.contacts}
+                />
+                <DeletionImpact
+                  label={t('channels.deletionImpact.messages')}
+                  value={deletionPreview.messages}
+                />
+                <DeletionImpact
+                  label={t('channels.deletionImpact.groups')}
+                  value={deletionPreview.groups}
+                />
+              </dl>
+              <Input
+                autoComplete="off"
+                autoFocus
+                disabled={isBusy}
+                hint={t('channels.deleteConfirmationHint', {
+                  confirmation: deletionPreview.confirmationText,
+                })}
+                label={t('channels.deleteConfirmationLabel')}
+                value={deleteConfirmation}
+                onChange={(event) => setDeleteConfirmation(event.target.value)}
+              />
+              <p className="text-xs leading-5 text-muted-foreground">
+                {t('channels.metaDataUnaffected')}
+              </p>
+            </>
+          ) : null}
           <DialogError message={dialogError} />
           <div className="flex justify-end gap-2">
             <Button variant="ghost" disabled={isBusy} onClick={closeDialog}>
-              Cancel
+              {t('channels.cancel')}
             </Button>
             <Button
               variant="danger"
+              disabled={
+                !deletionPreview ||
+                deleteConfirmation !== deletionPreview.confirmationText
+              }
               isLoading={isBusy}
               onClick={() => void deleteChannel()}
             >
-              Delete channel
+              {t('channels.deleteChannel')}
             </Button>
           </div>
         </div>
       </Dialog>
+    </div>
+  )
+}
+
+function DeletionImpact({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="grid min-w-0 rounded-xl border bg-muted/25 p-3 text-center">
+      <dt
+        className="order-2 mt-1 truncate text-[11px] text-muted-foreground"
+        title={label}
+      >
+        {label}
+      </dt>
+      <dd className="order-1 text-xl font-black tabular-nums">{value}</dd>
     </div>
   )
 }
@@ -447,6 +604,7 @@ function ChannelCard({
   onSetWebhook: () => void
   onDelete: () => void
 }) {
+  const { t, i18n } = useTranslation()
   const webhookUrl = `${window.location.origin}/api/wa-cloud/webhook/${channel.id}`
   const [verifyToken, setVerifyToken] = useState<string | null>(null)
   const [isTokenVisible, setIsTokenVisible] = useState(false)
@@ -467,12 +625,15 @@ function ChannelCard({
           param: { id: String(channel.id) },
         },
       )
-      if (!response.ok) throw new Error(await readApiError(response))
+      if (!response.ok)
+        throw new Error(
+          await readApiError(response, t('channels.requestFailed')),
+        )
       const result = await response.json()
       setVerifyToken(result.token)
       return result.token
     } catch (reason) {
-      onError(getErrorMessage(reason))
+      onError(getErrorMessage(reason, t('channels.operationFailed')))
       return null
     } finally {
       setIsLoadingToken(false)
@@ -487,7 +648,13 @@ function ChannelCard({
       setCopiedField(field)
       window.setTimeout(() => setCopiedField(null), 1800)
     } catch {
-      onError(`Could not copy the webhook ${field}.`)
+      onError(
+        t(
+          field === 'url'
+            ? 'channels.copyWebhookUrlFailed'
+            : 'channels.copyVerifyTokenFailed',
+        ),
+      )
     }
   }
 
@@ -512,7 +679,7 @@ function ChannelCard({
                 {channel.waPhoneNumber}
               </h3>
               <Pill tone="success" dot>
-                WhatsApp
+                {t('channels.whatsApp')}
               </Pill>
             </div>
           </div>
@@ -524,7 +691,9 @@ function ChannelCard({
               variant="ghost"
               size="icon"
               onClick={onEdit}
-              aria-label={`Edit ${channel.waPhoneNumber}`}
+              aria-label={t('channels.editNamed', {
+                channel: channel.waPhoneNumber,
+              })}
             >
               <Pencil className="size-4" aria-hidden />
             </Button>
@@ -533,7 +702,9 @@ function ChannelCard({
               variant="ghost"
               size="icon"
               onClick={onDelete}
-              aria-label={`Delete ${channel.waPhoneNumber}`}
+              aria-label={t('channels.deleteNamed', {
+                channel: channel.waPhoneNumber,
+              })}
             >
               <Trash2 className="size-4" aria-hidden />
             </Button>
@@ -544,30 +715,39 @@ function ChannelCard({
       <div className="p-5">
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
           <ChannelDatum
-            label="Phone number ID"
+            label={t('channels.phoneNumberId')}
             value={channel.waPhoneNumberId}
           />
-          <ChannelDatum label="WABA ID" value={channel.waWabaId} />
-          <ChannelDatum label="Business ID" value={channel.waBusinessId} />
-          <ChannelDatum label="App ID" value={channel.waAppId} />
+          <ChannelDatum label={t('channels.wabaId')} value={channel.waWabaId} />
+          <ChannelDatum
+            label={t('channels.businessId')}
+            value={channel.waBusinessId}
+          />
+          <ChannelDatum label={t('channels.appId')} value={channel.waAppId} />
+          <ChannelDatum
+            label={t('channels.forwarding')}
+            value={t('channels.endpointCount', {
+              count: channel.webhookForwardUrls.length,
+            })}
+          />
         </dl>
 
         <div className="mt-5 grid gap-3 rounded-xl border bg-card p-3.5">
           <ChannelSecretField
-            label="Webhook URL"
+            label={t('channels.webhookUrl')}
             value={webhookUrl}
             copied={copiedField === 'url'}
             onCopy={() => void copyValue('url')}
           />
           <div className="h-px bg-border" />
           <ChannelSecretField
-            label="Webhook verify token"
+            label={t('channels.webhookVerifyToken')}
             value={
               canManage
                 ? isTokenVisible
                   ? (verifyToken ?? '')
                   : '••••••••••••••••••••••••'
-                : 'Restricted to organization managers'
+                : t('channels.managersOnly')
             }
             copied={copiedField === 'token'}
             disabled={!canManage || isLoadingToken}
@@ -585,31 +765,40 @@ function ChannelCard({
           {canManage && (
             <div className="flex items-center justify-between gap-3 border-t pt-3">
               <p className="text-xs leading-5 text-muted-foreground">
-                Apply this URL and verify token to the WABA.
+                {t('channels.applyWebhookHint')}
               </p>
               <Button size="sm" variant="secondary" onClick={onSetWebhook}>
                 <Webhook className="size-4" aria-hidden />
-                Set webhook
+                {t('channels.setWebhook')}
               </Button>
             </div>
           )}
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2" aria-label="Credentials">
+        <div
+          className="mt-5 flex flex-wrap gap-2"
+          aria-label={t('channels.credentials')}
+        >
           <CredentialPill configured={channel.hasWaAppSecret}>
-            App secret
+            {t('channels.appSecret')}
           </CredentialPill>
           <CredentialPill configured={channel.hasWaWebhookVerifyToken}>
-            Verify token
+            {t('channels.verifyToken')}
           </CredentialPill>
           <CredentialPill configured={channel.hasWaSystemUserAccessToken}>
-            Access token
+            {t('channels.accessToken')}
           </CredentialPill>
         </div>
       </div>
 
       <footer className="border-t bg-muted/25 px-5 py-3 text-xs text-muted-foreground">
-        Updated {formatDate(channel.updatedAt)} · Channel #{channel.id}
+        {t('channels.updatedChannel', {
+          date: formatDate(
+            channel.updatedAt,
+            i18n.resolvedLanguage ?? i18n.language,
+          ),
+          id: channel.id,
+        })}
       </footer>
     </article>
   )
@@ -630,6 +819,8 @@ function ChannelSecretField({
   reveal?: { visible: boolean; loading: boolean; onToggle: () => void }
   onCopy: () => void
 }) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0">
@@ -651,7 +842,9 @@ function ChannelSecretField({
             disabled={disabled}
             onClick={reveal.onToggle}
             aria-label={
-              reveal.visible ? 'Hide verify token' : 'Show verify token'
+              reveal.visible
+                ? t('channels.hideVerifyToken')
+                : t('channels.showVerifyToken')
             }
           >
             {reveal.visible ? (
@@ -667,7 +860,7 @@ function ChannelSecretField({
           size="icon"
           disabled={disabled}
           onClick={onCopy}
-          aria-label={`Copy ${label.toLowerCase()}`}
+          aria-label={t('channels.copyField', { field: label })}
         >
           {copied ? (
             <Check className="size-4 text-success" aria-hidden />
@@ -698,10 +891,13 @@ function CredentialPill({
   configured: boolean
   children: React.ReactNode
 }) {
+  const { t } = useTranslation()
+
   return (
     <Pill tone={configured ? 'primary' : 'warning'}>
       <KeyRound className="size-3" aria-hidden />
-      {children}: {configured ? 'configured' : 'missing'}
+      {children}:{' '}
+      {configured ? t('channels.configured') : t('channels.missing')}
     </Pill>
   )
 }
@@ -725,6 +921,7 @@ function ChannelFormDialog({
   onClose: () => void
   onSubmit: (event: SubmitEvent<HTMLFormElement>) => void
 }) {
+  const { t } = useTranslation()
   const isEditing = mode === 'edit'
   const update = (field: keyof ChannelFormValues, value: string) =>
     setForm((current) => ({ ...current, [field]: value }))
@@ -734,11 +931,13 @@ function ChannelFormDialog({
       size="xl"
       open={open}
       onOpenChange={(nextOpen) => !nextOpen && onClose()}
-      title={isEditing ? 'Edit channel' : 'Create a channel'}
+      title={
+        isEditing ? t('channels.editChannel') : t('channels.createChannelTitle')
+      }
       description={
         isEditing
-          ? 'Update the WhatsApp identifiers or replace individual credentials.'
-          : 'Enter the WhatsApp Cloud API details for this organization.'
+          ? t('channels.editChannelDescription')
+          : t('channels.createChannelDescription')
       }
       icon={
         <DialogIcon
@@ -758,40 +957,60 @@ function ChannelFormDialog({
           disabled={isBusy}
         >
           <legend className="col-span-full px-1 text-sm font-bold">
-            Channel identity
+            {t('channels.channelIdentity')}
           </legend>
           <Input
-            label="Display phone number"
-            hint="Include the country code."
+            label={t('channels.displayPhoneNumber')}
+            hint={t('channels.countryCodeHint')}
             value={form.waPhoneNumber}
             onChange={(event) => update('waPhoneNumber', event.target.value)}
             autoFocus
             required
           />
           <Input
-            label="Phone number ID"
+            label={t('channels.phoneNumberId')}
             inputMode="numeric"
             value={form.waPhoneNumberId}
             onChange={(event) => update('waPhoneNumberId', event.target.value)}
             required
           />
           <Input
-            label="WhatsApp Business Account ID"
+            label={t('channels.whatsAppBusinessAccountId')}
             value={form.waWabaId}
             onChange={(event) => update('waWabaId', event.target.value)}
             required
           />
           <Input
-            label="Business portfolio ID"
+            label={t('channels.businessPortfolioId')}
             value={form.waBusinessId}
             onChange={(event) => update('waBusinessId', event.target.value)}
             required
           />
           <Input
-            label="Meta app ID"
+            label={t('channels.metaAppId')}
             value={form.waAppId}
             onChange={(event) => update('waAppId', event.target.value)}
             required
+          />
+        </fieldset>
+
+        <fieldset
+          className="grid gap-4 rounded-xl border p-4"
+          disabled={isBusy}
+        >
+          <legend className="px-1 text-sm font-bold">
+            {t('channels.webhookForwarding')}
+          </legend>
+          <Textarea
+            label={t('channels.forwardUrls')}
+            hint={t('channels.forwardUrlsHint')}
+            placeholder={
+              'https://example.com/webhooks/whatsapp\nhttps://backup.example.com/hooks'
+            }
+            value={form.webhookForwardUrls}
+            onChange={(event) =>
+              update('webhookForwardUrls', event.target.value)
+            }
           />
         </fieldset>
 
@@ -800,23 +1019,23 @@ function ChannelFormDialog({
           disabled={isBusy}
         >
           <legend className="col-span-full px-1 text-sm font-bold">
-            Credentials
+            {t('channels.credentials')}
           </legend>
           <Input
-            label="Meta app secret"
+            label={t('channels.metaAppSecret')}
             type="password"
             autoComplete="new-password"
             hint={
               isEditing
-                ? 'Leave blank to keep the current secret.'
-                : 'Used to verify webhook signatures.'
+                ? t('channels.keepCurrentSecret')
+                : t('channels.appSecretHint')
             }
             value={form.waAppSecret}
             onChange={(event) => update('waAppSecret', event.target.value)}
             required={!isEditing}
           />
           <Input
-            label="Webhook verify token"
+            label={t('channels.webhookVerifyToken')}
             labelAction={
               <Button
                 className="h-6 px-2"
@@ -827,15 +1046,15 @@ function ChannelFormDialog({
                   update('waWebhookVerifyToken', generateVerifyToken())
                 }
               >
-                Generate
+                {t('channels.generate')}
               </Button>
             }
             type="password"
             autoComplete="new-password"
             hint={
               isEditing
-                ? 'Leave blank to keep the current token.'
-                : 'Copy this into the Meta webhook configuration.'
+                ? t('channels.keepCurrentToken')
+                : t('channels.verifyTokenHint')
             }
             value={form.waWebhookVerifyToken}
             onChange={(event) =>
@@ -845,13 +1064,13 @@ function ChannelFormDialog({
           />
           <div className="sm:col-span-2 lg:col-span-1">
             <Input
-              label="System user access token"
+              label={t('channels.systemUserAccessToken')}
               type="password"
               autoComplete="new-password"
               hint={
                 isEditing
-                  ? 'Leave blank to keep the current token.'
-                  : 'Used for Cloud API calls.'
+                  ? t('channels.keepCurrentToken')
+                  : t('channels.accessTokenHint')
               }
               value={form.waSystemUserAccessToken}
               onChange={(event) =>
@@ -870,10 +1089,12 @@ function ChannelFormDialog({
             disabled={isBusy}
             onClick={onClose}
           >
-            Cancel
+            {t('channels.cancel')}
           </Button>
           <Button type="submit" isLoading={isBusy}>
-            {isEditing ? 'Save changes' : 'Create channel'}
+            {isEditing
+              ? t('channels.saveChanges')
+              : t('channels.createChannel')}
           </Button>
         </div>
       </form>
@@ -914,7 +1135,7 @@ function DialogError({ message }: { message: string | null }) {
   ) : null
 }
 
-function trimForm(form: ChannelFormValues): ChannelFormValues {
+function trimForm(form: ChannelFormValues) {
   return {
     waPhoneNumber: form.waPhoneNumber.trim(),
     waPhoneNumberId: form.waPhoneNumberId.trim(),
@@ -924,22 +1145,23 @@ function trimForm(form: ChannelFormValues): ChannelFormValues {
     waAppSecret: form.waAppSecret.trim(),
     waWebhookVerifyToken: form.waWebhookVerifyToken.trim(),
     waSystemUserAccessToken: form.waSystemUserAccessToken.trim(),
+    webhookForwardUrls: form.webhookForwardUrls
+      .split(/\r?\n/)
+      .map((url) => url.trim())
+      .filter(Boolean),
   }
 }
 
-async function readApiError(response: Response): Promise<string> {
-  const body: unknown = await response.json().catch(() => undefined)
-  return isRecord(body) && typeof body.message === 'string'
-    ? body.message
-    : `Request failed (${response.status}).`
+async function readApiError(
+  response: Response,
+  fallback: string,
+): Promise<string> {
+  await response.json().catch(() => undefined)
+  return `${fallback} (${response.status}).`
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
+function formatDate(value: string, language: string): string {
+  return new Intl.DateTimeFormat(language, {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value))
@@ -952,6 +1174,6 @@ function generateVerifyToken(): string {
   )
 }
 
-function getErrorMessage(reason: unknown): string {
-  return reason instanceof Error ? reason.message : 'The operation failed.'
+function getErrorMessage(_reason: unknown, fallback: string): string {
+  return fallback
 }

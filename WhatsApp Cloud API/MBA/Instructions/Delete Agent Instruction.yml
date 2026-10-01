@@ -1,0 +1,24 @@
+info:
+  name: Delete Agent Instruction
+  type: http
+  seq: 5
+
+http:
+  method: DELETE
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_config/skills/{{MBA-Skill-ID}}
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Deletes the selected behavioral instruction.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/agent-skills

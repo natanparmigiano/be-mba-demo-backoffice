@@ -1,8 +1,9 @@
 # Design-system catalog
 
-This folder implements the public `/design-system` reference. It demonstrates the actual components exported by the frontend and serves as the visual acceptance surface for tokens, themes, localization, interaction states, and responsive behavior.
-
-The route is intentionally public and does not initialize an authentication session.
+The public `/design-system` route is the frontend's visual acceptance surface.
+It renders the actual exported components across tokens, themes, locales,
+interaction states, and responsive layouts without initializing an
+authentication session.
 
 ## Page composition
 
@@ -50,7 +51,8 @@ The page observes section intersections and passes the current ID to the sidebar
 5. Include useful states rather than a single happy-path render.
 6. Verify light/dark modes, all languages, narrow layouts, keyboard navigation, and focus indicators.
 
-The catalog is a documentation page, not a package installer. Buttons shown in examples should demonstrate real component behavior or clearly scoped mock actions.
+Examples must demonstrate real component behavior or clearly scoped mock
+actions. The catalog documents this application; it is not a package installer.
 
 ## Layout constraints
 

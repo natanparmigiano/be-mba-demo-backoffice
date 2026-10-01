@@ -1,6 +1,22 @@
 # Frontend source
 
-This directory contains the browser application. It owns application bootstrap, global styling and localization, route-level pages, session state, and reusable components.
+This directory owns the browser application's bootstrap and global concerns.
+Put route orchestration in `pages`, access policy in `router`, session transport
+in `auth`, and reusable presentation in `components`; keep feature-local state
+with the component that owns it.
+
+## Ownership map
+
+| Path                        | Responsibility                                      |
+| --------------------------- | --------------------------------------------------- |
+| `assets/`                   | Vite-managed brand images and SVG variants          |
+| `auth/`                     | Better Auth client, session provider, and `useAuth` |
+| `components/ui/`            | Reusable application primitives                     |
+| `components/theme/`         | Theme state and selector                            |
+| `components/chat/`          | Typed WhatsApp-style message model and renderer     |
+| `components/design-system/` | Public component catalog sections and navigation    |
+| `pages/`                    | Route-level screens and data orchestration          |
+| `router/`                   | Route declaration and access guards                 |
 
 ## Bootstrap sequence
 
@@ -14,19 +30,6 @@ This directory contains the browser application. It owns application bootstrap, 
 
 `index.html` runs a small theme bootstrap before React loads. It reads `mba-theme`, resolves system preference, and applies both `data-theme` and `.dark`. This prevents a light-theme flash before `ThemeProvider` takes control.
 
-## Directory map
-
-| Path                        | Responsibility                                            |
-| --------------------------- | --------------------------------------------------------- |
-| `assets/`                   | Vite-managed brand images and SVG variants.               |
-| `auth/`                     | Better Auth client, session provider, and `useAuth`.      |
-| `components/ui/`            | Reusable application primitives.                          |
-| `components/theme/`         | Theme state and selector.                                 |
-| `components/chat/`          | Typed WhatsApp-style message model and renderer.          |
-| `components/design-system/` | Sections and navigation for the public component catalog. |
-| `pages/`                    | Route-level login and authenticated home screens.         |
-| `router/`                   | Route declaration and access guards.                      |
-
 Top-level source files:
 
 - `App.tsx`: intentionally small application boundary around `AppRouter`.
@@ -38,7 +41,7 @@ Top-level source files:
 
 ## State boundaries
 
-State is kept close to the system that owns it:
+Keep state close to the system that owns it:
 
 - Theme state is global through `ThemeProvider`.
 - Authentication state exists only inside the guarded route branch through `AuthProvider`.

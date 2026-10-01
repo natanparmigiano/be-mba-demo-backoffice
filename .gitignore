@@ -8,3 +8,5 @@ dist/
 !.env.dev
 *.local
 .DS_Store
+.data/
+fails.jsonl

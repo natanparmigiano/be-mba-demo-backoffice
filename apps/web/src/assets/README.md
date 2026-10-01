@@ -1,6 +1,8 @@
 # Frontend assets
 
-Assets in this folder are imported by React or referenced by Vite's HTML entry point. Vite fingerprints and emits them during production builds.
+Import application assets from this folder so Vite fingerprints and emits
+them during production builds. Use `public/` only when a consumer requires a
+stable, unhashed root URL.
 
 ## Brand files
 
@@ -9,6 +11,14 @@ Assets in this folder are imported by React or referenced by Vite's HTML entry p
 | `signifier.png`            | Full-color signifier used in application headers and as the favicon. |
 | `signifier-mono-dark.svg`  | Dark monochrome signifier for light surfaces.                        |
 | `signifier-mono-light.svg` | White monochrome signifier for dark or gradient surfaces.            |
+
+## Emoji data
+
+`emoji-categories.json` is the bundled Emoji 16 category data used by the chat
+composer and message-reaction picker. It is sourced from
+`chalda-pnuzig/emojis.json`'s `dist/categories.min.json` under its ISC license.
+Keep it local: the browser must not fetch emoji metadata from an external URL
+at runtime.
 
 The desktop login panel uses the light monochrome asset over `.bg-brand-gradient`. The compact login layout switches between dark and light monochrome assets with the resolved theme.
 

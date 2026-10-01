@@ -1,6 +1,9 @@
 # `@mba-demo/kv`
 
-A string key/value abstraction with Redis and process-local memory adapters. It provides the simple Redis-style operations needed by the application without exposing specialized data structures or pub/sub.
+Use this string key/value interface for Redis-style application and Better Auth
+secondary storage. Set `REDIS_URL` for shared, durable-enough coordination
+across app instances; without it, every process receives an isolated,
+non-durable memory store.
 
 ## Adapter selection
 
@@ -38,7 +41,10 @@ The module-level `kv` export is created from the process environment. `createKey
 
 The Redis client connects lazily on the first operation, shares concurrent connection attempts, logs client errors, and closes only when open.
 
-The memory adapter stores strings in a `Map` and removes expired entries lazily when accessed. It matches the exposed Redis semantics, including conditional writes and preserving TTL during counter changes, but it is non-durable and cannot share values between processes.
+The memory adapter stores strings in a `Map` and lazily removes expired entries.
+It matches the exposed Redis semantics, including conditional writes and TTL
+preservation during counter changes, but cannot persist or share values across
+processes.
 
 Better Auth uses this package for secondary storage. Full Compose configures Redis, while simple Compose keeps auth secondary data inside the app process.
 

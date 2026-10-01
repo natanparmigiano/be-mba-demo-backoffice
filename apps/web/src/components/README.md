@@ -1,6 +1,8 @@
 # Components
 
-Components are grouped by responsibility so application primitives remain independent of feature demos and route-level concerns.
+Keep reusable presentation in this directory and route/data orchestration in
+`pages`. Dependencies flow from generic UI primitives to feature components and
+then to pages or design-system examples—never in the opposite direction.
 
 ## Structure
 
@@ -8,6 +10,8 @@ Components are grouped by responsibility so application primitives remain indepe
 | ---------------------- | ----------------------------------------------------------------------- |
 | `ui/`                  | General-purpose visual primitives and small interaction patterns.       |
 | `chat/`                | Typed message schema, renderer, sample data, and conversation showcase. |
+| `api-playground/`      | Shared collapsible request-card presentation.                           |
+| `runner/`              | Lazy Monaco editor and parameter-aware JavaScript language service.     |
 | `design-system/`       | Documentation sections that demonstrate the reusable primitives.        |
 | `theme/`               | Global theme provider and adaptive theme selector.                      |
 | `LanguageSwitcher.tsx` | Language selector with explicit-override persistence.                   |
@@ -22,7 +26,8 @@ ui primitives
      -> design-system examples or pages
 ```
 
-Theme and language controls may depend on their global providers, but UI primitives should not depend on pages, routes, API clients, or feature fixtures.
+UI primitives must not depend on pages, routes, API clients, or feature
+fixtures. Theme and language controls may depend on their global providers.
 
 ## Choosing component granularity
 

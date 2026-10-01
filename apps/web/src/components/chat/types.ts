@@ -1,5 +1,6 @@
 export type MessageDirection = 'incoming' | 'outgoing'
-export type MessageStatus = 'undelivered' | 'delivered' | 'read'
+export type MessageStatus =
+  'sending' | 'error' | 'sent' | 'delivered' | 'read' | 'played'
 
 export interface MessageReaction {
   emoji: string
@@ -8,10 +9,15 @@ export interface MessageReaction {
 
 interface MessageBase {
   id: string
+  providerMessageId?: string
   direction: MessageDirection
+  aiGenerated?: boolean
   sentAt: string
+  senderName?: string
   status?: MessageStatus
   reactions?: MessageReaction[]
+  forwarded?: boolean
+  frequentlyForwarded?: boolean
 }
 
 export interface TextMessage extends MessageBase {
@@ -29,6 +35,7 @@ export interface ImageMessage extends MessageBase {
 export interface VideoMessage extends MessageBase {
   type: 'video'
   url: string
+  mimeType?: string
   caption?: string
 }
 
@@ -36,22 +43,25 @@ export interface DocumentMessage extends MessageBase {
   type: 'document'
   fileName: string
   mimeType: string
+  url?: string
   size?: string
   caption?: string
 }
 
 export interface VoiceMessage extends MessageBase {
   type: 'voice'
-  duration: string
-  waveform: number[]
+  url?: string
+  duration?: string
+  waveform?: number[]
   progress?: number
 }
 
 export interface AudioMessage extends MessageBase {
   type: 'audio'
+  url?: string
   title: string
   artist?: string
-  duration: string
+  duration?: string
 }
 
 export interface LocationMessage extends MessageBase {
@@ -163,6 +173,13 @@ export interface CarouselMessage extends MessageBase {
   items: CarouselItem[]
 }
 
+export interface ChatTimelineEvent {
+  id: string
+  type: 'event'
+  sentAt: string
+  label: string
+}
+
 export type ChatMessage =
   | TextMessage
   | ImageMessage
@@ -178,3 +195,5 @@ export type ChatMessage =
   | ListMessage
   | UrlButtonMessage
   | CarouselMessage
+
+export type ChatTimelineItem = ChatMessage | ChatTimelineEvent

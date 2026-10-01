@@ -1,6 +1,31 @@
-# MBA message persistence proposal
+# MBA message persistence model
 
-This proposal maps inbound WhatsApp webhooks and outbound Cloud API message requests into the PostgreSQL `mba` schema. The schema code lives in `src/schema/mba.ts` and is intentionally ready for iteration before persistence is implemented.
+The PostgreSQL `mba` schema turns inbound WhatsApp webhooks and outbound Cloud
+API operations into an organization-scoped chat model. The implemented schema
+lives in `src/schema/mba.ts`; this document defines its data contracts,
+ingestion transactions, indexing rationale, and remaining design decisions.
+
+## Core guarantees
+
+- PostgreSQL organization ownership is the tenant boundary from channels
+  through chats, messages, and events.
+- A durable `chat_id` identifies each direct or group stream; Meta billing
+  “conversation” IDs never replace it.
+- Provider IDs, client IDs, and deterministic event keys make webhook retries
+  idempotent.
+- Status history remains append-only, while timestamp and precedence rules
+  prevent out-of-order delivery updates from regressing the current message.
+- Normalized columns serve known query paths, and typed JSONB preserves the
+  complete additive provider payload.
+
+The primary ownership path is:
+
+```text
+auth.organization -> mba.channels -> mba.contacts / mba.groups
+                                   -> mba.chats -> mba.messages
+                                                -> mba.message_status_events
+                                                -> mba.chat_events
+```
 
 ## Scope
 
@@ -10,19 +35,19 @@ The model handles:
 - Meta Business AI `value.standby[]` messages.
 - Message-shaped history records.
 - SMB message echoes representing outbound messages.
-- Message delivery statuses: `sent`, `delivered`, `read`, `played`, `failed`, and `deleted`.
+- Incoming messages receive the local `read` status when the chat is handled by the MBA agent and `delivered` otherwise. AI-owned inbound traffic advances the local read cursor without increasing the unread count. Provider delivery statuses remain `sent`, `delivered`, `read`, `played`, `failed`, and `deleted`.
 - Status-associated recipients, conversation data, pricing, callback data, and errors.
 - Edit, revoke, reaction, context, referral, identity, group, contact, and media information carried by message objects.
 - Outbound text, media, contact, location, reaction, template, product, catalog, list, reply-button, and Flow messages.
 - The local outbound dispatch lifecycle before Meta assigns a `wamid`.
 - WhatsApp channel configuration and credentials.
-- Eternal direct and group chat identities.
+- Durable direct and group chat identities.
 - Current group metadata from lifecycle, settings, participant, and status webhooks.
 - Chat-level billing-window, Business Agents, handover, group, call, and user-preference events.
 
 Payment statuses, template events, account events, and generic webhook fields without a resolvable chat identity are deliberately outside the chat model.
 
-## Tables
+## Core entities
 
 ### `mba.channels`
 
@@ -71,22 +96,33 @@ No group lifecycle or status event deletes a group. A removal/closure event only
 
 ### `mba.chats`
 
-This is the eternal message-stream identity used by application code. A direct chat points to exactly one contact and a group chat points to exactly one group. A database check enforces that exclusive identity based on `kind`. The chat does not duplicate `channel_id`; its contact or group owns that relationship.
+This is the durable message-stream identity used by application code. A direct
+chat points to exactly one contact and a group chat points to exactly one group.
+A database check enforces that exclusive identity based on `kind`. The chat
+deliberately duplicates the identity's channel and organization so
+tenant-scoped inbox reads use one composite index instead of joining and
+sorting both identity branches.
 
 The distinction matters because Meta uses the word “conversation” for unrelated billing windows in message status webhooks. Those temporary values are stored on messages as `billing_conversation_*`; they never identify an application chat.
 
-| Column                   | Webhook mapping and purpose                                                                |
-| ------------------------ | ------------------------------------------------------------------------------------------ |
-| `id`                     | Internal durable chat identity and the target of `messages.chat_id`.                       |
-| `kind`                   | `group` when a message has `group_id` or the event is a group webhook; otherwise `direct`. |
-| `contact_id`             | Internal `contacts.id` for the one remote party in a direct chat; null for group chats.    |
-| `group_id`               | Internal `groups.id` for a group chat; null for direct chats.                              |
-| `latest_message_id`      | Denormalized pointer to the newest message, indexed for cursor and range lookups.          |
-| `latest_read_message_id` | Application read cursor; distinct from Meta's outbound delivery status.                    |
-| `created_at`             | Local first-observation time.                                                              |
-| `updated_at`             | Local projection-update time.                                                              |
+| Column                   | Webhook mapping and purpose                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------- |
+| `id`                     | Internal durable chat identity and the target of `messages.chat_id`.                        |
+| `kind`                   | `group` when a message has `group_id` or the event is a group webhook; otherwise `direct`.  |
+| `handled_by`             | Current owner inferred from routing: `mba` for `standby[]`, `application` for `messages[]`. |
+| `channel_id`             | Denormalized source channel for direct chat-to-channel joins.                               |
+| `organization_id`        | Denormalized tenant key leading the organization inbox index.                               |
+| `contact_id`             | Internal `contacts.id` for the one remote party in a direct chat; null for group chats.     |
+| `group_id`               | Internal `groups.id` for a group chat; null for direct chats.                               |
+| `latest_message_id`      | Denormalized pointer to the newest message, indexed for cursor and range lookups.           |
+| `latest_read_message_id` | Application read cursor; distinct from Meta's outbound delivery status.                     |
+| `unread_message_count`   | Denormalized unread inbound count for constant-time inbox rendering.                        |
+| `created_at`             | Local first-observation time.                                                               |
+| `updated_at`             | Local projection-update time.                                                               |
 
-Both message pointers are nullable for an empty chat and use `ON DELETE SET NULL`. Persistence code must only assign messages belonging to the same chat; the circular foreign keys guarantee existence but PostgreSQL cannot express that same-chat invariant with an ordinary foreign key.
+Both message pointers are nullable for an empty chat and use `ON DELETE SET NULL`. Persistence code must only assign messages belonging to the same chat; the circular foreign keys guarantee existence but PostgreSQL cannot express that same-chat invariant with an ordinary foreign key. A newly inserted inbound message increments `unread_message_count` in the same transaction that advances the latest-message pointer. Marking a chat read copies that pointer to `latest_read_message_id` and resets the counter atomically, avoiding per-chat counting in inbox reads.
+
+Composite foreign keys make the denormalization database-enforced rather than advisory: `(contact_id, channel_id)` must resolve to the same contact row, `(group_id, channel_id)` must resolve to the same group row, and `(channel_id, organization_id)` must resolve to the same channel owner. Supporting unique indexes on those referenced pairs allow PostgreSQL to reject any future insert or update that would drift from the normalized ownership chain.
 
 ### `mba.chat_events`
 
@@ -113,7 +149,7 @@ Indexes cover the main timeline `(chat_id, occurred_at, id)`, filtered chat time
 
 ### `mba.messages`
 
-This is the canonical message projection used by application queries. It contains stable identifiers and searchable fields as columns. A single deeply typed `raw_message` JSONB value stores the complete inbound, outbound, history, or echo shape without duplicating each message variant across nullable columns.
+This is the canonical message projection used by application queries. It contains stable identifiers, searchable fields, and UI-facing content as columns. Scalar text and media metadata avoid JSON traversal on hot timeline reads; dedicated typed JSONB columns expose structured message variants. A deeply typed `raw_message` JSONB value remains the lossless source payload.
 
 The current status and its associated metadata are copied onto this row so reads do not need to reconstruct the latest state from an event stream.
 
@@ -121,17 +157,21 @@ A status webhook can arrive before the full message is available, and an outboun
 
 `provider_message_id` is globally unique, while `(chat_id, client_message_id)` scopes application idempotency to one chat. PostgreSQL permits multiple nulls in these indexes, allowing status-first and queued-outbound rows while retaining idempotent upsert keys once an identifier exists.
 
-## Type strategy
+## Type and payload strategy
 
 Finite text values use Drizzle's `text(name, { enum: values })` form. This produces precise TypeScript unions without creating PostgreSQL enum types, check constraints, or other database objects. The exported `as const` arrays are the single source for both column inference and application types.
 
-JSONB remains native PostgreSQL JSONB, but every JSON column uses a concrete TypeScript type inferred from Zod schemas in `@mba-demo/schemas`. No complete persisted message or status is typed as a generic record; unknown values remain only where Meta explicitly permits custom Flow data or additive loose-object fields.
+JSONB remains native PostgreSQL JSONB, but every JSON column uses a concrete
+TypeScript type from `@mba-demo/wa-webhooks` or `@mba-demo/wa-messaging`. No
+complete persisted message or status is typed as a generic record; unknown
+values remain only where Meta explicitly permits custom Flow data or additive
+loose-object fields.
 
 The outbound schemas cover the checked-in Cloud API collection, including contacts, templates and their parameters, media by ID or link, list and reply-button messages, single- and multi-product messages, catalog messages, and published or draft Flows.
 
 ## `mba.contacts` column rationale
 
-This table represents WhatsApp participants from webhook `value.contacts`, plus the normalized recipient returned by the outbound send API. It does not extract contact cards attached to a `contacts` message: those cards are message content and remain inside the typed message `raw_message`.
+This table represents WhatsApp participants from webhook `value.contacts`, plus the normalized recipient returned by the outbound send API. Contact cards attached to a `contacts` message are message content and are projected into `messages.contact_data`; they do not create participant rows.
 
 | Column              | Why it exists                                                                                     |
 | ------------------- | ------------------------------------------------------------------------------------------------- |
@@ -152,50 +192,55 @@ Channel-scoped unique indexes on `wa_id` and `user_id` provide the two supported
 
 ## `mba.messages` column rationale
 
-| Column                            | Why it exists                                                                                                                                |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`                              | Stable internal identity and foreign-key target independent of Meta identifiers.                                                             |
-| `chat_id`                         | Required eternal direct/group chat owning the message.                                                                                       |
-| `contact_id`                      | Nullable link to the remote participant; group/system events may not resolve to one contact.                                                 |
-| `client_message_id`               | Idempotency key for an outbound message before Meta returns a `wamid`; optional for webhook-created rows.                                    |
-| `provider_message_id`             | Meta `wamid` used by statuses and replies; optional while an outbound request is queued.                                                     |
-| `source`                          | Typed first-observed source: message webhook, standby, history, echo, status, or outbound API.                                               |
-| `direction`                       | Typed inbound/outbound partition used by virtually every conversation query.                                                                 |
-| `message_type`                    | Typed union of every inbound type plus outbound-only `template`; nullable only for status-first rows.                                        |
-| `interactive_type`                | Typed subtype for reply/list/flow/product/catalog behavior without inspecting JSONB.                                                         |
-| `dispatch_status`                 | Separate local state machine for queued/sending/accepted/failed/unknown outbound requests; provider delivery status has different semantics. |
-| `sender_phone`                    | Normalized `from` value for direct chat lookup.                                                                                              |
-| `sender_user_id`                  | Group/user addressing supplied by newer webhook shapes.                                                                                      |
-| `sender_parent_user_id`           | Parent identity supplied by newer webhook shapes.                                                                                            |
-| `recipient_id`                    | Outbound `to` or status `recipient_id`; central to outbound conversation lookup.                                                             |
-| `recipient_user_id`               | User recipient supplied by status webhooks.                                                                                                  |
-| `recipient_parent_user_id`        | Parent recipient identity supplied by status webhooks.                                                                                       |
-| `recipient_type`                  | Typed `individual`/`group` distinction shared by outbound requests and statuses.                                                             |
-| `recipient_participant_id`        | Group participant from status webhooks; optional because direct messages do not provide it.                                                  |
-| `recipient_identity_key_hash`     | Status identity metadata; optional and retained because it is not recoverable elsewhere.                                                     |
-| `provider_timestamp`              | Exact original message timestamp string for audit and reparsing.                                                                             |
-| `occurred_at`                     | Parsed UTC message time used for sorting and range queries.                                                                                  |
-| `webhook_entry_time`              | Optional envelope time, useful for lag analysis but unavailable for locally created outbound rows.                                           |
-| `context_message_id`              | Reply/forward relationship extracted for indexed lookup.                                                                                     |
-| `target_message_id`               | Reaction/edit/revoke target kept separate because it is not ordinary reply context.                                                          |
-| `raw_message`                     | Deeply typed lossless union of inbound, outbound, history, and echo message bodies.                                                          |
-| `send_response`                   | Deeply typed Cloud API response containing normalized contacts and assigned `wamid`.                                                         |
-| `status`                          | Latest typed Meta delivery state; intentionally separate from local dispatch status.                                                         |
-| `status_provider_timestamp`       | Exact source timestamp of the projected status.                                                                                              |
-| `status_occurred_at`              | Parsed status time used to reject out-of-order updates.                                                                                      |
-| `status_updated_at`               | Local time at which the current projection changed.                                                                                          |
-| `biz_opaque_callback_data`        | Application correlation data returned by Meta in statuses.                                                                                   |
-| `billing_conversation_id`         | Meta billing-window identifier; deliberately distinct from the internal chat foreign key.                                                    |
-| `billing_conversation_expires_at` | Parsed billing-window expiration used for service-window decisions.                                                                          |
-| `billing_conversation_origin`     | Typed billing origin from the webhook contract.                                                                                              |
-| `pricing_billable`                | Directly queryable billing flag.                                                                                                             |
-| `pricing_model`                   | Optional raw text because the checked-in webhook schema does not publish a closed value set.                                                 |
-| `pricing_category`                | Optional raw text for the same compatibility reason. Revisit when the source contract becomes closed.                                        |
-| `pricing_type`                    | Optional raw text for the same compatibility reason. Revisit when the source contract becomes closed.                                        |
-| `status_errors`                   | Deeply typed errors associated with the current status projection.                                                                           |
-| `raw_status`                      | Deeply typed complete latest status, preserving additive loose-object fields.                                                                |
-| `received_at`                     | First local observation time.                                                                                                                |
-| `updated_at`                      | Last projection mutation time, set explicitly by persistence code.                                                                           |
+| Column                            | Why it exists                                                                                                                                                                                                |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`                              | Stable internal identity and foreign-key target independent of Meta identifiers.                                                                                                                             |
+| `chat_id`                         | Required eternal direct/group chat owning the message.                                                                                                                                                       |
+| `contact_id`                      | Nullable link to the remote participant; group/system events may not resolve to one contact.                                                                                                                 |
+| `client_message_id`               | Idempotency key for an outbound message before Meta returns a `wamid`; optional for webhook-created rows.                                                                                                    |
+| `provider_message_id`             | Meta `wamid` used by statuses and replies; optional while an outbound request is queued.                                                                                                                     |
+| `source`                          | Typed first-observed source: message webhook, standby, history, echo, status, or outbound API.                                                                                                               |
+| `direction`                       | Typed inbound/outbound partition used by virtually every conversation query.                                                                                                                                 |
+| `ai_generated`                    | Marks outbound messages observed through a Business AI standby echo; false for ordinary application and customer traffic.                                                                                    |
+| `message_type`                    | Typed union of every inbound type plus outbound-only `template`; nullable only for status-first rows.                                                                                                        |
+| `interactive_type`                | Typed subtype for reply/list/flow/product/catalog behavior without inspecting JSONB.                                                                                                                         |
+| `text_content`                    | Primary display text extracted from text, reply, caption, location, order, reaction, system, template, contact-card, or edited content.                                                                      |
+| `media_*`                         | Media ID, URL/link, MIME type, SHA-256, filename, caption, voice-note flag, and animated-sticker flag.                                                                                                       |
+| `media_file_path`                 | Durable `@mba-demo/files` object key after verified provider media has been archived; nullable until media bytes are available.                                                                              |
+| `*_data` content columns          | Typed interactive, contact, location, button, order, reaction, template, system, edit, revoke, context, referral, identity, and error data.                                                                  |
+| `dispatch_status`                 | Separate local state machine for queued/sending/accepted/failed/unknown outbound requests; provider delivery status has different semantics.                                                                 |
+| `sender_phone`                    | Normalized `from` value for direct chat lookup.                                                                                                                                                              |
+| `sender_user_id`                  | Group/user addressing supplied by newer webhook shapes.                                                                                                                                                      |
+| `sender_parent_user_id`           | Parent identity supplied by newer webhook shapes.                                                                                                                                                            |
+| `recipient_id`                    | Outbound `to` or status `recipient_id`; central to outbound conversation lookup.                                                                                                                             |
+| `recipient_user_id`               | User recipient supplied by status webhooks.                                                                                                                                                                  |
+| `recipient_parent_user_id`        | Parent recipient identity supplied by status webhooks.                                                                                                                                                       |
+| `recipient_type`                  | Typed `individual`/`group` distinction shared by outbound requests and statuses.                                                                                                                             |
+| `recipient_participant_id`        | Group participant from status webhooks; optional because direct messages do not provide it.                                                                                                                  |
+| `recipient_identity_key_hash`     | Status identity metadata; optional and retained because it is not recoverable elsewhere.                                                                                                                     |
+| `provider_timestamp`              | Exact original message timestamp string for audit and reparsing.                                                                                                                                             |
+| `occurred_at`                     | Parsed UTC message time used for sorting and range queries.                                                                                                                                                  |
+| `webhook_entry_time`              | Optional envelope time, useful for lag analysis but unavailable for locally created outbound rows.                                                                                                           |
+| `context_message_id`              | Reply/forward relationship extracted for indexed lookup.                                                                                                                                                     |
+| `target_message_id`               | Reaction/edit/revoke target kept separate because it is not ordinary reply context.                                                                                                                          |
+| `raw_message`                     | Deeply typed lossless union of inbound, outbound, history, and echo message bodies.                                                                                                                          |
+| `send_response`                   | Deeply typed Cloud API response containing normalized contacts and assigned `wamid`.                                                                                                                         |
+| `status`                          | Local `read` state for MBA-owned inbound messages, `delivered` for other inbound messages, or the latest typed Meta delivery state for outbound messages; intentionally separate from local dispatch status. |
+| `status_provider_timestamp`       | Exact source timestamp of the projected status.                                                                                                                                                              |
+| `status_occurred_at`              | Parsed status time used to reject out-of-order updates.                                                                                                                                                      |
+| `status_updated_at`               | Local time at which the current projection changed.                                                                                                                                                          |
+| `biz_opaque_callback_data`        | Application correlation data returned by Meta in statuses.                                                                                                                                                   |
+| `billing_conversation_id`         | Meta billing-window identifier; deliberately distinct from the internal chat foreign key.                                                                                                                    |
+| `billing_conversation_expires_at` | Parsed billing-window expiration used for service-window decisions.                                                                                                                                          |
+| `billing_conversation_origin`     | Typed billing origin from the webhook contract.                                                                                                                                                              |
+| `pricing_billable`                | Directly queryable billing flag.                                                                                                                                                                             |
+| `pricing_model`                   | Optional raw text because the checked-in webhook schema does not publish a closed value set.                                                                                                                 |
+| `pricing_category`                | Optional raw text for the same compatibility reason. Revisit when the source contract becomes closed.                                                                                                        |
+| `pricing_type`                    | Optional raw text for the same compatibility reason. Revisit when the source contract becomes closed.                                                                                                        |
+| `status_errors`                   | Deeply typed errors associated with the current status projection.                                                                                                                                           |
+| `raw_status`                      | Deeply typed complete latest status, preserving additive loose-object fields.                                                                                                                                |
+| `received_at`                     | First local observation time.                                                                                                                                                                                |
+| `updated_at`                      | Last projection mutation time, set explicitly by persistence code.                                                                                                                                           |
 
 ## `mba.message_status_events` column rationale
 
@@ -265,7 +310,8 @@ Each validated event is persisted in one transaction. Every equality lookup used
 - Message and status lookup: unique `provider_message_id`.
 - Outbound idempotency: `(chat_id, client_message_id)`.
 - Status retry deduplication: `(message_id, status, provider_timestamp)`.
-- Inbox cursor lookup: indexed `chats.latest_message_id`.
+- Inbox cursor lookup: `(organization_id, updated_at, id)`.
+- Message timeline cursor lookup: `(chat_id, occurred_at, id)`.
 
 Potential bottlenecks to monitor:
 
@@ -280,40 +326,44 @@ Potential bottlenecks to monitor:
 For inbound messages, standby, history, message echoes, or outbound sends:
 
 1. Resolve or upsert the eternal direct/group chat.
-2. Upsert by the provider message ID or the chat-scoped client message ID.
-3. Fill message fields without clearing status fields already received by a status-first row.
-4. Preserve the original provider timestamp string and also store its parsed UTC value.
-5. Extract edit, revoke, or reaction targets into `target_message_id` without mutating the target message.
-6. Store the exact typed object once in `raw_message`; do not duplicate variant content into additional JSON columns.
-7. Advance `chats.latest_message_id` in the same transaction when the inserted message is newer.
+2. Set `chats.handled_by` to `mba` for `standby[]` or `application` for `messages[]`; history, echoes, and statuses do not change ownership.
+3. Upsert by the provider message ID or the chat-scoped client message ID.
+4. Fill message fields without clearing status fields already received by a status-first row.
+5. Preserve the original provider timestamp string and also store its parsed UTC value.
+6. Extract edit, revoke, or reaction targets into `target_message_id` without mutating the target message.
+7. Project UI-facing text, media metadata, the pre-archived media file key when supplied, and structured variant data into dedicated nullable columns.
+8. Store the exact typed object in `raw_message` as the lossless source payload.
+9. Advance `chats.latest_message_id` in the same transaction when the inserted message is newer.
 
 ## Field mapping
 
-| Webhook data                  | Message projection                               |
-| ----------------------------- | ------------------------------------------------ |
-| Endpoint `:id`                | Resolve `mba.channels.id`                        |
-| `entry.id`                    | Validate/update `channels.wa_waba_id`            |
-| `entry.time`                  | `webhook_entry_time`                             |
-| `value.metadata.*`            | Validate/update channel phone-number fields      |
-| `value.contacts`              | Upsert `mba.contacts`; link `contact_id`         |
-| Contact or message `group_id` | Upsert `mba.groups` and its chat; link `chat_id` |
-| `message.id` / `status.id`    | `provider_message_id`                            |
-| `message.from*`               | Sender columns                                   |
-| Status `recipient_*`          | Recipient columns                                |
-| Message context               | `context_message_id` plus `raw_message`          |
-| History `history_context`     | `raw_message`                                    |
-| Reaction/edit/revoke target   | `target_message_id`                              |
-| Referral and identity         | `raw_message`                                    |
-| Type-specific message object  | `raw_message` JSONB                              |
-| Unsupported/unknown errors    | `raw_message` JSONB                              |
-| Status `conversation`         | `billing_conversation_*` columns                 |
-| Status `pricing`              | Pricing columns                                  |
-| Status `errors`               | `status_errors` and status-event `errors`        |
-| Complete objects              | `raw_message` and `raw_status`                   |
+| Webhook data                  | Message projection                                         |
+| ----------------------------- | ---------------------------------------------------------- |
+| Endpoint `:id`                | Resolve `mba.channels.id`                                  |
+| `entry.id`                    | Validate/update `channels.wa_waba_id`                      |
+| `entry.time`                  | `webhook_entry_time`                                       |
+| `value.metadata.*`            | Validate/update channel phone-number fields                |
+| `value.contacts`              | Upsert `mba.contacts`; link `contact_id`                   |
+| Contact or message `group_id` | Upsert `mba.groups` and its chat; link `chat_id`           |
+| `message.id` / `status.id`    | `provider_message_id`                                      |
+| `message.from*`               | Sender columns                                             |
+| Status `recipient_*`          | Recipient columns                                          |
+| Message context               | `context_message_id`, forwarding flags, and `context_data` |
+| History `history_context`     | `raw_message`                                              |
+| Reaction/edit/revoke target   | `target_message_id`                                        |
+| Text and media content        | `text_content` and the `media_*` columns                   |
+| Archived provider media key   | `media_file_path`                                          |
+| Referral and identity         | `referral_data` and `identity_data`                        |
+| Type-specific message object  | Its dedicated typed `*_data` JSONB column                  |
+| Unsupported/unknown errors    | `errors_data`                                              |
+| Status `conversation`         | `billing_conversation_*` columns                           |
+| Status `pricing`              | Pricing columns                                            |
+| Status `errors`               | `status_errors` and status-event `errors`                  |
+| Complete source objects       | `raw_message` and `raw_status`                             |
 
-## Future decisions
+## Open design decisions
 
-- Decide whether `client_message_id` is generated by the API or supplied as an explicit idempotency key.
+- The composer supplies a UUID `client_message_id`; decide whether other outbound producers should use the same caller-owned idempotency contract.
 - Decide whether failed outbound HTTP response bodies need a separately typed `send_error` JSONB column; it is omitted until the sending client contract exists.
 - Define whether generic `message_echoes` payloads can be promoted into this model once their public payload contract stabilizes.
 - Add JSONB GIN indexes only for demonstrated query patterns; they add meaningful write and storage cost.

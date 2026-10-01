@@ -1,0 +1,34 @@
+info:
+  name: Upload Knowledge File
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_config/files
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+  body:
+    type: multipart-form
+    data:
+      - name: file_name
+        type: text
+        value: knowledge.pdf
+      - name: file
+        type: file
+        value:
+          - /path/to/knowledge.pdf
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Uploads a knowledge document (maximum 100,000,000 bytes). Select a supported PDF, DOC, DOCX, PNG, JPG, JPEG, CSV, or XLSX file and keep `file_name` consistent with its content.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/configure/agent-knowledge-files

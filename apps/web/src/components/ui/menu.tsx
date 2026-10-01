@@ -132,11 +132,15 @@ export function MenuTrigger({
 
 export function MenuContent({
   align = 'end',
+  side = 'bottom',
   children,
   className,
   onKeyDown,
   ...props
-}: HTMLAttributes<HTMLDivElement> & { align?: 'start' | 'end' }) {
+}: HTMLAttributes<HTMLDivElement> & {
+  align?: 'start' | 'end'
+  side?: 'bottom' | 'top'
+}) {
   const { menuId, open, setOpen } = useMenuContext()
 
   if (!open) return null
@@ -146,7 +150,8 @@ export function MenuContent({
       id={menuId}
       role="menu"
       className={cn(
-        'absolute top-full z-50 mt-2 min-w-52 rounded-xl border bg-card p-1.5 text-card-foreground shadow-xl',
+        'absolute z-50 min-w-52 rounded-xl border bg-card p-1.5 text-card-foreground shadow-xl',
+        side === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2',
         align === 'start' ? 'left-0' : 'right-0',
         className,
       )}

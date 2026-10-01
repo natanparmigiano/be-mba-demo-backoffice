@@ -1,0 +1,67 @@
+info:
+  name: Received Standby Audio Message
+  type: http
+  seq: 24
+
+http:
+  method: VIEW
+  url: http://
+  body:
+    type: json
+    data: |-
+      {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "WHATSAPP_BUSINESS_ACCOUNT_ID",
+            "changes": [
+              {
+                "field": "standby",
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "16505553333",
+                    "phone_number_id": "PHONE_NUMBER_ID"
+                  },
+                  "standby": {
+                    "contacts": [
+                      {
+                        "wa_id": "16315551234",
+                        "user_id": "USER_ID"
+                      }
+                    ],
+                    "messages": [
+                      {
+                        "from": "16315551234",
+                        "from_user_id": "USER_ID",
+                        "id": "wamid.STANDBY_AUDIO",
+                        "timestamp": "1790807000",
+                        "type": "audio",
+                        "audio": {
+                          "id": "MEDIA_ID",
+                          "mime_type": "audio/ogg; codecs=opus",
+                          "sha256": "MEDIA_SHA256",
+                          "voice": true
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Observed Meta Business Agent standby callback. Unlike ordinary inbound
+  messages, `field` is `standby` and message collections are nested below
+  `value.standby`.

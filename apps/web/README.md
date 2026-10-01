@@ -1,21 +1,13 @@
 # MBA Demo Backoffice frontend
 
-React frontend for the MBA + WhatsApp Cloud API human-handover demo. It includes the authenticated application shell, a public design-system reference, Better Auth session handling, typed Hono API access, localization, and light/dark theming.
-
-## Stack
-
-- React 19 and TypeScript
-- Vite 7
-- Tailwind CSS 4 through `@tailwindcss/vite`
-- React Router 7
-- Better Auth React client
-- Hono RPC client using the API application's exported `AppType`
-- i18next and react-i18next
-- Lucide React icons
+The React frontend provides the authenticated, organization-scoped backoffice
+for chats, channels, contacts, groups, users, and SSO-enabled sign-in. It uses
+the API's inferred Hono `AppType`, so browser requests stay aligned with the
+server contract without duplicate DTOs.
 
 ## Run the frontend
 
-The repository requires Node.js 20.19 or newer and Yarn 1.22.
+The repository requires Node.js 24 or newer and Yarn 1.22.
 
 From the repository root:
 
@@ -31,6 +23,20 @@ To run both applications through the root workspace command:
 yarn dev
 ```
 
+## Stack
+
+- React 19 and TypeScript
+- Vite 7
+- Tailwind CSS 4 through `@tailwindcss/vite`
+- React Router 7
+- Better Auth React client
+- Hono RPC client using the API application's exported `AppType`
+- i18next and react-i18next
+- Lucide React icons
+- MapLibre GL for interactive location messages
+- opus-recorder with a locally emitted OGG/Opus WebAssembly worker for voice notes
+- Monaco Editor with local JavaScript language workers
+
 ## Validation commands
 
 ```sh
@@ -42,20 +48,35 @@ The build command runs TypeScript project validation before creating the product
 
 ## Routes
 
-| Path             | Classification | Behavior                                                                          |
-| ---------------- | -------------- | --------------------------------------------------------------------------------- |
-| `/design-system` | Public         | Available with or without a session.                                              |
-| `/login`         | Guest          | Redirects authenticated users to `/`.                                             |
-| `/`              | Private        | Redirects unauthenticated users to `/login` and preserves the requested location. |
-| `/organization`  | Private        | Manages organizations, invitations, and members.                                  |
-| `/admin`         | Admin          | Manages application users, roles, bans, credentials, and sessions.                |
-| Any other path   | Fallback       | Redirects to `/`, after which the private guard applies.                          |
+| Path                                  | Classification | Behavior                                                                           |
+| ------------------------------------- | -------------- | ---------------------------------------------------------------------------------- |
+| `/design-system`                      | Public         | Available with or without a session.                                               |
+| `/login`                              | Guest          | Redirects authenticated users to `/`.                                              |
+| `/`                                   | Private        | Redirects unauthenticated users to `/login` and preserves the requested location.  |
+| `/chat`                               | Private        | Displays cursor-paginated organization chats and message/event timelines.          |
+| `/chat/:chatId`                       | Private        | Opens a tenant-authorized chat directly while retaining the paginated inbox.       |
+| `/organization`                       | Private        | Manages organizations, invitations, and members.                                   |
+| `/agents`                             | Private        | Displays organization channels available for agent configuration.                  |
+| `/agents/:id`                         | Private        | Manages agent rollout, audience, business information, skills, and knowledge.      |
+| `/agents/:id/connectors/:connectorId` | Private        | Creates or edits a connector, its tools, and recent logs.                          |
+| `/channels`                           | Private        | Manages WhatsApp channels and webhook forwarding.                                  |
+| `/contacts`                           | Private        | Searches and filters cursor-paginated organization contacts.                       |
+| `/groups`                             | Private        | Searches and filters cursor-paginated WhatsApp groups.                             |
+| `/functions`                          | Private        | Manages active-organization JavaScript functions, revisions, and parameters.       |
+| `/mcps`                               | Private        | Manages organization MCP packs and their function membership.                      |
+| `/api-keys`                           | Private        | Manages organization API keys and their function/MCP scopes.                       |
+| `/api-playground`                     | Private        | Runs registration, messaging, and media package operations for a selected channel. |
+| `/admin`                              | Admin          | Manages application users, roles, bans, credentials, and sessions.                 |
+| Any other path                        | Fallback       | Redirects to `/`, after which the private guard applies.                           |
 
 See [`src/router/README.md`](src/router/README.md) for route and guard details.
 
-## Architecture
+## Architecture and ownership
 
-The entry point initializes localization and semantic styles, installs the theme provider, and renders the router. Application pages consume reusable primitives rather than maintaining their own visual tokens.
+Route pages own orchestration, `components` own reusable presentation, `router`
+owns access policy, and `auth` owns browser session transport. The entry point
+initializes localization and semantic styles, installs the theme provider, and
+renders the router.
 
 ```text
 index.html

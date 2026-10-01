@@ -1,0 +1,37 @@
+info:
+  name: Send Agent Event
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: https://api.facebook.com/{{Phone-Number-ID}}/agent_event
+  headers:
+    - name: X-API-Version
+      value: 2.0.0
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "to": "{{Recipient-Phone-Number}}",
+        "event": {
+          "type": "order_shipped",
+          "description": "The customer's order has shipped.",
+          "payload": "{\"order_id\":\"12345\",\"tracking_status\":\"in_transit\"}"
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+docs: |-
+  Submits a business event for asynchronous handling in an existing consumer conversation. `payload` is a JSON-encoded string.
+
+  Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/operate/agent-event

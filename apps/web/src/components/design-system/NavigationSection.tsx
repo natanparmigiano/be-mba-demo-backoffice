@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { Settings, X } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pagination, Pill, SectionCard, SectionHeading, Tabs } from '../ui'
@@ -25,6 +25,23 @@ export function NavigationSection() {
             label: t(`design.tabs.${tab}`),
           }))}
           value={activeTab}
+          onValueChange={setActiveTab}
+          ariaLabel={t('design.navigationPatterns')}
+        />
+        <Tabs
+          className="mt-4"
+          items={tabValues.map((tab) => ({
+            value: tab,
+            label: t(`design.tabs.${tab}`),
+            ...(tab === 'settings'
+              ? {
+                  align: 'end' as const,
+                  icon: <Settings className="size-4" aria-hidden />,
+                }
+              : {}),
+          }))}
+          value={activeTab}
+          variant="pills"
           onValueChange={setActiveTab}
           ariaLabel={t('design.navigationPatterns')}
         />

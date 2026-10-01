@@ -93,7 +93,7 @@ export function DesignSystemHeader() {
               <span className="absolute -top-1 -right-1 size-2 rounded-full bg-destructive ring-2 ring-card" />
             </span>
           </Button>
-          <Avatar name="Natan Parmigiano" status="online" />
+          <Avatar name={t('design.demoAccountName')} status="online" />
         </div>
       </header>
 
