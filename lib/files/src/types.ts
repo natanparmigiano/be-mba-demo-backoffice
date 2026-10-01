@@ -1,4 +1,4 @@
-export type FileStoreMode = 'fs' | 's3'
+export type FileStoreMode = 'fs' | 'postgres' | 's3'
 export type SignedUrlOperation = 'download' | 'upload'
 
 export interface StoredFile {

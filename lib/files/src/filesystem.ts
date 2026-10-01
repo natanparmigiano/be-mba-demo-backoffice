@@ -1,9 +1,4 @@
-import {
-  createHash,
-  createHmac,
-  randomUUID,
-  timingSafeEqual,
-} from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import {
   mkdir,
   readFile,
@@ -14,8 +9,8 @@ import {
 } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import type { FileSystemConfiguration } from './env.js'
+import { HmacSignedUrlSupport } from './signed-url.js'
 import {
-  resolveSignedUrlTtl,
   validateContentType,
   validateFileKey,
   type FileStore,
@@ -37,13 +32,12 @@ export class FileSystemFileStore implements FileStore {
   readonly mode = 'fs' as const
 
   private readonly directory: string
+  private readonly signedUrls: HmacSignedUrlSupport
   private closed = false
 
-  constructor(
-    private readonly configuration: FileSystemConfiguration,
-    private readonly now: Clock = Date.now,
-  ) {
+  constructor(configuration: FileSystemConfiguration, now: Clock = Date.now) {
     this.directory = resolve(configuration.directory)
+    this.signedUrls = new HmacSignedUrlSupport(configuration, now)
   }
 
   async get(key: string): Promise<StoredFile | null> {
@@ -127,26 +121,7 @@ export class FileSystemFileStore implements FileStore {
 
   async signUrl(key: string, options: SignUrlOptions): Promise<string> {
     this.assertOpen()
-    validateFileKey(key)
-    validateContentType(options.contentType)
-    const expires =
-      Math.floor(this.now() / 1_000) +
-      resolveSignedUrlTtl(options.expiresInSeconds)
-    const url = new URL(this.configuration.publicUrl)
-    url.pathname = `${url.pathname.replace(/\/$/, '')}/api/files/signed`
-    url.searchParams.set('key', key)
-    url.searchParams.set('operation', options.operation)
-    url.searchParams.set('expires', String(expires))
-
-    if (options.contentType !== undefined) {
-      url.searchParams.set('contentType', options.contentType)
-    }
-
-    url.searchParams.set(
-      'signature',
-      this.signature(key, options.operation, expires, options.contentType),
-    )
-    return url.toString()
+    return this.signedUrls.sign(key, options)
   }
 
   verifySignedUrl(
@@ -155,69 +130,11 @@ export class FileSystemFileStore implements FileStore {
   ): VerifiedSignedFileUrl | null {
     this.assertOpen()
 
-    if (!hasOnlySignedUrlParameters(url)) return null
-
-    const key = getSingleParameter(url, 'key')
-    const signedOperation = getSingleParameter(url, 'operation')
-    const expiresValue = getSingleParameter(url, 'expires')
-    const contentType = getOptionalSingleParameter(url, 'contentType')
-    const suppliedSignature = getSingleParameter(url, 'signature')
-
-    if (
-      key === null ||
-      signedOperation !== operation ||
-      expiresValue === null ||
-      suppliedSignature === null ||
-      !/^\d+$/.test(expiresValue) ||
-      !/^[a-f\d]{64}$/.test(suppliedSignature)
-    ) {
-      return null
-    }
-
-    const expires = Number(expiresValue)
-    if (
-      !Number.isSafeInteger(expires) ||
-      expires <= Math.floor(this.now() / 1_000)
-    ) {
-      return null
-    }
-
-    try {
-      validateFileKey(key)
-      validateContentType(contentType)
-    } catch {
-      return null
-    }
-
-    const expectedSignature = this.signature(
-      key,
-      operation,
-      expires,
-      contentType,
-    )
-    const supplied = Buffer.from(suppliedSignature, 'hex')
-    const expected = Buffer.from(expectedSignature, 'hex')
-
-    if (!timingSafeEqual(supplied, expected)) return null
-
-    return { key, operation, contentType }
+    return this.signedUrls.verify(url, operation)
   }
 
   async close(): Promise<void> {
     this.closed = true
-  }
-
-  private signature(
-    key: string,
-    operation: SignedUrlOperation,
-    expires: number,
-    contentType: string | undefined,
-  ): string {
-    return createHmac('sha256', this.configuration.signingSecret)
-      .update(
-        ['v1', operation, String(expires), key, contentType ?? ''].join('\n'),
-      )
-      .digest('hex')
   }
 
   private pathsFor(key: string): { metadata: string; object: string } {
@@ -251,36 +168,6 @@ export class FileSystemFileStore implements FileStore {
   private assertOpen(): void {
     if (this.closed) throw new Error('File store is closed')
   }
-}
-
-function hasOnlySignedUrlParameters(url: URL): boolean {
-  const allowed = new Set([
-    'key',
-    'operation',
-    'expires',
-    'contentType',
-    'signature',
-  ])
-  return [...url.searchParams.keys()].every(
-    (key) => allowed.has(key) && url.searchParams.getAll(key).length === 1,
-  )
-}
-
-function getSingleParameter(url: URL, name: string): string | null {
-  const values = url.searchParams.getAll(name)
-  return values.length === 1 && values[0] !== '' ? (values[0] ?? null) : null
-}
-
-function getOptionalSingleParameter(
-  url: URL,
-  name: string,
-): string | undefined {
-  const values = url.searchParams.getAll(name)
-  return values.length === 0
-    ? undefined
-    : values.length === 1
-      ? values[0]
-      : undefined
 }
 
 function isFileMetadata(value: unknown): value is FileMetadata {

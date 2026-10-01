@@ -1,10 +1,12 @@
 import {
+  ArrowLeft,
   Check,
   Clipboard,
   Eye,
   EyeOff,
   AlertTriangle,
   KeyRound,
+  LoaderCircle,
   Pencil,
   Phone,
   Plus,
@@ -23,7 +25,7 @@ import {
   type SubmitEvent,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
 import {
@@ -33,12 +35,18 @@ import {
 } from '../channel-qr'
 import { ChannelQrCode } from '../components/channel-qr-code'
 import {
+  ConversationalComponentsSettingsCard,
+  QrCodesSettingsCard,
+} from '../components/channel-management-cards'
+import { SettingsCard } from '../components/settings-card'
+import {
   Button,
   cn,
   Dialog,
   EmptyState,
   Input,
   Pill,
+  Tabs,
   Textarea,
 } from '../components/ui'
 
@@ -105,7 +113,12 @@ const emptyForm: ChannelFormValues = {
 
 export function ChannelsPage() {
   const { t } = useTranslation()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { channelId: channelIdParam } = useParams<{ channelId: string }>()
+  const isCreatePage = location.pathname === '/channels/new'
+  const routeChannelId = parsePositiveInteger(channelIdParam ?? null)
+  const isFormPage = isCreatePage || channelIdParam !== undefined
   const activeOrganizationQuery = authClient.useActiveOrganization()
   const activeMemberRoleQuery = authClient.useActiveMemberRole()
   const activeOrganization = activeOrganizationQuery.data
@@ -137,7 +150,6 @@ export function ChannelsPage() {
   const [isLoadingDeletionPreview, setIsLoadingDeletionPreview] =
     useState(false)
   const deletionPreviewRequestId = useRef(0)
-  const openedEditChannelId = useRef<number | null>(null)
 
   useEffect(() => {
     document.title = `${t('channels.title')} · ${t('design.brand')}`
@@ -218,54 +230,67 @@ export function ChannelsPage() {
     setDeleteConfirmation('')
     setRegistrationPin('')
     setIsLoadingDeletionPreview(false)
-    if (searchParams.has('edit')) {
-      const nextSearchParams = new URLSearchParams(searchParams)
-      nextSearchParams.delete('edit')
-      setSearchParams(nextSearchParams, { replace: true })
-      openedEditChannelId.current = null
-    }
+    if (isFormPage) navigate('/channels')
   }
 
   const openCreateDialog = () => {
     setForm({ ...emptyForm, waWebhookVerifyToken: generateVerifyToken() })
     setSelectedChannel(null)
     setDialogError(null)
-    setDialog('create')
+    navigate('/channels/new')
   }
 
-  const openEditDialog = useCallback((channel: ChannelSummary) => {
-    setSelectedChannel(channel)
-    setForm({
-      waPhoneNumber: channel.waPhoneNumber,
-      waPhoneNumberId: channel.waPhoneNumberId,
-      waWabaId: channel.waWabaId,
-      waBusinessId: channel.waBusinessId,
-      waAppId: channel.waAppId,
-      waAppSecret: '',
-      waWebhookVerifyToken: '',
-      waSystemUserAccessToken: '',
-      webhookForwardUrls: channel.webhookForwardUrls.join('\n'),
-    })
-    setDialogError(null)
-    setRegistrationPin('')
-    setDialog('edit')
-  }, [])
+  const openEditDialog = useCallback(
+    (channel: ChannelSummary) => {
+      setSelectedChannel(channel)
+      setForm({
+        waPhoneNumber: channel.waPhoneNumber,
+        waPhoneNumberId: channel.waPhoneNumberId,
+        waWabaId: channel.waWabaId,
+        waBusinessId: channel.waBusinessId,
+        waAppId: channel.waAppId,
+        waAppSecret: '',
+        waWebhookVerifyToken: '',
+        waSystemUserAccessToken: '',
+        webhookForwardUrls: channel.webhookForwardUrls.join('\n'),
+      })
+      setDialogError(null)
+      setRegistrationPin('')
+      navigate(`/channels/${channel.id}`)
+    },
+    [navigate],
+  )
 
   useEffect(() => {
-    const requestedChannelId = parsePositiveInteger(searchParams.get('edit'))
-    if (
-      !requestedChannelId ||
-      openedEditChannelId.current === requestedChannelId
-    ) {
+    if (isCreatePage) {
+      setForm({ ...emptyForm, waWebhookVerifyToken: generateVerifyToken() })
+      setSelectedChannel(null)
+      setDialogError(null)
+      setDialog('create')
       return
     }
+    const requestedChannelId = routeChannelId
+    if (!requestedChannelId) return
     const requestedChannel = channels.find(
       (channel) => channel.id === requestedChannelId,
     )
     if (!requestedChannel) return
-    openedEditChannelId.current = requestedChannelId
-    openEditDialog(requestedChannel)
-  }, [channels, openEditDialog, searchParams])
+    setSelectedChannel(requestedChannel)
+    setForm({
+      waPhoneNumber: requestedChannel.waPhoneNumber,
+      waPhoneNumberId: requestedChannel.waPhoneNumberId,
+      waWabaId: requestedChannel.waWabaId,
+      waBusinessId: requestedChannel.waBusinessId,
+      waAppId: requestedChannel.waAppId,
+      waAppSecret: '',
+      waWebhookVerifyToken: '',
+      waSystemUserAccessToken: '',
+      webhookForwardUrls: requestedChannel.webhookForwardUrls.join('\n'),
+    })
+    setDialogError(null)
+    setRegistrationPin('')
+    setDialog('edit')
+  }, [channels, isCreatePage, routeChannelId])
 
   const openDeleteDialog = async (channel: ChannelSummary) => {
     const requestId = ++deletionPreviewRequestId.current
@@ -309,7 +334,7 @@ export function ChannelsPage() {
     try {
       const values = trimForm(form)
       let response: Response
-      if (dialog === 'create') {
+      if (isCreatePage) {
         response = await apiClient.api.channels.$post({ json: values })
       } else if (selectedChannel) {
         const secrets = {
@@ -345,10 +370,11 @@ export function ChannelsPage() {
       setDialog(null)
       setSelectedChannel(null)
       setNotice(
-        dialog === 'create'
+        isCreatePage
           ? t('channels.channelCreated')
           : t('channels.channelUpdated'),
       )
+      navigate('/channels')
     } catch (reason) {
       setDialogError(getErrorMessage(reason, t('channels.operationFailed')))
     } finally {
@@ -478,6 +504,79 @@ export function ChannelsPage() {
     }
   }
 
+  if (isFormPage) {
+    if (!isCreatePage && isLoading && !selectedChannel) {
+      return (
+        <div className="grid min-h-80 place-items-center" role="status">
+          <LoaderCircle
+            className="size-7 animate-spin text-primary"
+            aria-hidden
+          />
+          <span className="sr-only">{t('channels.loadingChannels')}</span>
+        </div>
+      )
+    }
+    if (!isCreatePage && !selectedChannel) {
+      return (
+        <EmptyState
+          icon={<RadioTower className="size-5" aria-hidden />}
+          title={t('channels.noChannelSelected')}
+          description={t('channels.noChannelsDescription')}
+          action={
+            <Button onClick={() => navigate('/channels')}>
+              <ArrowLeft className="size-4" aria-hidden />
+              {t('channels.backToChannels')}
+            </Button>
+          }
+        />
+      )
+    }
+
+    return (
+      <ChannelFormPage
+        mode={isCreatePage ? 'create' : 'edit'}
+        open
+        form={form}
+        setForm={setForm}
+        isBusy={isBusy}
+        error={dialogError}
+        canManage={canManage}
+        registrationPin={registrationPin}
+        registrationState={
+          selectedChannel
+            ? (registrationStates[selectedChannel.id] ??
+              emptyRegistrationState('loading'))
+            : emptyRegistrationState('loading')
+        }
+        qrState={
+          selectedChannel
+            ? (qrStates[selectedChannel.id] ?? emptyChannelQrState('loading'))
+            : emptyChannelQrState('loading')
+        }
+        channelId={selectedChannel?.id ?? null}
+        isRegistrationBusy={isRegistrationBusy}
+        setRegistrationPin={setRegistrationPin}
+        onClose={closeDialog}
+        onRegister={() => void updateRegistration('register', false)}
+        onDeregister={() => void updateRegistration('deregister', false)}
+        onQrCreated={() => {
+          if (!selectedChannel) return
+          setQrStates((current) => ({
+            ...current,
+            [selectedChannel.id]: emptyChannelQrState('loading'),
+          }))
+          void fetchChannelQrState(selectedChannel.id).then((state) =>
+            setQrStates((current) => ({
+              ...current,
+              [selectedChannel.id]: state,
+            })),
+          )
+        }}
+        onSubmit={(event) => void saveChannel(event)}
+      />
+    )
+  }
+
   return (
     <div className="grid gap-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -544,12 +643,12 @@ export function ChannelsPage() {
         </div>
 
         {isLoading && channels.length === 0 ? (
-          <div className="flex flex-wrap gap-4" role="status">
+          <div className="grid gap-4 lg:grid-cols-2" role="status">
             <span className="sr-only">{t('channels.loadingChannels')}</span>
             {[0, 1].map((item) => (
               <div
                 key={item}
-                className="h-80 min-w-72 flex-1 basis-96 animate-pulse rounded-2xl bg-muted"
+                className="h-80 animate-pulse rounded-2xl bg-muted"
               />
             ))}
           </div>
@@ -568,7 +667,7 @@ export function ChannelsPage() {
             }
           />
         ) : (
-          <div className="flex flex-wrap items-stretch gap-4">
+          <div className="grid items-stretch gap-4 lg:grid-cols-2">
             {channels.map((channel) => (
               <ChannelCard
                 key={channel.id}
@@ -601,50 +700,6 @@ export function ChannelsPage() {
           </div>
         )}
       </section>
-
-      <ChannelFormDialog
-        mode="create"
-        open={dialog === 'create'}
-        form={form}
-        setForm={setForm}
-        isBusy={isBusy}
-        error={dialogError}
-        canManage={canManage}
-        registrationPin={registrationPin}
-        registrationState={emptyRegistrationState('loading')}
-        qrState={emptyChannelQrState('loading')}
-        isRegistrationBusy={isRegistrationBusy}
-        setRegistrationPin={setRegistrationPin}
-        onClose={closeDialog}
-        onSubmit={(event) => void saveChannel(event)}
-      />
-      <ChannelFormDialog
-        mode="edit"
-        open={dialog === 'edit'}
-        form={form}
-        setForm={setForm}
-        isBusy={isBusy}
-        error={dialogError}
-        canManage={canManage}
-        registrationPin={registrationPin}
-        registrationState={
-          selectedChannel
-            ? (registrationStates[selectedChannel.id] ??
-              emptyRegistrationState('loading'))
-            : emptyRegistrationState('loading')
-        }
-        qrState={
-          selectedChannel
-            ? (qrStates[selectedChannel.id] ?? emptyChannelQrState('loading'))
-            : emptyChannelQrState('loading')
-        }
-        isRegistrationBusy={isRegistrationBusy}
-        setRegistrationPin={setRegistrationPin}
-        onClose={closeDialog}
-        onRegister={() => void updateRegistration('register', false)}
-        onDeregister={() => void updateRegistration('deregister', false)}
-        onSubmit={(event) => void saveChannel(event)}
-      />
 
       <Dialog
         open={dialog === 'qr-code'}
@@ -963,7 +1018,7 @@ function ChannelCard({
   }
 
   return (
-    <article className="min-w-72 flex-1 basis-[30rem] overflow-hidden rounded-2xl border bg-background shadow-xs">
+    <article className="min-w-0 overflow-hidden rounded-2xl border bg-background shadow-xs">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b p-5">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-success/12 text-success">
@@ -1276,7 +1331,7 @@ function CredentialPill({
   )
 }
 
-function ChannelFormDialog({
+function ChannelFormPage({
   mode,
   open,
   form,
@@ -1287,11 +1342,13 @@ function ChannelFormDialog({
   registrationPin,
   registrationState,
   qrState,
+  channelId,
   isRegistrationBusy,
   setRegistrationPin,
   onClose,
   onRegister,
   onDeregister,
+  onQrCreated,
   onSubmit,
 }: {
   mode: 'create' | 'edit'
@@ -1304,94 +1361,151 @@ function ChannelFormDialog({
   registrationPin: string
   registrationState: RegistrationState
   qrState: ChannelQrState
+  channelId: number | null
   isRegistrationBusy: boolean
   setRegistrationPin: (pin: string) => void
   onClose: () => void
   onRegister?: () => void
   onDeregister?: () => void
+  onQrCreated?: () => void
   onSubmit: (event: SubmitEvent<HTMLFormElement>) => void
 }) {
   const { t } = useTranslation()
   const isEditing = mode === 'edit'
+  const [activeTab, setActiveTab] = useState<
+    | 'identity'
+    | 'registration'
+    | 'qr'
+    | 'components'
+    | 'webhook'
+    | 'credentials'
+  >('identity')
   const update = (field: keyof ChannelFormValues, value: string) =>
     setForm((current) => ({ ...current, [field]: value }))
 
-  return (
-    <Dialog
-      size="xl"
-      open={open}
-      onOpenChange={(nextOpen) => !nextOpen && onClose()}
-      title={
-        isEditing ? t('channels.editChannel') : t('channels.createChannelTitle')
-      }
-      description={
-        isEditing
-          ? t('channels.editChannelDescription')
-          : t('channels.createChannelDescription')
-      }
-      icon={
-        <DialogIcon
-          icon={
-            isEditing ? (
-              <Pencil className="size-5" />
-            ) : (
-              <RadioTower className="size-5" />
-            )
-          }
-        />
-      }
-    >
-      <form className="grid w-full gap-5" onSubmit={onSubmit}>
-        <fieldset
-          className="grid gap-4 rounded-xl border bg-muted/25 p-4 sm:grid-cols-2 lg:grid-cols-3"
-          disabled={isBusy}
-        >
-          <legend className="col-span-full px-1 text-sm font-bold">
-            {t('channels.channelIdentity')}
-          </legend>
-          <Input
-            label={t('channels.displayPhoneNumber')}
-            hint={t('channels.countryCodeHint')}
-            value={form.waPhoneNumber}
-            onChange={(event) => update('waPhoneNumber', event.target.value)}
-            autoFocus
-            required
-          />
-          <Input
-            label={t('channels.phoneNumberId')}
-            inputMode="numeric"
-            value={form.waPhoneNumberId}
-            onChange={(event) => update('waPhoneNumberId', event.target.value)}
-            required
-          />
-          <Input
-            label={t('channels.whatsAppBusinessAccountId')}
-            value={form.waWabaId}
-            onChange={(event) => update('waWabaId', event.target.value)}
-            required
-          />
-          <Input
-            label={t('channels.businessPortfolioId')}
-            value={form.waBusinessId}
-            onChange={(event) => update('waBusinessId', event.target.value)}
-            required
-          />
-          <Input
-            label={t('channels.metaAppId')}
-            value={form.waAppId}
-            onChange={(event) => update('waAppId', event.target.value)}
-            required
-          />
-        </fieldset>
+  if (!open) return null
 
-        {isEditing && (
-          <fieldset
-            className="grid gap-4 rounded-xl border p-4"
-            disabled={isBusy || isRegistrationBusy}
+  const formFooter = canManage ? (
+    <Button type="submit" disabled={isRegistrationBusy} isLoading={isBusy}>
+      {isEditing ? t('channels.saveChanges') : t('channels.createChannel')}
+    </Button>
+  ) : (
+    <p className="text-sm text-muted-foreground">
+      {t('channels.managersOnly')}
+    </p>
+  )
+
+  return (
+    <div className="grid gap-6">
+      <header className="flex items-start gap-4">
+        <Button
+          aria-label={t('channels.backToChannels')}
+          size="icon"
+          type="button"
+          variant="ghost"
+          onClick={onClose}
+        >
+          <ArrowLeft className="size-5" aria-hidden />
+        </Button>
+        <div>
+          <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
+            {t('channels.eyebrow')}
+          </p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
+            {isEditing
+              ? t('channels.editChannel')
+              : t('channels.createChannelTitle')}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            {isEditing
+              ? t('channels.editChannelDescription')
+              : t('channels.createChannelDescription')}
+          </p>
+        </div>
+      </header>
+
+      <Tabs
+        ariaLabel={t('channels.tabs.label')}
+        items={[
+          { value: 'identity', label: t('channels.tabs.identity') },
+          ...(isEditing
+            ? [
+                {
+                  value: 'registration' as const,
+                  label: t('channels.tabs.registration'),
+                },
+                { value: 'qr' as const, label: t('channels.tabs.qr') },
+                {
+                  value: 'components' as const,
+                  label: t('channels.tabs.components'),
+                },
+              ]
+            : []),
+          { value: 'webhook', label: t('channels.tabs.webhook') },
+          { value: 'credentials', label: t('channels.tabs.credentials') },
+        ]}
+        variant="pills"
+        value={activeTab}
+        onValueChange={setActiveTab}
+      />
+
+      <form className="grid w-full gap-5" onSubmit={onSubmit}>
+        {activeTab === 'identity' && (
+          <SettingsCard
+            icon={<RadioTower className="size-5" aria-hidden />}
+            title={t('channels.channelIdentity')}
+            description={t('channels.identityDescription')}
+            bodyClassName="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            disabled={isBusy}
+            error={error}
+            footer={formFooter}
           >
-            <legend className="px-1 text-sm font-bold">
-              {t('channels.registration.title')}
-            </legend>
+            <Input
+              label={t('channels.displayPhoneNumber')}
+              hint={t('channels.countryCodeHint')}
+              value={form.waPhoneNumber}
+              onChange={(event) => update('waPhoneNumber', event.target.value)}
+              autoFocus
+              required
+            />
+            <Input
+              label={t('channels.phoneNumberId')}
+              inputMode="numeric"
+              value={form.waPhoneNumberId}
+              onChange={(event) =>
+                update('waPhoneNumberId', event.target.value)
+              }
+              required
+            />
+            <Input
+              label={t('channels.whatsAppBusinessAccountId')}
+              value={form.waWabaId}
+              onChange={(event) => update('waWabaId', event.target.value)}
+              required
+            />
+            <Input
+              label={t('channels.businessPortfolioId')}
+              value={form.waBusinessId}
+              onChange={(event) => update('waBusinessId', event.target.value)}
+              required
+            />
+            <Input
+              label={t('channels.metaAppId')}
+              value={form.waAppId}
+              onChange={(event) => update('waAppId', event.target.value)}
+              required
+            />
+          </SettingsCard>
+        )}
+
+        {isEditing && activeTab === 'registration' && (
+          <SettingsCard
+            icon={<Phone className="size-5" aria-hidden />}
+            title={t('channels.registration.title')}
+            description={t('channels.registration.cardDescription')}
+            disabled={isBusy || isRegistrationBusy}
+            error={error}
+          >
             <RegistrationSummary
               canManage={false}
               state={registrationState}
@@ -1456,139 +1570,121 @@ function ChannelFormDialog({
                 </Button>
               </div>
             )}
-          </fieldset>
+          </SettingsCard>
         )}
 
-        {isEditing && (
-          <section className="grid gap-4 rounded-xl border p-4">
-            <div className="flex items-start gap-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-                <QrCode className="size-4" aria-hidden />
-              </span>
-              <div>
-                <h3 className="text-sm font-bold">{t('channels.qr.title')}</h3>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {t('channels.qr.formDescription')}
-                </p>
-              </div>
-            </div>
-            <ChannelQrCode
-              className="border-0 bg-transparent p-0"
-              phoneNumber={form.waPhoneNumber}
-              state={qrState}
+        {isEditing && activeTab === 'qr' && (
+          <QrCodesSettingsCard
+            channelId={channelId!}
+            phoneNumber={form.waPhoneNumber}
+            canManage={canManage}
+            state={qrState}
+            onChanged={() => onQrCreated?.()}
+          />
+        )}
+
+        {isEditing && activeTab === 'components' && (
+          <ConversationalComponentsSettingsCard
+            channelId={channelId!}
+            canManage={canManage}
+          />
+        )}
+
+        {activeTab === 'webhook' && (
+          <SettingsCard
+            icon={<Webhook className="size-5" aria-hidden />}
+            title={t('channels.webhookForwarding')}
+            description={t('channels.webhookDescription')}
+            disabled={isBusy}
+            error={error}
+            footer={formFooter}
+          >
+            <Textarea
+              label={t('channels.forwardUrls')}
+              hint={t('channels.forwardUrlsHint')}
+              placeholder={
+                'https://example.com/webhooks/whatsapp\nhttps://backup.example.com/hooks'
+              }
+              value={form.webhookForwardUrls}
+              onChange={(event) =>
+                update('webhookForwardUrls', event.target.value)
+              }
             />
-          </section>
+          </SettingsCard>
         )}
 
-        <fieldset
-          className="grid gap-4 rounded-xl border p-4"
-          disabled={isBusy}
-        >
-          <legend className="px-1 text-sm font-bold">
-            {t('channels.webhookForwarding')}
-          </legend>
-          <Textarea
-            label={t('channels.forwardUrls')}
-            hint={t('channels.forwardUrlsHint')}
-            placeholder={
-              'https://example.com/webhooks/whatsapp\nhttps://backup.example.com/hooks'
-            }
-            value={form.webhookForwardUrls}
-            onChange={(event) =>
-              update('webhookForwardUrls', event.target.value)
-            }
-          />
-        </fieldset>
-
-        <fieldset
-          className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-3"
-          disabled={isBusy}
-        >
-          <legend className="col-span-full px-1 text-sm font-bold">
-            {t('channels.credentials')}
-          </legend>
-          <Input
-            label={t('channels.metaAppSecret')}
-            type="password"
-            autoComplete="new-password"
-            hint={
-              isEditing
-                ? t('channels.keepCurrentSecret')
-                : t('channels.appSecretHint')
-            }
-            value={form.waAppSecret}
-            onChange={(event) => update('waAppSecret', event.target.value)}
-            required={!isEditing}
-          />
-          <Input
-            label={t('channels.webhookVerifyToken')}
-            labelAction={
-              <Button
-                className="h-6 px-2"
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  update('waWebhookVerifyToken', generateVerifyToken())
-                }
-              >
-                {t('channels.generate')}
-              </Button>
-            }
-            type="password"
-            autoComplete="new-password"
-            hint={
-              isEditing
-                ? t('channels.keepCurrentToken')
-                : t('channels.verifyTokenHint')
-            }
-            value={form.waWebhookVerifyToken}
-            onChange={(event) =>
-              update('waWebhookVerifyToken', event.target.value)
-            }
-            required={!isEditing}
-          />
-          <div className="sm:col-span-2 lg:col-span-1">
+        {activeTab === 'credentials' && (
+          <SettingsCard
+            icon={<KeyRound className="size-5" aria-hidden />}
+            title={t('channels.credentials')}
+            description={t('channels.credentialsDescription')}
+            bodyClassName="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            disabled={isBusy}
+            error={error}
+            footer={formFooter}
+          >
             <Input
-              label={t('channels.systemUserAccessToken')}
+              label={t('channels.metaAppSecret')}
+              type="password"
+              autoComplete="new-password"
+              hint={
+                isEditing
+                  ? t('channels.keepCurrentSecret')
+                  : t('channels.appSecretHint')
+              }
+              value={form.waAppSecret}
+              onChange={(event) => update('waAppSecret', event.target.value)}
+              required={!isEditing}
+            />
+            <Input
+              label={t('channels.webhookVerifyToken')}
+              labelAction={
+                <Button
+                  className="h-6 px-2"
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    update('waWebhookVerifyToken', generateVerifyToken())
+                  }
+                >
+                  {t('channels.generate')}
+                </Button>
+              }
               type="password"
               autoComplete="new-password"
               hint={
                 isEditing
                   ? t('channels.keepCurrentToken')
-                  : t('channels.accessTokenHint')
+                  : t('channels.verifyTokenHint')
               }
-              value={form.waSystemUserAccessToken}
+              value={form.waWebhookVerifyToken}
               onChange={(event) =>
-                update('waSystemUserAccessToken', event.target.value)
+                update('waWebhookVerifyToken', event.target.value)
               }
               required={!isEditing}
             />
-          </div>
-        </fieldset>
-
-        <DialogError message={error} />
-        <div className="flex justify-end gap-2 border-t pt-4">
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={isBusy || isRegistrationBusy}
-            onClick={onClose}
-          >
-            {t('channels.cancel')}
-          </Button>
-          <Button
-            type="submit"
-            disabled={isRegistrationBusy}
-            isLoading={isBusy}
-          >
-            {isEditing
-              ? t('channels.saveChanges')
-              : t('channels.createChannel')}
-          </Button>
-        </div>
+            <div className="sm:col-span-2 lg:col-span-1">
+              <Input
+                label={t('channels.systemUserAccessToken')}
+                type="password"
+                autoComplete="new-password"
+                hint={
+                  isEditing
+                    ? t('channels.keepCurrentToken')
+                    : t('channels.accessTokenHint')
+                }
+                value={form.waSystemUserAccessToken}
+                onChange={(event) =>
+                  update('waSystemUserAccessToken', event.target.value)
+                }
+                required={!isEditing}
+              />
+            </div>
+          </SettingsCard>
+        )}
       </form>
-    </Dialog>
+    </div>
   )
 }
 

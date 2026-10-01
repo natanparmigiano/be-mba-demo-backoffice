@@ -1,19 +1,33 @@
-import { LoaderCircle, MessageSquareText, QrCode } from 'lucide-react'
+import {
+  ChevronDown,
+  Download,
+  LoaderCircle,
+  MessageSquareText,
+  Pencil,
+  QrCode,
+  Trash2,
+} from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChannelQrState } from '../channel-qr'
-import { cn } from './ui'
+import { Button, cn, Menu, MenuContent, MenuItem, MenuTrigger } from './ui'
 
 export function ChannelQrCode({
   phoneNumber,
   state,
   size = 'medium',
   className,
+  showDownload = false,
+  onEdit,
+  onRemove,
 }: {
   phoneNumber: string
   state: ChannelQrState
   size?: 'avatar' | 'small' | 'medium' | 'large'
   className?: string
+  showDownload?: boolean
+  onEdit?: () => void
+  onRemove?: () => void
 }) {
   const { t } = useTranslation()
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
@@ -28,6 +42,44 @@ export function ChannelQrCode({
         : size === 'large'
           ? 'size-64 max-w-full'
           : 'size-40'
+
+  const download = async (format: 'SVG' | 'PNG') => {
+    if (!state.imageUrl) return
+
+    const response = await fetch(state.imageUrl)
+    if (!response.ok) return
+    const source = await response.blob()
+    const fileName = `whatsapp-qr-${state.code ?? phoneNumber}.${format.toLowerCase()}`
+    let objectUrl: string
+
+    if (format === 'SVG') {
+      objectUrl = URL.createObjectURL(source)
+    } else {
+      const sourceUrl = URL.createObjectURL(source)
+      try {
+        const image = new Image()
+        image.src = sourceUrl
+        await image.decode()
+        const canvas = document.createElement('canvas')
+        canvas.width = image.naturalWidth || 1024
+        canvas.height = image.naturalHeight || 1024
+        canvas.getContext('2d')?.drawImage(image, 0, 0)
+        const png = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, 'image/png'),
+        )
+        if (!png) return
+        objectUrl = URL.createObjectURL(png)
+      } finally {
+        URL.revokeObjectURL(sourceUrl)
+      }
+    }
+
+    const anchor = document.createElement('a')
+    anchor.href = objectUrl
+    anchor.download = fileName
+    anchor.click()
+    URL.revokeObjectURL(objectUrl)
+  }
 
   return (
     <section
@@ -63,6 +115,49 @@ export function ChannelQrCode({
               />
               <span>{state.prefilledMessage}</span>
             </p>
+          )}
+          {showDownload && (
+            <Menu className="w-full max-w-64">
+              <MenuTrigger className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-transparent bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 active:bg-primary/80">
+                <Download className="size-4" aria-hidden />
+                {t('channels.qr.download')}
+                <ChevronDown className="ml-auto size-4" aria-hidden />
+              </MenuTrigger>
+              <MenuContent className="w-full min-w-0" align="start">
+                <MenuItem onClick={() => void download('PNG')}>
+                  {t('channels.qr.downloadFormat', { format: 'PNG' })}
+                </MenuItem>
+                <MenuItem onClick={() => void download('SVG')}>
+                  {t('channels.qr.downloadFormat', { format: 'SVG' })}
+                </MenuItem>
+              </MenuContent>
+            </Menu>
+          )}
+          {(onEdit || onRemove) && (
+            <div className="grid w-full max-w-64 grid-cols-2 gap-2">
+              {onEdit && (
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                  onClick={onEdit}
+                >
+                  <Pencil className="size-3.5" aria-hidden />
+                  {t('channels.qr.edit')}
+                </Button>
+              )}
+              {onRemove && (
+                <Button
+                  size="sm"
+                  type="button"
+                  variant="danger"
+                  onClick={onRemove}
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                  {t('channels.qr.remove')}
+                </Button>
+              )}
+            </div>
           )}
         </>
       ) : displayStatus === 'loading' ? (

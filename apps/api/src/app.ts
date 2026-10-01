@@ -6,6 +6,14 @@ import { cors } from 'hono/cors'
 import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import {
+  createComponentsPlaygroundRoute,
+  type ComponentsPlaygroundRouteOptions,
+} from './routes/components-playground.js'
+import {
+  createFlowsPlaygroundRoute,
+  type FlowsPlaygroundRouteOptions,
+} from './routes/flows-playground.js'
+import {
   createApiPlaygroundRoute,
   type ApiPlaygroundRouteOptions,
 } from './routes/api-playground.js'
@@ -21,6 +29,10 @@ import {
   createQrPlaygroundRoute,
   type QrPlaygroundRouteOptions,
 } from './routes/qr-playground.js'
+import {
+  createTemplatesPlaygroundRoute,
+  type TemplatesPlaygroundRouteOptions,
+} from './routes/templates-playground.js'
 import {
   createChannelManagementRoute,
   type ChannelManagementRouteOptions,
@@ -43,6 +55,8 @@ import {
 interface CreateAppOptions {
   apiPlayground?: ApiPlaygroundRouteOptions
   channelManagement?: ChannelManagementRouteOptions
+  componentsPlayground?: ComponentsPlaygroundRouteOptions
+  flowsPlayground?: FlowsPlaygroundRouteOptions
   chats?: ChatsRouteOptions
   contacts?: ContactsRouteOptions
   corsOrigin?: string
@@ -54,6 +68,7 @@ interface CreateAppOptions {
   mediaPlayground?: MediaPlaygroundRouteOptions
   mcp?: McpRouteOptions
   qrPlayground?: QrPlaygroundRouteOptions
+  templatesPlayground?: TemplatesPlaygroundRouteOptions
   runner?: RunnerRouteOptions
   waCloudWebhook?: WaCloudWebhookRouteOptions
   webRoot?: string
@@ -62,6 +77,8 @@ interface CreateAppOptions {
 export const createApp = ({
   apiPlayground,
   channelManagement,
+  componentsPlayground,
+  flowsPlayground,
   chats,
   contacts,
   corsOrigin = 'http://localhost:5173',
@@ -73,6 +90,7 @@ export const createApp = ({
   mediaPlayground,
   mcp,
   qrPlayground,
+  templatesPlayground,
   runner,
   waCloudWebhook,
   webRoot,
@@ -116,6 +134,15 @@ export const createApp = ({
     )
     .route('/api/playground/media', createMediaPlaygroundRoute(mediaPlayground))
     .route('/api/playground/qr', createQrPlaygroundRoute(qrPlayground))
+    .route(
+      '/api/playground/components',
+      createComponentsPlaygroundRoute(componentsPlayground),
+    )
+    .route('/api/playground/flows', createFlowsPlaygroundRoute(flowsPlayground))
+    .route(
+      '/api/playground/templates',
+      createTemplatesPlaygroundRoute(templatesPlayground),
+    )
     .route('/api/admin/organizations', createAdminOrganizationsRoute())
     .route('/api/channels', createChannelManagementRoute(channelManagement))
     .route('/api/chats', createChatsRoute({ fileStore, ...chats }))

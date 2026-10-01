@@ -58,8 +58,9 @@ unzip agent-5511999990000.agtx -d agent-export
 
 [`sample_dunder_mifflin.agtx`](./sample_dunder_mifflin.agtx) is a complete fictional example
 for Dunder Mifflin Paper Company. It demonstrates agent settings, business
-information, an allowlist, skills, FAQs, the Dunder Mifflin Wikipedia knowledge
-website, and one API-key MCP connector configured to discover six tools. That
+information, an allowlist, skills, a QR code, icebreakers, the `/human`
+command, FAQs, the Dunder Mifflin Wikipedia knowledge website, and one API-key
+MCP connector configured to discover six tools. That
 `dunder_mifflin_mcp` connector is the agent-side counterpart of
 [`../mcpx/sample_dunder_mifflin.mcpx`](../mcpx/sample_dunder_mifflin.mcpx).
 It deliberately contains no knowledge files, API keys, certificates, or other
@@ -100,8 +101,8 @@ order:
 2. Review `security` and `importRequirements` for omitted credentials, files,
    and certificates.
 3. Treat `source.channel` as provenance, not destination configuration.
-4. Review `agent.settings`, `businessInfo`, `skills`, and `knowledge` for the
-   behavior and information that import will reconcile.
+4. Review `agent.settings`, `businessInfo`, `skills`, `qrCodes`, `components`,
+   and `knowledge` for the behavior and information that import will reconcile.
 5. Review every connector's `baseUrl`, `connectorProtocol`, and `authType`.
    HTTP connectors also carry nested tool definitions; MCP tools are refreshed
    from the server and are intentionally absent. Connector credentials are
@@ -126,6 +127,8 @@ The manifest can contain:
 - the phone-number allowlist;
 - business description, policies, contact information, address, and hours;
 - agent skills and their instructions;
+- message QR codes and their prefilled messages;
+- conversational icebreakers and commands;
 - FAQs and knowledge websites;
 - Meta knowledge-file references and, when available, their bundled bytes;
 - connector definitions and explicit HTTP connector tools, without
@@ -174,6 +177,10 @@ agent:
   settings: {}
   allowlist: []
   businessInfo: {}
+  qrCodes: []
+  components:
+    prompts: []
+    commands: []
   skills: []
   knowledge:
     faqs: []
@@ -224,6 +231,10 @@ This section lets a reader predict whether interactive input will be needed:
 The importer still derives and validates the actual requirements from the
 manifest and archive. These flags are informative and are not trusted as a
 substitute for validation.
+
+Current version 1 exports include `agent.qrCodes` and `agent.components`.
+Version 1 packages created before those fields were introduced remain
+importable; the importer treats the missing fields as empty collections.
 
 ### `agent.settings`
 

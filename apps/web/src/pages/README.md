@@ -27,7 +27,8 @@ The page should not contain backend-specific authentication details. Keep sign-i
 `AppShell` owns authenticated navigation, session actions, and the organization
 switcher. Each page then owns one route-level workflow:
 
-- `HomePage`: landing content.
+- `HomePage`: organization landing dashboard with channel-scoped WhatsApp and
+  Business Agent performance counters, feature links, and quick references.
 - `ChatPage`: organization-scoped inbox and message/event timeline.
 - `OrganizationPage`: organizations, members, and invitations.
 - `AgentsPage`: channel grid with Meta Business Agent and Cloud API phone
@@ -35,9 +36,11 @@ switcher. Each page then owns one route-level workflow:
 - `AgentPage`: treats Cloud API phone-number registration as a prerequisite;
   unregistered channels expose only the registration card and do not load or
   render agent management, backup, import, or export workflows.
-- `ChannelsPage`: WhatsApp connections, including provider-backed phone-number
-  registration controls, message QR previews, and impact-previewed,
-  typed-confirmation deletion of local channel data.
+- `ChannelsPage`: WhatsApp connections. `/channels/new` and `/channels/:id`
+  provide route-backed, tabbed channel configuration for identity,
+  provider-backed phone registration, message QR codes, conversational
+  icebreakers and commands, webhook forwarding, and credentials. The directory
+  retains impact-previewed, typed-confirmation deletion of local channel data.
 - `ContactsPage` and `GroupsPage`: searchable, cursor-paginated browsing and
   read-only detail.
 - `FunctionsPage`: organization-scoped function editing, revision restore,
@@ -47,7 +50,8 @@ switcher. Each page then owns one route-level workflow:
 - `ApiKeysPage`: organization-scoped API key creation, function/MCP
   allow-lists, and revocation.
 - `ApiPlaygroundPage`: channel-scoped request forms for WhatsApp registration,
-  messaging, media, and message QR codes, including direct presigned uploads.
+  messaging, media, message QR codes, conversational components, Flows, and
+  templates, including direct presigned uploads.
 - `AdminPage`: global user administration for Better Auth `admin` users.
 
 - `/organization` is available to authenticated users; Better Auth enforces owner/admin permissions for mutations.
@@ -58,8 +62,10 @@ switcher. Each page then owns one route-level workflow:
 - `/agents/:id` lets organization managers onboard the selected channel, toggle
   rollout, choose its audience, configure human-handoff messaging and
   prohibited phrases, manage allowed phone numbers, edit business information
-  and skills, and maintain FAQ, website, and file knowledge sources. Its
-  Connectors and Evals tabs link to their respective grids. Skill titles are
+  and skills, maintain FAQ, website, and file knowledge sources, and manage the
+  channel's message QR codes, icebreakers, and commands through the same shared
+  cards used by channel configuration. Its Connectors and Evals tabs link to
+  their respective grids. Skill titles are
   restricted to kebab-case. Its right-aligned Export tab explains and creates
   a portable ZIP-based `.agtx` package containing `agent.yaml` and locally
   available knowledge files while displaying live progress. Meta-only files
@@ -99,12 +105,19 @@ switcher. Each page then owns one route-level workflow:
 - `/api-keys` provides organization API-key management to owners and
   administrators. Restricted keys authorize the union of selected individual
   functions and the live membership of selected MCP packs.
-- `/api-playground` lets members inspect registration, media, and message QR
-  code state and lets organization owners/admins run registration, messaging,
-  media, and QR-code mutations using server-side channel credentials. Messaging
+- `/api-playground` lets members inspect registration, media, message QR code,
+  conversational-component, and template state and lets organization
+  owners/admins run registration, messaging, media, QR-code, component, and
+  template mutations using server-side channel credentials. Messaging
   attachments use short-lived file-store URLs; the media package tab uploads
   directly through the API. The QR tab covers create, get, image URL, list,
-  update, and delete operations from `@mba-demo/wa-qr`.
+  update, and delete operations from `@mba-demo/wa-qr`. The Components tab
+  covers get-configuration and set-configuration operations from
+  `@mba-demo/wa-components`. The Flows tab covers the complete management
+  surface from `@mba-demo/wa-flows`, including assets, lifecycle transitions,
+  metrics, migration, previews, and encryption keys.
+  The Templates tab covers create, list, get, namespace, update, and delete
+  operations from `@mba-demo/wa-templates`.
 - `/admin` is guarded in the client and every admin endpoint independently enforces permissions on the server.
 - Application admin roles and organization member roles are separate concepts.
 

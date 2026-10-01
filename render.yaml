@@ -2,7 +2,7 @@ services:
   - type: web
     name: mba-demo-backoffice
     runtime: docker
-    plan: starter
+    plan: free
     dockerfilePath: ./Dockerfile
     dockerContext: .
     dockerCommand: app
@@ -34,18 +34,13 @@ services:
       - key: MCP_ALLOWED_HOSTS
         sync: false
       - key: FILES_ADAPTER
-        value: fs
-      - key: FILES_DIRECTORY
-        value: /var/data/files
+        # Demo-only fallback for a diskless Render service. Do not use the
+        # PostgreSQL blob driver for production; configure S3 instead.
+        value: postgres
       - key: FILES_PUBLIC_URL
         sync: false
       - key: FILES_SIGNING_SECRET
         generateValue: true
-    disk:
-      name: mba-demo-backoffice-files
-      mountPath: /var/data
-      sizeGB: 1
-
   - type: keyvalue
     name: mba-demo-backoffice-redis
     plan: free

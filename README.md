@@ -4,7 +4,7 @@ MBA Demo Backoffice provides an organization-scoped React application and a
 typed Hono API for administering WhatsApp channels, contacts, groups, chats,
 users, and SSO. The Yarn workspaces monorepo uses Better Auth,
 Drizzle/PostgreSQL, Redis-compatible KV storage and Pub/Sub, Kafka-compatible
-events, and filesystem/S3-compatible object storage; Hono RPC keeps the browser
+events, and filesystem/PostgreSQL/S3-compatible object storage; Hono RPC keeps the browser
 and server contract aligned.
 
 Start here for local setup and the system-wide contracts. Follow the linked
@@ -105,32 +105,32 @@ The database defaults to `postgresql://postgres:postgres@localhost:5432/mba_demo
 
 ## Configuration
 
-| Variable                      | Required       | Purpose                                                     |
-| ----------------------------- | -------------- | ----------------------------------------------------------- |
-| `DATABASE_URL`                | Production     | PostgreSQL connection URL                                   |
-| `BETTER_AUTH_SECRET`          | Production     | Better Auth signing secret                                  |
-| `BETTER_AUTH_URL`             | Production     | Public Better Auth base URL                                 |
-| `BETTER_AUTH_TRUSTED_ORIGINS` | With OIDC      | Comma-separated exact IdP endpoint origins                  |
-| `CORS_ORIGIN`                 | No             | Trusted browser origin; defaults to `http://localhost:5173` |
-| `MCP_ALLOWED_HOSTS`           | Production     | Comma-separated public hostnames accepted by MCP routes     |
-| `PORT`                        | No             | Hono port; defaults to `3000`                               |
-| `WEB_ROOT`                    | No             | Static build directory; defaults to `../web/dist`           |
-| `REDIS_URL`                   | No             | Selects Redis for KV and Pub/Sub; otherwise both use memory |
-| `KAFKA_CLIENT_ID`             | With brokers   | Selects Kafka together with `KAFKA_BROKERS`                 |
-| `KAFKA_BROKERS`               | With client ID | Comma-separated Kafka brokers                               |
-| `KAFKA_GROUP_ID`              | No             | Consumer group; defaults from the client ID                 |
-| `ENABLE_WORKER_IN_PROCESS`    | No             | Enables app-process subscribers only when `true`            |
-| `SUBSCRIBE_TO_TOPICS`         | No             | CSV of registered topics or `all`; defaults to `all`        |
-| `FILES_ADAPTER`               | No             | `fs` (default) or `s3`                                      |
-| `FILES_DIRECTORY`             | FS             | Persistent filesystem storage root                          |
-| `FILES_PUBLIC_URL`            | FS production  | Public Hono base URL used for filesystem signed URLs        |
-| `FILES_SIGNING_SECRET`        | FS production  | HMAC secret for filesystem signed URLs                      |
-| `FILES_S3_BUCKET`             | S3             | S3 or S3-compatible bucket                                  |
-| `FILES_S3_ENDPOINT`           | S3-compatible  | Internal object API endpoint                                |
-| `FILES_S3_PUBLIC_ENDPOINT`    | S3-compatible  | Client-reachable endpoint used for presigned URLs           |
-| `WEB_PORT`                    | Compose only   | Host port mapped to port 8080                               |
-| `COMPOSE_BETTER_AUTH_URL`     | Compose only   | Public auth URL injected into the app                       |
-| `COMPOSE_CORS_ORIGIN`         | Compose only   | Browser origin injected into the app                        |
+| Variable                      | Required               | Purpose                                                     |
+| ----------------------------- | ---------------------- | ----------------------------------------------------------- |
+| `DATABASE_URL`                | Production             | PostgreSQL connection URL                                   |
+| `BETTER_AUTH_SECRET`          | Production             | Better Auth signing secret                                  |
+| `BETTER_AUTH_URL`             | Production             | Public Better Auth base URL                                 |
+| `BETTER_AUTH_TRUSTED_ORIGINS` | With OIDC              | Comma-separated exact IdP endpoint origins                  |
+| `CORS_ORIGIN`                 | No                     | Trusted browser origin; defaults to `http://localhost:5173` |
+| `MCP_ALLOWED_HOSTS`           | Production             | Comma-separated public hostnames accepted by MCP routes     |
+| `PORT`                        | No                     | Hono port; defaults to `3000`                               |
+| `WEB_ROOT`                    | No                     | Static build directory; defaults to `../web/dist`           |
+| `REDIS_URL`                   | No                     | Selects Redis for KV and Pub/Sub; otherwise both use memory |
+| `KAFKA_CLIENT_ID`             | With brokers           | Selects Kafka together with `KAFKA_BROKERS`                 |
+| `KAFKA_BROKERS`               | With client ID         | Comma-separated Kafka brokers                               |
+| `KAFKA_GROUP_ID`              | No                     | Consumer group; defaults from the client ID                 |
+| `ENABLE_WORKER_IN_PROCESS`    | No                     | Enables app-process subscribers only when `true`            |
+| `SUBSCRIBE_TO_TOPICS`         | No                     | CSV of registered topics or `all`; defaults to `all`        |
+| `FILES_ADAPTER`               | No                     | `fs` (default), test/demo-only `postgres`, or `s3`          |
+| `FILES_DIRECTORY`             | FS                     | Persistent filesystem storage root                          |
+| `FILES_PUBLIC_URL`            | FS/Postgres production | Public Hono base URL used for signed URLs                   |
+| `FILES_SIGNING_SECRET`        | FS/Postgres production | HMAC secret for signed URLs                                 |
+| `FILES_S3_BUCKET`             | S3                     | S3 or S3-compatible bucket                                  |
+| `FILES_S3_ENDPOINT`           | S3-compatible          | Internal object API endpoint                                |
+| `FILES_S3_PUBLIC_ENDPOINT`    | S3-compatible          | Client-reachable endpoint used for presigned URLs           |
+| `WEB_PORT`                    | Compose only           | Host port mapped to port 8080                               |
+| `COMPOSE_BETTER_AUTH_URL`     | Compose only           | Public auth URL injected into the app                       |
+| `COMPOSE_CORS_ORIGIN`         | Compose only           | Browser origin injected into the app                        |
 
 See `.env.example` for local values. The development auth secret and Compose credentials are not suitable for production.
 
@@ -191,11 +191,14 @@ Import `events` from `@mba-demo/events`. It uses Kafka only when both
 `KAFKA_CLIENT_ID` and `KAFKA_BROKERS` are configured; otherwise it uses an
 in-process event bus.
 
-Import `files` from `@mba-demo/files`. Both adapters expose `get`, `put`,
+Import `files` from `@mba-demo/files`. All adapters expose `get`, `put`,
 `delete`, and signed upload/download URLs. Filesystem mode stores durable bytes
 below `FILES_DIRECTORY` and serves HMAC-authorized URLs through Hono. S3 mode
 uses native SigV4 URLs and supports separate internal and public endpoints for
-MinIO.
+MinIO. PostgreSQL mode stores blobs in `files.__files` and serves the same
+HMAC-authorized URLs as filesystem mode. It is strictly for quick tests and
+short-lived demos without a persistent filesystem; it is not recommended for
+production or general use. Use S3-compatible storage in production.
 
 Import WABA analytics from `@mba-demo/wa-analytics`. It covers messaging,
 conversation, pricing, template, template-group, call, and group analytics,
@@ -280,7 +283,7 @@ When applying the Blueprint, provide the final public service URL for
 - [`lib/auth/README.md`](lib/auth/README.md): Better Auth and schema generation
 - [`lib/db/README.md`](lib/db/README.md): PostgreSQL schemas and migrations
 - [`lib/events/README.md`](lib/events/README.md): Kafka and in-memory event adapters
-- [`lib/files/README.md`](lib/files/README.md): filesystem and S3-compatible file storage
+- [`lib/files/README.md`](lib/files/README.md): filesystem, test-only PostgreSQL, and S3-compatible file storage
 - [`lib/kv/README.md`](lib/kv/README.md): Redis and in-memory KV adapters
 - [`lib/pubsub/README.md`](lib/pubsub/README.md): Redis and in-memory Pub/Sub adapters
 - [`lib/whatsapp/analytics/README.md`](lib/whatsapp/analytics/README.md): typed WhatsApp WABA analytics

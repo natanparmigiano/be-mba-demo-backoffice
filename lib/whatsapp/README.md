@@ -19,6 +19,7 @@ directly.
 | [`@mba-demo/wa-messaging`](messaging/README.md)         | Send messages and update read/typing state                       | Phone number ID                          |
 | [`@mba-demo/wa-moderation`](moderation/README.md)       | List, block, and unblock WhatsApp users                          | Phone number ID                          |
 | [`@mba-demo/wa-qr`](qr/README.md)                       | Create and manage message QR codes and generated images          | Phone number ID                          |
+| [`@mba-demo/wa-components`](components/README.md)       | Manage icebreakers, commands, and conversational automation      | Phone number ID                          |
 | [`@mba-demo/wa-analytics`](analytics/README.md)         | Query messaging, pricing, template, call, and group analytics    | WABA ID                                  |
 | [`@mba-demo/wa-webhooks`](webhooks/README.md)           | Validate and type inbound webhook payloads                       | No client                                |
 | [`@mba-demo/wa-mba`](mba/README.md)                     | Configure and operate the Meta Business Agent platform           | Phone number ID; Business ID for budgets |

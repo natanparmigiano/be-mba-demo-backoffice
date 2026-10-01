@@ -69,6 +69,64 @@ describe('channel management route', () => {
     assert.equal(JSON.stringify(body).includes('access-token'), false)
   })
 
+  it('returns tenant-scoped dashboard analytics without exposing credentials', async () => {
+    let receivedDays: number | undefined
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      repository: createRepository(),
+      getDashboardAnalytics: async (_configuration, days) => {
+        receivedDays = days
+        return {
+          period: {
+            start: '2026-09-24T00:00:00.000Z',
+            end: '2026-10-01T00:00:00.000Z',
+            days,
+          },
+          messaging: {
+            sent: 120,
+            delivered: 114,
+            deliveryRate: 0.95,
+            series: [],
+          },
+          agent: {
+            threads: 32,
+            handoffs: 4,
+            handoffRate: 0.125,
+            toolCalls: 18,
+            toolSuccessRate: 0.9,
+            averageToolLatencyMs: 240,
+          },
+          unavailable: [],
+        }
+      },
+    })
+
+    const response = await route.request('/7/dashboard?days=7')
+    const body = await response.json()
+
+    assert.equal(response.status, 200)
+    assert.equal(receivedDays, 7)
+    assert.equal(body.messaging.sent, 120)
+    assert.equal(JSON.stringify(body).includes('access-secret'), false)
+  })
+
+  it('validates dashboard ranges before calling the provider', async () => {
+    let called = false
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      repository: createRepository(),
+      getDashboardAnalytics: async () => {
+        called = true
+        throw new Error('not reached')
+      },
+    })
+
+    const response = await route.request('/7/dashboard?days=31')
+
+    assert.equal(response.status, 400)
+    assert.equal(called, false)
+  })
+
   it('allows organization admins to create a scoped channel', async () => {
     let createdOrganizationId: string | undefined
     const repository = createRepository({
@@ -635,6 +693,27 @@ describe('channel management route', () => {
         },
         deleteFile: async () => undefined,
       },
+      agentQrCodes: {
+        list: async () => [
+          { code: 'sample-qr', prefilled_message: 'Help me choose paper' },
+        ],
+        create: async () => {
+          throw new Error('not used')
+        },
+        delete: async () => undefined,
+      },
+      agentComponents: {
+        get: async () => ({
+          prompts: ['Help me choose paper'],
+          commands: [
+            {
+              command_name: 'human',
+              command_description: 'Talk to a paper specialist',
+            },
+          ],
+        }),
+        set: async () => undefined,
+      },
       knowledgeArchive: {
         put: async () => undefined,
         getMany: async (organizationId, providerFileIds) => {
@@ -710,6 +789,7 @@ describe('channel management route', () => {
         'settings',
         'businessData',
         'skills',
+        'channelComponents',
         'knowledge',
         'files',
         'connectors',
@@ -740,6 +820,7 @@ describe('channel management route', () => {
         'settings',
         'businessData',
         'skills',
+        'channelComponents',
         'knowledge',
         'files',
         'connectors',
@@ -786,6 +867,17 @@ describe('channel management route', () => {
     }> = []
     let allowlistAddAttempts = 0
     let businessAttempts = 0
+    const importedQrCodes: Array<{
+      code: string
+      prefilled_message: string
+    }> = []
+    let importedComponents = {
+      prompts: [] as string[],
+      commands: [] as Array<{
+        command_name: string
+        command_description: string
+      }>,
+    }
     const packageFile = createImportPackage()
     const route = createChannelManagementRoute({
       getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
@@ -887,6 +979,32 @@ describe('channel management route', () => {
         },
         deleteFile: async () => undefined,
       },
+      agentQrCodes: {
+        list: async () => importedQrCodes,
+        create: async (_configuration, prefilledMessage) => {
+          const created = {
+            code: `qr-${importedQrCodes.length + 1}`,
+            prefilled_message: prefilledMessage,
+          }
+          importedQrCodes.push(created)
+          calls.push(`qr:${prefilledMessage}`)
+          return created
+        },
+        delete: async (_configuration, code) => {
+          const index = importedQrCodes.findIndex((item) => item.code === code)
+          if (index >= 0) importedQrCodes.splice(index, 1)
+        },
+      },
+      agentComponents: {
+        get: async () => importedComponents,
+        set: async (_configuration, input) => {
+          importedComponents = {
+            prompts: input.prompts ?? [],
+            commands: input.commands ?? [],
+          }
+          calls.push('components')
+        },
+      },
       knowledgeArchive: {
         put: async (_organizationId, _channelId, providerFile) => {
           calls.push(`archive:${providerFile.id}`)
@@ -974,6 +1092,7 @@ describe('channel management route', () => {
         'settings',
         'businessData',
         'skills',
+        'channelComponents',
         'knowledge',
         'files',
         'connectors',
@@ -988,6 +1107,7 @@ describe('channel management route', () => {
         'settings',
         'businessData',
         'skills',
+        'channelComponents',
         'knowledge',
         'files',
         'connectors',
@@ -1023,6 +1143,8 @@ describe('channel management route', () => {
       'business:Portable business',
       'allowlist:+5511999990000',
       'skill:order-status',
+      'qr:Help me choose paper',
+      'components',
       'faq:Where?',
       'website:https://example.com',
       'file:guide.pdf:9',
@@ -1054,6 +1176,9 @@ describe('channel management route', () => {
     assert.deepEqual(startedLog?.details.resources, {
       allowlist: 1,
       skills: 1,
+      qrCodes: 1,
+      icebreakers: 1,
+      commands: 1,
       faqs: 1,
       websites: 1,
       files: 1,
@@ -2492,6 +2617,7 @@ function createRepository(
     getAgentConfiguration: async () => ({
       waPhoneNumberId: 'phone-id',
       waSystemUserAccessToken: 'access-secret',
+      waWabaId: 'waba-id',
     }),
     create: async () => channel,
     update: async () => channel,
@@ -2535,6 +2661,16 @@ function createImportPackage(includeEvaluations = false): File {
         contactEmail: '',
         hoursOfOperation: '',
         address: '',
+      },
+      qrCodes: [{ prefilledMessage: 'Help me choose paper' }],
+      components: {
+        prompts: ['Help me choose paper'],
+        commands: [
+          {
+            commandName: 'human',
+            commandDescription: 'Talk to a paper specialist',
+          },
+        ],
       },
       skills: [
         {

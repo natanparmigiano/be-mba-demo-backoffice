@@ -19,10 +19,56 @@ const en = {
     status: { online: 'Online', away: 'Away', offline: 'Offline' },
   },
   home: {
-    metaDescription: 'A typed React frontend powered by a Hono API.',
-    eyebrow: 'Hono + React',
-    title: 'Typed all the way through.',
-    intro: 'Your authenticated workspace is ready for backoffice features.',
+    metaDescription: 'Monitor and manage your WhatsApp business workspace.',
+    eyebrow: 'Workspace overview',
+    title: 'Home',
+    greeting: '{{organization}}, at a glance.',
+    workspace: 'Your workspace',
+    intro:
+      'Track your WhatsApp and Business Agent performance, then jump straight into the work that matters.',
+    channelLabel: 'Analytics channel',
+    refresh: 'Refresh',
+    loadFailed: 'We could not load the dashboard right now.',
+    notAvailable: 'N/A',
+    overviewEyebrow: 'Performance',
+    overviewTitle: 'Last 7 days',
+    lastUpdatedNow: 'Live provider data',
+    stats: {
+      messagesSent: 'Messages sent',
+      deliveryRate: 'Delivery rate',
+      aiThreads: 'AI threads',
+      toolSuccess: 'Tool success',
+      lastSevenDays: 'Across the selected channel',
+      deliveredCount: '{{count}} delivered',
+      providerUnavailable: 'Not available from the provider',
+      handoffRate: '{{rate}} handed off',
+      toolCalls: '{{count}} tool calls',
+    },
+    featuresTitle: 'Go to work',
+    featuresDescription: 'Your most-used backoffice areas, one click away.',
+    features: {
+      chat: 'Conversations',
+      chatDescription:
+        'Review customer conversations and continue human handoffs.',
+      agents: 'Business Agents',
+      agentsDescription:
+        'Configure behavior, knowledge, connectors, and evaluations.',
+      channels: 'WhatsApp channels',
+      channelsDescription:
+        'Manage phone numbers, webhooks, and channel credentials.',
+      contacts: 'Contacts',
+      contactsDescription:
+        'Search the customer directory across your channels.',
+    },
+    referencesTitle: 'Quick references',
+    referencesDescription: 'Useful tools and workspace settings.',
+    references: {
+      playground: 'API Playground',
+      organization: 'Organization settings',
+      groups: 'WhatsApp groups',
+      designSystem: 'Design system',
+    },
+    configuredChannels: '{{count}} configured channels',
   },
   auth: {
     metaDescription: 'Sign in securely to the MBA Demo Backoffice.',
@@ -347,6 +393,116 @@ const en = {
         description: 'Permanently delete a message QR code.',
         confirm: 'I understand and want to delete this QR code.',
         action: 'Delete QR code',
+      },
+    },
+    components: {
+      tab: 'Components',
+      payload: 'Component configuration (JSON)',
+      payloadHint:
+        'Use prompts and commands with camel-case command fields. Empty arrays clear that component type.',
+      validJson: 'Enter a valid component configuration JSON object.',
+      type: 'Component type',
+      types: {
+        prompts: 'Icebreaker prompts',
+        commands: 'Commands',
+        welcome_message: 'Welcome message',
+      },
+      create: {
+        title: 'Create components',
+        description:
+          'Configure icebreakers, commands, and the welcome-message setting.',
+        action: 'Create components',
+      },
+      get: {
+        title: 'Get components',
+        description: 'Retrieve the current conversational components.',
+        action: 'Get components',
+      },
+      set: {
+        title: 'Set component configuration',
+        description:
+          'Replace the supplied prompts or commands. Use an empty array to clear a component type.',
+        action: 'Set configuration',
+      },
+      update: {
+        title: 'Update components',
+        description:
+          'Replace only the component fields included in the request.',
+        action: 'Update components',
+      },
+      delete: {
+        title: 'Delete component',
+        description:
+          'Remove all prompts, commands, or the welcome-message component.',
+        action: 'Delete component',
+      },
+    },
+    flows: {
+      tab: 'Flows',
+      flowId: 'Flow ID',
+      payload: 'Operation payload (JSON)',
+      payloadHint: 'Use the input shape documented by @mba-demo/wa-flows.',
+      validJson: 'Enter a valid JSON object.',
+      operationDescription:
+        'Run this operation with the selected channel credentials.',
+      execute: 'Run operation',
+      operations: {
+        create: 'Create or clone Flow',
+        list: 'List Flows',
+        get: 'Get Flow',
+        preview: 'Get or invalidate preview',
+        migrate: 'Migrate Flows',
+        updateMetadata: 'Update Flow metadata',
+        uploadJson: 'Upload flow.json',
+        listAssets: 'List Flow assets',
+        publish: 'Publish Flow',
+        deprecate: 'Deprecate Flow',
+        delete: 'Delete draft Flow',
+        metric: 'Get endpoint metric',
+        getEncryptionKey: 'Get encryption public key',
+        setEncryptionKey: 'Set encryption public key',
+      },
+    },
+    templates: {
+      tab: 'Templates',
+      templateId: 'Template ID',
+      name: 'Template name',
+      language: 'Language code',
+      fields: 'Fields',
+      fieldsHint: 'Comma-separated Graph API fields.',
+      payload: 'Template payload (JSON)',
+      validJson:
+        'Enter a valid JSON object matching the templates package input.',
+      create: {
+        title: 'Create template',
+        description: 'Create and submit a custom message template for review.',
+        action: 'Create template',
+      },
+      list: {
+        title: 'List templates',
+        description:
+          'Browse templates with optional name and language filters.',
+        action: 'List templates',
+      },
+      get: {
+        title: 'Get template',
+        description: 'Retrieve one template and select its returned fields.',
+        action: 'Get template',
+      },
+      namespace: {
+        title: 'Get template namespace',
+        description: 'Retrieve the message-template namespace for this WABA.',
+        action: 'Get namespace',
+      },
+      update: {
+        title: 'Update template',
+        description: 'Update the editable properties of an existing template.',
+        action: 'Update template',
+      },
+      delete: {
+        title: 'Delete template',
+        description: 'Permanently delete a template by its ID and name.',
+        action: 'Delete template',
       },
     },
   },
@@ -1019,6 +1175,8 @@ const en = {
       businessInfo: 'Business Info',
       skills: 'Skills',
       knowledgeBase: 'Knowledge Base',
+      qrCodes: 'QR Codes',
+      components: 'Components',
       connectors: 'Connectors',
       evals: 'Evals',
       backups: 'Backups',
@@ -1065,7 +1223,7 @@ const en = {
         'Create a portable AGTX package containing a versioned agent.yaml manifest and every knowledge file available in local storage.',
       includedTitle: 'Included in the export',
       includedDescription:
-        'Settings, allowlist, business information, skills, FAQs, websites, connectors and tools, and locally available knowledge files.',
+        'Settings, allowlist, business information, skills, QR codes, icebreakers, commands, FAQs, websites, connectors and tools, and locally available knowledge files.',
       excludedTitle: 'Requested during import',
       excludedDescription:
         'Knowledge files that are only present in Meta are listed as missing in agent.yaml. Import will request those files, API keys, OAuth secrets, and certificates securely.',
@@ -1078,6 +1236,7 @@ const en = {
         settings: 'Exporting agent settings',
         businessData: 'Exporting business data and allowlist',
         skills: 'Exporting skills',
+        channelComponents: 'Exporting QR codes and conversational components',
         knowledge: 'Exporting FAQs and websites',
         files: 'Collecting available knowledge files',
         connectors: 'Exporting connectors and tools',
@@ -1144,6 +1303,8 @@ const en = {
         businessInfo: 'Business information',
         allowlist: 'Allowlist entries',
         skills: 'Skills',
+        qrCodes: 'QR codes',
+        components: 'Icebreakers and commands',
         faqs: 'FAQs',
         websites: 'Websites',
         files: 'Files',
@@ -1159,6 +1320,10 @@ const en = {
         businessInfo: 'Business information',
         allowlist: 'Allowlist',
         skills: 'Skills',
+        qrCodes: 'QR codes',
+        components: 'Icebreakers and commands',
+        icebreakers: 'Icebreakers',
+        commands: 'Commands',
         faqs: 'FAQs',
         websites: 'Websites',
         files: 'Knowledge files',
@@ -1182,6 +1347,9 @@ const en = {
       },
       summary: {
         skills: 'Skills',
+        qrCodes: 'QR codes',
+        icebreakers: 'Icebreakers',
+        commands: 'Commands',
         faqs: 'FAQs',
         websites: 'Websites',
         files: 'Files',
@@ -1192,6 +1360,7 @@ const en = {
         settings: 'Importing agent settings',
         businessData: 'Reconciling business data and allowlist',
         skills: 'Reconciling skills',
+        channelComponents: 'Reconciling QR codes and conversational components',
         knowledge: 'Reconciling FAQs and websites',
         files: 'Replacing knowledge files',
         connectors: 'Reconciling connectors and tools',
@@ -1472,6 +1641,8 @@ const en = {
     applyWebhookHint:
       'Register this URL and every supported event field, then subscribe the app to the WABA.',
     credentials: 'Credentials',
+    credentialsDescription:
+      'Manage the Meta application credentials used by this channel.',
     appSecret: 'App secret',
     verifyToken: 'Verify token',
     accessToken: 'Access token',
@@ -1490,12 +1661,16 @@ const en = {
     createChannelDescription:
       'Enter the WhatsApp Cloud API details for this organization.',
     channelIdentity: 'Channel identity',
+    identityDescription:
+      'Configure the WhatsApp phone number and its Meta business identifiers.',
     displayPhoneNumber: 'Display phone number',
     countryCodeHint: 'Include the country code.',
     whatsAppBusinessAccountId: 'WhatsApp Business Account ID',
     businessPortfolioId: 'Business portfolio ID',
     metaAppId: 'Meta app ID',
     webhookForwarding: 'Webhook forwarding',
+    webhookDescription:
+      'Forward incoming WhatsApp webhook events to additional HTTPS endpoints.',
     forwardUrls: 'Forward URLs',
     forwardUrlsHint:
       'Optional. Enter one HTTP or HTTPS endpoint per line. Each verified webhook is queued for every endpoint.',
@@ -1509,6 +1684,8 @@ const en = {
     accessTokenHint: 'Used for Cloud API calls.',
     registration: {
       title: 'Cloud API registration',
+      cardDescription:
+        'Review and manage this number’s Cloud API registration state.',
       status: {
         loading: 'Checking registration…',
         registered: 'Phone number registered',
@@ -1543,10 +1720,70 @@ const en = {
       dialogTitle: 'WhatsApp QR code',
       dialogDescription:
         'Scan this code to start a WhatsApp conversation with {{phone}}.',
-      formDescription:
-        'The first message QR code currently configured for this phone number.',
+      formDescription: 'QR Codes configured for this phone number',
+      create: 'Create QR code',
+      createDescription:
+        'Choose the message that will be prefilled when this QR code is scanned.',
+      prefilledMessage: 'Prefilled message',
+      createFailed: 'Could not create the QR code.',
+      edit: 'Edit',
+      editTitle: 'Edit QR code',
+      editDescription: 'Update the message prefilled by this QR code.',
+      remove: 'Remove',
+      removeTitle: 'Remove QR code',
+      saveEdit: 'Save changes',
+      confirmRemove: 'Remove QR code',
+      removeConfirmation:
+        'Are you sure you want to permanently remove this QR code?',
+      updateFailed: 'Could not update the QR code.',
+      removeFailed: 'Could not remove the QR code.',
+      download: 'Download QR code',
+      downloadFormat: 'Download as {{format}}',
       close: 'Close',
     },
+    components: {
+      title: 'Conversational components',
+      description:
+        'Manage the icebreakers and commands configured for this phone number.',
+      loading: 'Loading conversational components…',
+      loadFailed: 'Could not load the conversational components.',
+      saveFailed: 'Could not save the conversational component.',
+      removeFailed: 'Could not remove the conversational component.',
+      retry: 'Try again',
+      icebreakers: 'Icebreakers',
+      icebreakersDescription:
+        'Questions customers can tap to start a conversation.',
+      commands: 'Commands',
+      commandsDescription:
+        'Short commands customers can use during a conversation.',
+      noIcebreakers: 'No icebreakers configured.',
+      noCommands: 'No commands configured.',
+      add: 'Add',
+      edit: 'Edit',
+      remove: 'Remove',
+      save: 'Save',
+      createIcebreaker: 'Create icebreaker',
+      editIcebreaker: 'Edit icebreaker',
+      createCommand: 'Create command',
+      editCommand: 'Edit command',
+      editorDescription: 'Changes are applied to this WhatsApp phone number.',
+      icebreaker: 'Icebreaker question',
+      commandName: 'Command name',
+      commandDescription: 'Command description',
+      removeTitle: 'Remove conversational component',
+      removeConfirmation:
+        'Are you sure you want to permanently remove this item?',
+    },
+    tabs: {
+      label: 'Channel configuration',
+      identity: 'Overview',
+      registration: 'Registration',
+      qr: 'QR codes',
+      components: 'Components',
+      webhook: 'Webhooks',
+      credentials: 'Credentials',
+    },
+    backToChannels: 'Back to channels',
     saveChanges: 'Save changes',
     requestFailed: 'Request failed',
     operationFailed: 'The operation failed.',
@@ -2282,11 +2519,56 @@ const pt: typeof en = {
     status: { online: 'Online', away: 'Ausente', offline: 'Offline' },
   },
   home: {
-    metaDescription: 'Uma interface React tipada integrada a uma API Hono.',
-    eyebrow: 'Hono + React',
-    title: 'Tipado de ponta a ponta.',
+    metaDescription:
+      'Monitore e gerencie seu ambiente de negócios no WhatsApp.',
+    eyebrow: 'Visão geral do ambiente',
+    title: 'Início',
+    greeting: '{{organization}}, em resumo.',
+    workspace: 'Seu ambiente',
     intro:
-      'Seu ambiente autenticado está pronto para os recursos do backoffice.',
+      'Acompanhe o desempenho do WhatsApp e do Business Agent e acesse rapidamente o que importa.',
+    channelLabel: 'Canal das análises',
+    refresh: 'Atualizar',
+    loadFailed: 'Não foi possível carregar o painel agora.',
+    notAvailable: 'N/D',
+    overviewEyebrow: 'Desempenho',
+    overviewTitle: 'Últimos 7 dias',
+    lastUpdatedNow: 'Dados ao vivo do provedor',
+    stats: {
+      messagesSent: 'Mensagens enviadas',
+      deliveryRate: 'Taxa de entrega',
+      aiThreads: 'Conversas com IA',
+      toolSuccess: 'Sucesso das ferramentas',
+      lastSevenDays: 'No canal selecionado',
+      deliveredCount: '{{count}} entregues',
+      providerUnavailable: 'Indisponível no provedor',
+      handoffRate: '{{rate}} transferidas',
+      toolCalls: '{{count}} chamadas de ferramentas',
+    },
+    featuresTitle: 'Acessos principais',
+    featuresDescription: 'As áreas mais usadas do backoffice a um clique.',
+    features: {
+      chat: 'Conversas',
+      chatDescription:
+        'Revise conversas de clientes e continue transferências humanas.',
+      agents: 'Business Agents',
+      agentsDescription:
+        'Configure comportamento, conhecimento, conectores e avaliações.',
+      channels: 'Canais do WhatsApp',
+      channelsDescription:
+        'Gerencie números, webhooks e credenciais dos canais.',
+      contacts: 'Contatos',
+      contactsDescription: 'Pesquise clientes em todos os seus canais.',
+    },
+    referencesTitle: 'Referências rápidas',
+    referencesDescription: 'Ferramentas úteis e configurações do ambiente.',
+    references: {
+      playground: 'API Playground',
+      organization: 'Configurações da organização',
+      groups: 'Grupos do WhatsApp',
+      designSystem: 'Design system',
+    },
+    configuredChannels: '{{count}} canais configurados',
   },
   auth: {
     metaDescription: 'Entre com segurança no MBA Demo Backoffice.',
@@ -2613,6 +2895,118 @@ const pt: typeof en = {
         description: 'Exclua permanentemente um código QR de mensagem.',
         confirm: 'Entendo e quero excluir este código QR.',
         action: 'Excluir código QR',
+      },
+    },
+    components: {
+      tab: 'Componentes',
+      payload: 'Configuração de componentes (JSON)',
+      payloadHint:
+        'Use prompts e commands com os campos de comando em camelCase. Arrays vazios removem esse tipo de componente.',
+      validJson: 'Insira um objeto JSON válido de configuração de componentes.',
+      type: 'Tipo de componente',
+      types: {
+        prompts: 'Sugestões iniciais',
+        commands: 'Comandos',
+        welcome_message: 'Mensagem de boas-vindas',
+      },
+      create: {
+        title: 'Criar componentes',
+        description:
+          'Configure sugestões iniciais, comandos e a mensagem de boas-vindas.',
+        action: 'Criar componentes',
+      },
+      get: {
+        title: 'Obter componentes',
+        description: 'Consulte os componentes de conversa atuais.',
+        action: 'Obter componentes',
+      },
+      set: {
+        title: 'Definir configuração dos componentes',
+        description:
+          'Substitua as sugestões ou os comandos informados. Use um array vazio para remover um tipo.',
+        action: 'Definir configuração',
+      },
+      update: {
+        title: 'Atualizar componentes',
+        description:
+          'Substitua apenas os campos de componentes incluídos na solicitação.',
+        action: 'Atualizar componentes',
+      },
+      delete: {
+        title: 'Excluir componente',
+        description:
+          'Remova todas as sugestões, comandos ou a mensagem de boas-vindas.',
+        action: 'Excluir componente',
+      },
+    },
+    flows: {
+      tab: 'Flows',
+      flowId: 'ID do Flow',
+      payload: 'Payload da operação (JSON)',
+      payloadHint:
+        'Use o formato de entrada documentado por @mba-demo/wa-flows.',
+      validJson: 'Insira um objeto JSON válido.',
+      operationDescription:
+        'Execute esta operação com as credenciais do canal selecionado.',
+      execute: 'Executar operação',
+      operations: {
+        create: 'Criar ou clonar Flow',
+        list: 'Listar Flows',
+        get: 'Obter Flow',
+        preview: 'Obter ou invalidar prévia',
+        migrate: 'Migrar Flows',
+        updateMetadata: 'Atualizar metadados do Flow',
+        uploadJson: 'Enviar flow.json',
+        listAssets: 'Listar arquivos do Flow',
+        publish: 'Publicar Flow',
+        deprecate: 'Descontinuar Flow',
+        delete: 'Excluir Flow em rascunho',
+        metric: 'Obter métrica do endpoint',
+        getEncryptionKey: 'Obter chave pública de criptografia',
+        setEncryptionKey: 'Definir chave pública de criptografia',
+      },
+    },
+    templates: {
+      tab: 'Modelos',
+      templateId: 'ID do modelo',
+      name: 'Nome do modelo',
+      language: 'Código do idioma',
+      fields: 'Campos',
+      fieldsHint: 'Campos da Graph API separados por vírgulas.',
+      payload: 'Payload do modelo (JSON)',
+      validJson:
+        'Insira um objeto JSON válido compatível com a entrada do pacote de modelos.',
+      create: {
+        title: 'Criar modelo',
+        description:
+          'Crie e envie um modelo de mensagem personalizado para análise.',
+        action: 'Criar modelo',
+      },
+      list: {
+        title: 'Listar modelos',
+        description: 'Consulte modelos com filtros opcionais de nome e idioma.',
+        action: 'Listar modelos',
+      },
+      get: {
+        title: 'Obter modelo',
+        description: 'Consulte um modelo e selecione os campos retornados.',
+        action: 'Obter modelo',
+      },
+      namespace: {
+        title: 'Obter namespace dos modelos',
+        description: 'Consulte o namespace de modelos de mensagem desta WABA.',
+        action: 'Obter namespace',
+      },
+      update: {
+        title: 'Atualizar modelo',
+        description:
+          'Atualize as propriedades editáveis de um modelo existente.',
+        action: 'Atualizar modelo',
+      },
+      delete: {
+        title: 'Excluir modelo',
+        description: 'Exclua permanentemente um modelo pelo ID e nome.',
+        action: 'Excluir modelo',
       },
     },
   },
@@ -3302,6 +3696,8 @@ const pt: typeof en = {
       businessInfo: 'Informações da empresa',
       skills: 'Habilidades',
       knowledgeBase: 'Base de conhecimento',
+      qrCodes: 'Códigos QR',
+      components: 'Componentes',
       connectors: 'Conectores',
       evals: 'Avaliações',
       backups: 'Backups',
@@ -3349,7 +3745,7 @@ const pt: typeof en = {
         'Crie um pacote AGTX portátil com um manifesto agent.yaml versionado e todos os arquivos de conhecimento disponíveis no armazenamento local.',
       includedTitle: 'Incluído na exportação',
       includedDescription:
-        'Configurações, lista de permissão, informações da empresa, habilidades, perguntas frequentes, sites, conectores e ferramentas e arquivos de conhecimento disponíveis localmente.',
+        'Configurações, lista de permissão, informações da empresa, habilidades, códigos QR, quebra-gelos, comandos, perguntas frequentes, sites, conectores e ferramentas e arquivos de conhecimento disponíveis localmente.',
       excludedTitle: 'Solicitado durante a importação',
       excludedDescription:
         'Arquivos de conhecimento presentes apenas na Meta são listados como ausentes no agent.yaml. A importação solicitará esses arquivos, chaves de API, segredos OAuth e certificados com segurança.',
@@ -3362,6 +3758,7 @@ const pt: typeof en = {
         settings: 'Exportando configurações do agente',
         businessData: 'Exportando dados da empresa e lista de permissão',
         skills: 'Exportando habilidades',
+        channelComponents: 'Exportando códigos QR e componentes de conversa',
         knowledge: 'Exportando perguntas frequentes e sites',
         files: 'Coletando arquivos de conhecimento disponíveis',
         connectors: 'Exportando conectores e ferramentas',
@@ -3427,6 +3824,8 @@ const pt: typeof en = {
         businessInfo: 'Informações da empresa',
         allowlist: 'Entradas da lista de permissão',
         skills: 'Habilidades',
+        qrCodes: 'Códigos QR',
+        components: 'Quebra-gelos e comandos',
         faqs: 'Perguntas frequentes',
         websites: 'Sites',
         files: 'Arquivos',
@@ -3442,6 +3841,10 @@ const pt: typeof en = {
         businessInfo: 'Informações da empresa',
         allowlist: 'Lista de permissão',
         skills: 'Habilidades',
+        qrCodes: 'Códigos QR',
+        components: 'Quebra-gelos e comandos',
+        icebreakers: 'Quebra-gelos',
+        commands: 'Comandos',
         faqs: 'Perguntas frequentes',
         websites: 'Sites',
         files: 'Arquivos de conhecimento',
@@ -3466,6 +3869,9 @@ const pt: typeof en = {
       },
       summary: {
         skills: 'Habilidades',
+        qrCodes: 'Códigos QR',
+        icebreakers: 'Quebra-gelos',
+        commands: 'Comandos',
         faqs: 'Perguntas frequentes',
         websites: 'Sites',
         files: 'Arquivos',
@@ -3476,6 +3882,7 @@ const pt: typeof en = {
         settings: 'Importando configurações do agente',
         businessData: 'Reconciliando dados da empresa e lista de permissão',
         skills: 'Reconciliando habilidades',
+        channelComponents: 'Reconciliando códigos QR e componentes de conversa',
         knowledge: 'Reconciliando perguntas frequentes e sites',
         files: 'Substituindo arquivos de conhecimento',
         connectors: 'Reconciliando conectores e ferramentas',
@@ -3760,6 +4167,8 @@ const pt: typeof en = {
     applyWebhookHint:
       'Registre esta URL e todos os campos compatíveis e depois inscreva a aplicação na WABA.',
     credentials: 'Credenciais',
+    credentialsDescription:
+      'Gerencie as credenciais do aplicativo Meta usadas por este canal.',
     appSecret: 'Segredo da aplicação',
     verifyToken: 'Token de verificação',
     accessToken: 'Token de acesso',
@@ -3779,12 +4188,16 @@ const pt: typeof en = {
     createChannelDescription:
       'Informe os dados da API do WhatsApp Cloud para esta organização.',
     channelIdentity: 'Identidade do canal',
+    identityDescription:
+      'Configure o número do WhatsApp e seus identificadores comerciais da Meta.',
     displayPhoneNumber: 'Número de telefone exibido',
     countryCodeHint: 'Inclua o código do país.',
     whatsAppBusinessAccountId: 'ID da conta do WhatsApp Business',
     businessPortfolioId: 'ID do portfólio empresarial',
     metaAppId: 'ID da aplicação Meta',
     webhookForwarding: 'Encaminhamento de webhook',
+    webhookDescription:
+      'Encaminhe eventos recebidos do webhook do WhatsApp para endpoints HTTPS adicionais.',
     forwardUrls: 'URLs de encaminhamento',
     forwardUrlsHint:
       'Opcional. Insira um endpoint HTTP ou HTTPS por linha. Cada webhook verificado será enfileirado para todos os endpoints.',
@@ -3798,6 +4211,8 @@ const pt: typeof en = {
     accessTokenHint: 'Usado nas chamadas da Cloud API.',
     registration: {
       title: 'Registro na Cloud API',
+      cardDescription:
+        'Consulte e gerencie o estado de registro deste número na Cloud API.',
       status: {
         loading: 'Verificando o registro…',
         registered: 'Número de telefone registrado',
@@ -3832,10 +4247,71 @@ const pt: typeof en = {
       dialogTitle: 'Código QR do WhatsApp',
       dialogDescription:
         'Escaneie este código para iniciar uma conversa no WhatsApp com {{phone}}.',
-      formDescription:
-        'O primeiro código QR de mensagem configurado atualmente para este número de telefone.',
+      formDescription: 'Códigos QR configurados para este número de telefone',
+      create: 'Criar código QR',
+      createDescription:
+        'Escolha a mensagem que será preenchida ao escanear este código QR.',
+      prefilledMessage: 'Mensagem predefinida',
+      createFailed: 'Não foi possível criar o código QR.',
+      edit: 'Editar',
+      editTitle: 'Editar código QR',
+      editDescription: 'Atualize a mensagem predefinida por este código QR.',
+      remove: 'Remover',
+      removeTitle: 'Remover código QR',
+      saveEdit: 'Salvar alterações',
+      confirmRemove: 'Remover código QR',
+      removeConfirmation:
+        'Tem certeza de que deseja remover permanentemente este código QR?',
+      updateFailed: 'Não foi possível atualizar o código QR.',
+      removeFailed: 'Não foi possível remover o código QR.',
+      download: 'Baixar código QR',
+      downloadFormat: 'Baixar como {{format}}',
       close: 'Fechar',
     },
+    components: {
+      title: 'Componentes de conversa',
+      description:
+        'Gerencie os quebra-gelos e comandos configurados para este número de telefone.',
+      loading: 'Carregando componentes de conversa…',
+      loadFailed: 'Não foi possível carregar os componentes de conversa.',
+      saveFailed: 'Não foi possível salvar o componente de conversa.',
+      removeFailed: 'Não foi possível remover o componente de conversa.',
+      retry: 'Tentar novamente',
+      icebreakers: 'Quebra-gelos',
+      icebreakersDescription:
+        'Perguntas que os clientes podem tocar para iniciar uma conversa.',
+      commands: 'Comandos',
+      commandsDescription:
+        'Comandos curtos que os clientes podem usar durante uma conversa.',
+      noIcebreakers: 'Nenhum quebra-gelo configurado.',
+      noCommands: 'Nenhum comando configurado.',
+      add: 'Adicionar',
+      edit: 'Editar',
+      remove: 'Remover',
+      save: 'Salvar',
+      createIcebreaker: 'Criar quebra-gelo',
+      editIcebreaker: 'Editar quebra-gelo',
+      createCommand: 'Criar comando',
+      editCommand: 'Editar comando',
+      editorDescription:
+        'As alterações são aplicadas a este número do WhatsApp.',
+      icebreaker: 'Pergunta quebra-gelo',
+      commandName: 'Nome do comando',
+      commandDescription: 'Descrição do comando',
+      removeTitle: 'Remover componente de conversa',
+      removeConfirmation:
+        'Tem certeza de que deseja remover este item permanentemente?',
+    },
+    tabs: {
+      label: 'Configuração do canal',
+      identity: 'Visão geral',
+      registration: 'Registro',
+      qr: 'Códigos QR',
+      components: 'Componentes',
+      webhook: 'Webhooks',
+      credentials: 'Credenciais',
+    },
+    backToChannels: 'Voltar aos canais',
     saveChanges: 'Salvar alterações',
     requestFailed: 'A solicitação falhou',
     operationFailed: 'A operação falhou.',
@@ -4579,11 +5055,56 @@ const es: typeof en = {
     status: { online: 'En línea', away: 'Ausente', offline: 'Desconectado' },
   },
   home: {
-    metaDescription: 'Una interfaz React tipada integrada con una API Hono.',
-    eyebrow: 'Hono + React',
-    title: 'Tipado de principio a fin.',
+    metaDescription:
+      'Supervisa y administra tu espacio de negocios de WhatsApp.',
+    eyebrow: 'Resumen del espacio',
+    title: 'Inicio',
+    greeting: '{{organization}}, de un vistazo.',
+    workspace: 'Tu espacio',
     intro:
-      'Tu espacio de trabajo autenticado está listo para las funciones de backoffice.',
+      'Sigue el rendimiento de WhatsApp y Business Agent y accede directamente al trabajo importante.',
+    channelLabel: 'Canal de analíticas',
+    refresh: 'Actualizar',
+    loadFailed: 'No pudimos cargar el panel en este momento.',
+    notAvailable: 'N/D',
+    overviewEyebrow: 'Rendimiento',
+    overviewTitle: 'Últimos 7 días',
+    lastUpdatedNow: 'Datos en vivo del proveedor',
+    stats: {
+      messagesSent: 'Mensajes enviados',
+      deliveryRate: 'Tasa de entrega',
+      aiThreads: 'Conversaciones con IA',
+      toolSuccess: 'Éxito de herramientas',
+      lastSevenDays: 'En el canal seleccionado',
+      deliveredCount: '{{count}} entregados',
+      providerUnavailable: 'No disponible en el proveedor',
+      handoffRate: '{{rate}} transferidas',
+      toolCalls: '{{count}} llamadas de herramientas',
+    },
+    featuresTitle: 'Ir al trabajo',
+    featuresDescription: 'Las áreas más usadas del backoffice a un clic.',
+    features: {
+      chat: 'Conversaciones',
+      chatDescription:
+        'Revisa conversaciones y continúa transferencias humanas.',
+      agents: 'Business Agents',
+      agentsDescription:
+        'Configura comportamiento, conocimiento, conectores y evaluaciones.',
+      channels: 'Canales de WhatsApp',
+      channelsDescription:
+        'Administra números, webhooks y credenciales de canales.',
+      contacts: 'Contactos',
+      contactsDescription: 'Busca clientes en todos tus canales.',
+    },
+    referencesTitle: 'Referencias rápidas',
+    referencesDescription: 'Herramientas útiles y ajustes del espacio.',
+    references: {
+      playground: 'API Playground',
+      organization: 'Configuración de la organización',
+      groups: 'Grupos de WhatsApp',
+      designSystem: 'Sistema de diseño',
+    },
+    configuredChannels: '{{count}} canales configurados',
   },
   auth: {
     metaDescription: 'Inicia sesión de forma segura en MBA Demo Backoffice.',
@@ -4911,6 +5432,123 @@ const es: typeof en = {
         description: 'Elimina permanentemente un código QR de mensaje.',
         confirm: 'Entiendo y quiero eliminar este código QR.',
         action: 'Eliminar código QR',
+      },
+    },
+    components: {
+      tab: 'Componentes',
+      payload: 'Configuración de componentes (JSON)',
+      payloadHint:
+        'Usa prompts y commands con los campos de comando en camelCase. Los arrays vacíos eliminan ese tipo.',
+      validJson:
+        'Introduce un objeto JSON válido de configuración de componentes.',
+      type: 'Tipo de componente',
+      types: {
+        prompts: 'Sugerencias iniciales',
+        commands: 'Comandos',
+        welcome_message: 'Mensaje de bienvenida',
+      },
+      create: {
+        title: 'Crear componentes',
+        description:
+          'Configura sugerencias iniciales, comandos y el mensaje de bienvenida.',
+        action: 'Crear componentes',
+      },
+      get: {
+        title: 'Obtener componentes',
+        description: 'Consulta los componentes de conversación actuales.',
+        action: 'Obtener componentes',
+      },
+      set: {
+        title: 'Establecer configuración de componentes',
+        description:
+          'Reemplaza las sugerencias o comandos indicados. Usa un array vacío para eliminar un tipo.',
+        action: 'Establecer configuración',
+      },
+      update: {
+        title: 'Actualizar componentes',
+        description:
+          'Reemplaza solo los campos de componentes incluidos en la solicitud.',
+        action: 'Actualizar componentes',
+      },
+      delete: {
+        title: 'Eliminar componente',
+        description:
+          'Elimina todas las sugerencias, comandos o el mensaje de bienvenida.',
+        action: 'Eliminar componente',
+      },
+    },
+    flows: {
+      tab: 'Flows',
+      flowId: 'ID del Flow',
+      payload: 'Carga de la operación (JSON)',
+      payloadHint:
+        'Usa el formato de entrada documentado por @mba-demo/wa-flows.',
+      validJson: 'Introduce un objeto JSON válido.',
+      operationDescription:
+        'Ejecuta esta operación con las credenciales del canal seleccionado.',
+      execute: 'Ejecutar operación',
+      operations: {
+        create: 'Crear o clonar Flow',
+        list: 'Listar Flows',
+        get: 'Obtener Flow',
+        preview: 'Obtener o invalidar vista previa',
+        migrate: 'Migrar Flows',
+        updateMetadata: 'Actualizar metadatos del Flow',
+        uploadJson: 'Subir flow.json',
+        listAssets: 'Listar archivos del Flow',
+        publish: 'Publicar Flow',
+        deprecate: 'Descontinuar Flow',
+        delete: 'Eliminar Flow en borrador',
+        metric: 'Obtener métrica del endpoint',
+        getEncryptionKey: 'Obtener clave pública de cifrado',
+        setEncryptionKey: 'Establecer clave pública de cifrado',
+      },
+    },
+    templates: {
+      tab: 'Plantillas',
+      templateId: 'ID de plantilla',
+      name: 'Nombre de plantilla',
+      language: 'Código de idioma',
+      fields: 'Campos',
+      fieldsHint: 'Campos de Graph API separados por comas.',
+      payload: 'Carga de plantilla (JSON)',
+      validJson:
+        'Introduce un objeto JSON válido compatible con la entrada del paquete de plantillas.',
+      create: {
+        title: 'Crear plantilla',
+        description:
+          'Crea y envía una plantilla de mensaje personalizada para revisión.',
+        action: 'Crear plantilla',
+      },
+      list: {
+        title: 'Listar plantillas',
+        description:
+          'Consulta plantillas con filtros opcionales de nombre e idioma.',
+        action: 'Listar plantillas',
+      },
+      get: {
+        title: 'Obtener plantilla',
+        description:
+          'Consulta una plantilla y selecciona los campos devueltos.',
+        action: 'Obtener plantilla',
+      },
+      namespace: {
+        title: 'Obtener namespace de plantillas',
+        description:
+          'Consulta el namespace de plantillas de mensajes de esta WABA.',
+        action: 'Obtener namespace',
+      },
+      update: {
+        title: 'Actualizar plantilla',
+        description:
+          'Actualiza las propiedades editables de una plantilla existente.',
+        action: 'Actualizar plantilla',
+      },
+      delete: {
+        title: 'Eliminar plantilla',
+        description:
+          'Elimina permanentemente una plantilla por su ID y nombre.',
+        action: 'Eliminar plantilla',
       },
     },
   },
@@ -5602,6 +6240,8 @@ const es: typeof en = {
       businessInfo: 'Información de la empresa',
       skills: 'Habilidades',
       knowledgeBase: 'Base de conocimiento',
+      qrCodes: 'Códigos QR',
+      components: 'Componentes',
       connectors: 'Conectores',
       evals: 'Evaluaciones',
       backups: 'Copias de seguridad',
@@ -5649,7 +6289,7 @@ const es: typeof en = {
         'Crea un paquete AGTX portátil con un manifiesto agent.yaml versionado y todos los archivos de conocimiento disponibles en el almacenamiento local.',
       includedTitle: 'Incluido en la exportación',
       includedDescription:
-        'Configuración, lista de permitidos, información comercial, habilidades, preguntas frecuentes, sitios web, conectores y herramientas, y archivos de conocimiento disponibles localmente.',
+        'Configuración, lista de permitidos, información comercial, habilidades, códigos QR, rompehielos, comandos, preguntas frecuentes, sitios web, conectores y herramientas, y archivos de conocimiento disponibles localmente.',
       excludedTitle: 'Solicitado durante la importación',
       excludedDescription:
         'Los archivos de conocimiento que solo están en Meta se marcan como ausentes en agent.yaml. La importación solicitará esos archivos, claves API, secretos OAuth y certificados de forma segura.',
@@ -5662,6 +6302,8 @@ const es: typeof en = {
         settings: 'Exportando configuración del agente',
         businessData: 'Exportando datos comerciales y lista de permitidos',
         skills: 'Exportando habilidades',
+        channelComponents:
+          'Exportando códigos QR y componentes conversacionales',
         knowledge: 'Exportando preguntas frecuentes y sitios web',
         files: 'Recopilando archivos de conocimiento disponibles',
         connectors: 'Exportando conectores y herramientas',
@@ -5728,6 +6370,8 @@ const es: typeof en = {
         businessInfo: 'Información de la empresa',
         allowlist: 'Entradas permitidas',
         skills: 'Habilidades',
+        qrCodes: 'Códigos QR',
+        components: 'Rompehielos y comandos',
         faqs: 'Preguntas frecuentes',
         websites: 'Sitios web',
         files: 'Archivos',
@@ -5743,6 +6387,10 @@ const es: typeof en = {
         businessInfo: 'Información de la empresa',
         allowlist: 'Lista de permitidos',
         skills: 'Habilidades',
+        qrCodes: 'Códigos QR',
+        components: 'Rompehielos y comandos',
+        icebreakers: 'Rompehielos',
+        commands: 'Comandos',
         faqs: 'Preguntas frecuentes',
         websites: 'Sitios web',
         files: 'Archivos de conocimiento',
@@ -5766,6 +6414,9 @@ const es: typeof en = {
       },
       summary: {
         skills: 'Habilidades',
+        qrCodes: 'Códigos QR',
+        icebreakers: 'Rompehielos',
+        commands: 'Comandos',
         faqs: 'Preguntas frecuentes',
         websites: 'Sitios web',
         files: 'Archivos',
@@ -5776,6 +6427,8 @@ const es: typeof en = {
         settings: 'Importando configuración del agente',
         businessData: 'Conciliando datos comerciales y lista de permitidos',
         skills: 'Conciliando habilidades',
+        channelComponents:
+          'Conciliando códigos QR y componentes conversacionales',
         knowledge: 'Conciliando preguntas frecuentes y sitios web',
         files: 'Reemplazando archivos de conocimiento',
         connectors: 'Conciliando conectores y herramientas',
@@ -6061,6 +6714,8 @@ const es: typeof en = {
     applyWebhookHint:
       'Registra esta URL y todos los campos compatibles y luego suscribe la aplicación a la WABA.',
     credentials: 'Credenciales',
+    credentialsDescription:
+      'Administra las credenciales de la aplicación de Meta utilizadas por este canal.',
     appSecret: 'Secreto de la aplicación',
     verifyToken: 'Token de verificación',
     accessToken: 'Token de acceso',
@@ -6080,12 +6735,16 @@ const es: typeof en = {
     createChannelDescription:
       'Ingresa los datos de la API de WhatsApp Cloud para esta organización.',
     channelIdentity: 'Identidad del canal',
+    identityDescription:
+      'Configura el número de WhatsApp y sus identificadores empresariales de Meta.',
     displayPhoneNumber: 'Número de teléfono visible',
     countryCodeHint: 'Incluye el código del país.',
     whatsAppBusinessAccountId: 'ID de la cuenta de WhatsApp Business',
     businessPortfolioId: 'ID del portafolio empresarial',
     metaAppId: 'ID de la aplicación de Meta',
     webhookForwarding: 'Reenvío de webhooks',
+    webhookDescription:
+      'Reenvía los eventos entrantes del webhook de WhatsApp a endpoints HTTPS adicionales.',
     forwardUrls: 'URL de reenvío',
     forwardUrlsHint:
       'Opcional. Ingresa un endpoint HTTP o HTTPS por línea. Cada webhook verificado se encolará para todos los endpoints.',
@@ -6099,6 +6758,8 @@ const es: typeof en = {
     accessTokenHint: 'Se usa para llamadas a la Cloud API.',
     registration: {
       title: 'Registro en la Cloud API',
+      cardDescription:
+        'Consulta y administra el estado de registro de este número en Cloud API.',
       status: {
         loading: 'Comprobando el registro…',
         registered: 'Número de teléfono registrado',
@@ -6133,10 +6794,70 @@ const es: typeof en = {
       dialogTitle: 'Código QR de WhatsApp',
       dialogDescription:
         'Escanea este código para iniciar una conversación de WhatsApp con {{phone}}.',
-      formDescription:
-        'El primer código QR de mensaje configurado actualmente para este número de teléfono.',
+      formDescription: 'Códigos QR configurados para este número de teléfono',
+      create: 'Crear código QR',
+      createDescription:
+        'Elige el mensaje que se completará al escanear este código QR.',
+      prefilledMessage: 'Mensaje predefinido',
+      createFailed: 'No se pudo crear el código QR.',
+      edit: 'Editar',
+      editTitle: 'Editar código QR',
+      editDescription: 'Actualiza el mensaje predefinido por este código QR.',
+      remove: 'Eliminar',
+      removeTitle: 'Eliminar código QR',
+      saveEdit: 'Guardar cambios',
+      confirmRemove: 'Eliminar código QR',
+      removeConfirmation:
+        '¿Seguro que quieres eliminar permanentemente este código QR?',
+      updateFailed: 'No se pudo actualizar el código QR.',
+      removeFailed: 'No se pudo eliminar el código QR.',
+      download: 'Descargar código QR',
+      downloadFormat: 'Descargar como {{format}}',
       close: 'Cerrar',
     },
+    components: {
+      title: 'Componentes de conversación',
+      description:
+        'Administra los rompehielos y comandos configurados para este número de teléfono.',
+      loading: 'Cargando componentes de conversación…',
+      loadFailed: 'No se pudieron cargar los componentes de conversación.',
+      saveFailed: 'No se pudo guardar el componente de conversación.',
+      removeFailed: 'No se pudo eliminar el componente de conversación.',
+      retry: 'Intentar de nuevo',
+      icebreakers: 'Rompehielos',
+      icebreakersDescription:
+        'Preguntas que los clientes pueden tocar para iniciar una conversación.',
+      commands: 'Comandos',
+      commandsDescription:
+        'Comandos breves que los clientes pueden usar durante una conversación.',
+      noIcebreakers: 'No hay rompehielos configurados.',
+      noCommands: 'No hay comandos configurados.',
+      add: 'Agregar',
+      edit: 'Editar',
+      remove: 'Eliminar',
+      save: 'Guardar',
+      createIcebreaker: 'Crear rompehielos',
+      editIcebreaker: 'Editar rompehielos',
+      createCommand: 'Crear comando',
+      editCommand: 'Editar comando',
+      editorDescription: 'Los cambios se aplican a este número de WhatsApp.',
+      icebreaker: 'Pregunta rompehielos',
+      commandName: 'Nombre del comando',
+      commandDescription: 'Descripción del comando',
+      removeTitle: 'Eliminar componente de conversación',
+      removeConfirmation:
+        '¿Seguro que quieres eliminar este elemento permanentemente?',
+    },
+    tabs: {
+      label: 'Configuración del canal',
+      identity: 'Resumen',
+      registration: 'Registro',
+      qr: 'Códigos QR',
+      components: 'Componentes',
+      webhook: 'Webhooks',
+      credentials: 'Credenciales',
+    },
+    backToChannels: 'Volver a los canales',
     saveChanges: 'Guardar cambios',
     requestFailed: 'La solicitud falló',
     operationFailed: 'La operación falló.',

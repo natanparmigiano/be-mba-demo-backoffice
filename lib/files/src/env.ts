@@ -19,7 +19,14 @@ export interface S3Configuration {
   secretAccessKey?: string
 }
 
-export type FileStoreConfiguration = FileSystemConfiguration | S3Configuration
+export interface PostgresConfiguration {
+  adapter: 'postgres'
+  publicUrl: string
+  signingSecret: string
+}
+
+export type FileStoreConfiguration =
+  FileSystemConfiguration | PostgresConfiguration | S3Configuration
 
 export function getFileStoreConfiguration(
   env: RuntimeEnvironment = getRuntimeEnvironment(),
@@ -27,16 +34,39 @@ export function getFileStoreConfiguration(
   const adapter = env.FILES_ADAPTER?.trim() || 'fs'
 
   if (adapter === 'fs') return getFileSystemConfiguration(env)
+  if (adapter === 'postgres') return getPostgresConfiguration(env)
   if (adapter === 's3') return getS3Configuration(env)
 
-  throw new Error('FILES_ADAPTER must be either fs or s3')
+  throw new Error('FILES_ADAPTER must be one of fs, postgres, or s3')
 }
 
 function getFileSystemConfiguration(
   env: RuntimeEnvironment,
 ): FileSystemConfiguration {
-  const isProduction = env.NODE_ENV === 'production'
   const directory = env.FILES_DIRECTORY?.trim() || '.data/files'
+  const signedRoutes = getSignedRouteConfiguration(env, 'filesystem')
+
+  return {
+    adapter: 'fs',
+    directory,
+    ...signedRoutes,
+  }
+}
+
+function getPostgresConfiguration(
+  env: RuntimeEnvironment,
+): PostgresConfiguration {
+  return {
+    adapter: 'postgres',
+    ...getSignedRouteConfiguration(env, 'PostgreSQL'),
+  }
+}
+
+function getSignedRouteConfiguration(
+  env: RuntimeEnvironment,
+  storageName: string,
+): { publicUrl: string; signingSecret: string } {
+  const isProduction = env.NODE_ENV === 'production'
   const publicUrl =
     env.FILES_PUBLIC_URL?.trim() ||
     (isProduction
@@ -47,11 +77,13 @@ function getFileSystemConfiguration(
     (isProduction ? undefined : 'development-only-files-signing-secret')
 
   if (!publicUrl) {
-    throw new Error('FILES_PUBLIC_URL is required for filesystem storage')
+    throw new Error(`FILES_PUBLIC_URL is required for ${storageName} storage`)
   }
 
   if (!signingSecret) {
-    throw new Error('FILES_SIGNING_SECRET is required for filesystem storage')
+    throw new Error(
+      `FILES_SIGNING_SECRET is required for ${storageName} storage`,
+    )
   }
 
   if (isProduction && Buffer.byteLength(signingSecret) < 32) {
@@ -74,8 +106,6 @@ function getFileSystemConfiguration(
   }
 
   return {
-    adapter: 'fs',
-    directory,
     publicUrl: parsedPublicUrl.toString().replace(/\/$/, ''),
     signingSecret,
   }

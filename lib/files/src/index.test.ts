@@ -17,10 +17,17 @@ describe('createFileStore', () => {
       forcePathStyle: true,
       region: 'us-east-1',
     })
+    const postgres = createFileStore({
+      adapter: 'postgres',
+      publicUrl: 'http://localhost:3000',
+      signingSecret: 'test-secret',
+    })
 
     assert.equal(filesystem.mode, 'fs')
     assert.equal(s3.mode, 's3')
+    assert.equal(postgres.mode, 'postgres')
     await filesystem.close()
     await s3.close()
+    await postgres.close()
   })
 })

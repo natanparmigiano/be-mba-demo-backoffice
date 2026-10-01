@@ -48,6 +48,10 @@ import {
 } from '../channel-qr'
 import { ChannelQrCode } from '../components/channel-qr-code'
 import {
+  ConversationalComponentsSettingsCard,
+  QrCodesSettingsCard,
+} from '../components/channel-management-cards'
+import {
   Button,
   Checkbox,
   cn,
@@ -128,6 +132,8 @@ const agentTabValues = [
   'knowledgeBase',
   'connectors',
   'evals',
+  'qrCodes',
+  'components',
   'backups',
   'export',
   'import',
@@ -138,6 +144,7 @@ const agentExportSteps = [
   'settings',
   'businessData',
   'skills',
+  'channelComponents',
   'knowledge',
   'files',
   'connectors',
@@ -149,6 +156,7 @@ const agentImportSteps = [
   'settings',
   'businessData',
   'skills',
+  'channelComponents',
   'knowledge',
   'files',
   'connectors',
@@ -160,6 +168,8 @@ const agentImportResources = [
   'businessInfo',
   'allowlist',
   'skills',
+  'qrCodes',
+  'components',
   'faqs',
   'websites',
   'files',
@@ -177,6 +187,9 @@ interface AgentImportItemProgress {
 interface AgentImportInspection {
   summary: {
     skills: number
+    qrCodes: number
+    icebreakers: number
+    commands: number
     faqs: number
     websites: number
     files: number
@@ -1752,7 +1765,7 @@ export function AgentPage() {
             {registrationStatus === 'unregistered' ? (
               <Link
                 className="rounded-full transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
-                to={`/channels?edit=${channel.id}`}
+                to={`/channels/${channel.id}`}
                 aria-label={t('channels.registration.manage')}
                 title={t('channels.registration.manage')}
               >
@@ -2753,6 +2766,26 @@ export function AgentPage() {
                     </ul>
                   </KnowledgeListCard>
                 )}
+              </div>
+            ) : activeTab === 'qrCodes' ? (
+              <div role="tabpanel">
+                <QrCodesSettingsCard
+                  channelId={channel.id}
+                  phoneNumber={channel.waPhoneNumber}
+                  canManage={canManage}
+                  state={qrState}
+                  onChanged={() => {
+                    setQrState(emptyChannelQrState('loading'))
+                    void fetchChannelQrState(channel.id).then(setQrState)
+                  }}
+                />
+              </div>
+            ) : activeTab === 'components' ? (
+              <div role="tabpanel">
+                <ConversationalComponentsSettingsCard
+                  channelId={channel.id}
+                  canManage={canManage}
+                />
               </div>
             ) : activeTab === 'connectors' ? (
               <div className="grid gap-6" role="tabpanel">
@@ -3937,6 +3970,43 @@ function AgentImportResourcePreview({
         </ImportPreviewSection>
 
         <ImportPreviewSection
+          count={preview.qrCodes.length}
+          title={t('agent.importPanel.preview.qrCodes')}
+        >
+          <ImportPreviewList
+            empty={t('agent.importPanel.preview.empty')}
+            items={preview.qrCodes.map((qrCode, index) => ({
+              key: String(index),
+              title: previewValue(qrCode.prefilledMessage),
+            }))}
+          />
+        </ImportPreviewSection>
+
+        <ImportPreviewSection
+          count={
+            preview.components.prompts.length +
+            preview.components.commands.length
+          }
+          title={t('agent.importPanel.preview.components')}
+        >
+          <ImportPreviewList
+            empty={t('agent.importPanel.preview.empty')}
+            items={[
+              ...preview.components.prompts.map((prompt, index) => ({
+                key: `prompt-${index}`,
+                title: prompt,
+                subtitle: t('channels.components.icebreaker'),
+              })),
+              ...preview.components.commands.map((command, index) => ({
+                key: `command-${index}`,
+                title: `/${previewValue(command.commandName)}`,
+                subtitle: previewValue(command.commandDescription),
+              })),
+            ]}
+          />
+        </ImportPreviewSection>
+
+        <ImportPreviewSection
           count={preview.faqs.length}
           title={t('agent.importPanel.preview.faqs')}
         >
@@ -4743,7 +4813,7 @@ function NumberRegistrationCard({
         ) : canManage ? (
           <Link
             className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border bg-background px-4 text-sm font-semibold transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
-            to={`/channels?edit=${channelId}`}
+            to={`/channels/${channelId}`}
           >
             <RadioTower className="size-4" aria-hidden />
             {t(

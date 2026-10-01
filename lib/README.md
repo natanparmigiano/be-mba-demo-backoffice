@@ -11,7 +11,7 @@ exports rather than sibling source paths.
 | [`@mba-demo/kv`](kv/README.md)                                   | String key/value operations    | Redis                    | Process-local memory                              |
 | [`@mba-demo/pubsub`](pubsub/README.md)                           | Transient message fan-out      | Redis Pub/Sub            | Process-local EventEmitter                        |
 | [`@mba-demo/events`](events/README.md)                           | Event publishing/subscription  | Kafka                    | Process-local EventEmitter                        |
-| [`@mba-demo/files`](files/README.md)                             | File/object storage            | S3-compatible storage    | Persistent local filesystem                       |
+| [`@mba-demo/files`](files/README.md)                             | File/object storage            | S3-compatible storage    | Local filesystem; PostgreSQL for quick tests only |
 | [`@mba-demo/auth`](auth/README.md)                               | Authentication                 | Better Auth + Drizzle    | KV secondary storage follows the selected KV mode |
 | [`@mba-demo/runner`](runner/README.md)                           | Versioned JavaScript execution | isolated-vm + PostgreSQL | Injected repository/executor for tests            |
 | [`@mba-demo/wa-analytics`](whatsapp/analytics/README.md)         | WhatsApp account analytics     | Graph API                | Injected fetch for tests                          |

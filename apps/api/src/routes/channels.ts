@@ -1,4 +1,10 @@
 import { auth } from '@mba-demo/auth'
+import { createWhatsAppAnalyticsClient } from '@mba-demo/wa-analytics'
+import {
+  createWhatsAppComponentsClient,
+  type ConversationalComponents,
+  type WriteConversationalComponentsInput,
+} from '@mba-demo/wa-components'
 import {
   agentBackups,
   channels,
@@ -494,6 +500,27 @@ const agentImportManifestSchema = z.object({
         )
         .max(10_000),
       businessInfo: businessInfoSchema,
+      qrCodes: z
+        .array(
+          z.object({
+            prefilledMessage: z.string().trim().min(1).max(1_024),
+          }),
+        )
+        .max(100)
+        .default([]),
+      components: z
+        .object({
+          prompts: z.array(z.string().trim().min(1).max(80)).max(4),
+          commands: z
+            .array(
+              z.object({
+                commandName: z.string().trim().min(1).max(32),
+                commandDescription: z.string().trim().min(1).max(256),
+              }),
+            )
+            .max(30),
+        })
+        .default({ prompts: [], commands: [] }),
       skills: z
         .array(
           agentSkillSchema.extend({
@@ -564,6 +591,7 @@ type AgentImportProgressStep =
   | 'settings'
   | 'businessData'
   | 'skills'
+  | 'channelComponents'
   | 'knowledge'
   | 'files'
   | 'connectors'
@@ -574,6 +602,8 @@ type AgentImportResource =
   | 'businessInfo'
   | 'allowlist'
   | 'skills'
+  | 'qrCodes'
+  | 'components'
   | 'faqs'
   | 'websites'
   | 'files'
@@ -628,6 +658,26 @@ export interface ChannelWebhookConfiguration {
 export interface ChannelAgentConfiguration {
   waPhoneNumberId: string
   waSystemUserAccessToken: string
+  waWabaId?: string
+}
+
+export interface ChannelDashboardAnalytics {
+  period: { start: string; end: string; days: number }
+  messaging: {
+    sent: number
+    delivered: number
+    deliveryRate: number | null
+    series: Array<{ date: string; sent: number; delivered: number }>
+  } | null
+  agent: {
+    threads: number
+    handoffs: number
+    handoffRate: number | null
+    toolCalls: number
+    toolSuccessRate: number | null
+    averageToolLatencyMs: number | null
+  } | null
+  unavailable: Array<'messaging' | 'agent'>
 }
 
 export interface ChannelDeletionImpact {
@@ -739,6 +789,8 @@ export interface ChannelManagementRouteOptions {
   agentConnectors?: AgentConnectorsService
   agentEvaluations?: AgentEvaluationsService
   agentKnowledge?: AgentKnowledgeService
+  agentQrCodes?: AgentQrCodesService
+  agentComponents?: AgentComponentsService
   knowledgeArchive?: AgentKnowledgeArchive
   agentBackups?: AgentBackupService
   agentImportRequestIntervalMs?: number
@@ -760,6 +812,10 @@ export interface ChannelManagementRouteOptions {
   onboardAgent?: (
     configuration: ChannelAgentConfiguration,
   ) => Promise<OnboardAgentResponse>
+  getDashboardAnalytics?: (
+    configuration: ChannelAgentConfiguration,
+    days: number,
+  ) => Promise<ChannelDashboardAnalytics>
 }
 
 export interface AgentConnectorsService {
@@ -899,6 +955,28 @@ export interface AgentKnowledgeService {
   ) => Promise<void>
 }
 
+export interface AgentQrCodesService {
+  list: (configuration: ChannelAgentConfiguration) => Promise<MessageQrCode[]>
+  create: (
+    configuration: ChannelAgentConfiguration,
+    prefilledMessage: string,
+  ) => Promise<MessageQrCode>
+  delete: (
+    configuration: ChannelAgentConfiguration,
+    code: string,
+  ) => Promise<void>
+}
+
+export interface AgentComponentsService {
+  get: (
+    configuration: ChannelAgentConfiguration,
+  ) => Promise<ConversationalComponents>
+  set: (
+    configuration: ChannelAgentConfiguration,
+    input: WriteConversationalComponentsInput,
+  ) => Promise<void>
+}
+
 const safeChannelSelection = {
   id: channels.id,
   type: channels.type,
@@ -961,6 +1039,7 @@ const databaseRepository: ChannelManagementRepository = {
       .select({
         waPhoneNumberId: channels.waPhoneNumberId,
         waSystemUserAccessToken: channels.waSystemUserAccessToken,
+        waWabaId: channels.waWabaId,
       })
       .from(channels)
       .where(
@@ -1148,6 +1227,8 @@ export const createChannelManagementRoute = ({
   agentConnectors = metaAgentConnectorsService,
   agentEvaluations = metaAgentEvaluationsService,
   agentKnowledge = metaAgentKnowledgeService,
+  agentQrCodes = metaAgentQrCodesService,
+  agentComponents = metaAgentComponentsService,
   knowledgeArchive = createAgentKnowledgeArchive(),
   agentBackups = createAgentBackupService(),
   agentImportRequestIntervalMs = 500,
@@ -1163,6 +1244,7 @@ export const createChannelManagementRoute = ({
     console.error('Agent import failed', details, error),
   deleteAgent = deleteMetaAgent,
   onboardAgent = onboardMetaAgent,
+  getDashboardAnalytics = getMetaDashboardAnalytics,
 }: ChannelManagementRouteOptions = {}) =>
   new Hono()
     .get('/', async (c) => {
@@ -1171,6 +1253,34 @@ export const createChannelManagementRoute = ({
 
       return c.json({ channels: await repository.list(access.organizationId) })
     })
+    .get(
+      '/:id/dashboard',
+      zValidator(
+        'query',
+        z.object({ days: z.coerce.number().int().min(1).max(30).default(7) }),
+        (result, c) => {
+          if (!result.success) {
+            return c.json({ message: 'Invalid dashboard query' }, 400)
+          }
+        },
+      ),
+      async (c) => {
+        const channelId = parseChannelId(c.req.param('id'))
+        if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+
+        const access = await getAccess(c.req.raw.headers)
+        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        const configuration = await repository.getAgentConfiguration(
+          access.organizationId,
+          channelId,
+        )
+        if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+
+        return c.json(
+          await getDashboardAnalytics(configuration, c.req.valid('query').days),
+        )
+      },
+    )
     .post('/', zValidator('json', createChannelSchema), async (c) => {
       const access = await getAccess(c.req.raw.headers)
       if (!access) return c.json({ message: 'Unauthorized' }, 401)
@@ -1419,6 +1529,8 @@ export const createChannelManagementRoute = ({
             agentSkills,
             agentConnectors,
             agentKnowledge,
+            agentQrCodes,
+            agentComponents,
             knowledgeArchive,
             progress,
           })
@@ -1511,6 +1623,8 @@ export const createChannelManagementRoute = ({
             agentSkills,
             agentConnectors,
             agentKnowledge,
+            agentQrCodes,
+            agentComponents,
             knowledgeArchive,
             progress,
           })
@@ -1567,6 +1681,9 @@ export const createChannelManagementRoute = ({
         return c.json({
           summary: {
             skills: imported.manifest.agent.skills.length,
+            qrCodes: imported.manifest.agent.qrCodes.length,
+            icebreakers: imported.manifest.agent.components.prompts.length,
+            commands: imported.manifest.agent.components.commands.length,
             faqs: imported.manifest.agent.knowledge.faqs.length,
             websites: imported.manifest.agent.knowledge.websites.length,
             files: imported.manifest.agent.knowledge.files.length,
@@ -1613,7 +1730,7 @@ export const createChannelManagementRoute = ({
       return streamSSE(c, async (stream) => {
         const includeBackup = prepared.options.createBackupBeforeImport
         const positionOffset = includeBackup ? 1 : 0
-        const total = 7 + positionOffset
+        const total = 8 + positionOffset
         const startedAt = Date.now()
         let currentStep: AgentImportProgressStep = includeBackup
           ? 'backup'
@@ -1678,6 +1795,9 @@ export const createChannelManagementRoute = ({
             resources: {
               allowlist: manifest.agent.allowlist.length,
               skills: manifest.agent.skills.length,
+              qrCodes: manifest.agent.qrCodes.length,
+              icebreakers: manifest.agent.components.prompts.length,
+              commands: manifest.agent.components.commands.length,
               faqs: manifest.agent.knowledge.faqs.length,
               websites: manifest.agent.knowledge.websites.length,
               files: files.length,
@@ -1707,6 +1827,8 @@ export const createChannelManagementRoute = ({
               agentSkills,
               agentConnectors,
               agentKnowledge,
+              agentQrCodes,
+              agentComponents,
               knowledgeArchive,
               progress: async (backupStep, position) => {
                 await stream.writeSSE({
@@ -1801,7 +1923,18 @@ export const createChannelManagementRoute = ({
             resourceProgress,
           )
 
-          await progress('knowledge', 4 + positionOffset)
+          await progress('channelComponents', 4 + positionOffset)
+          await reconcileChannelComponents(
+            configuration,
+            manifest.agent.qrCodes,
+            manifest.agent.components,
+            agentQrCodes,
+            agentComponents,
+            runProviderRequest,
+            resourceProgress,
+          )
+
+          await progress('knowledge', 5 + positionOffset)
           await reconcileKnowledge(
             configuration,
             manifest.agent.knowledge,
@@ -1810,7 +1943,7 @@ export const createChannelManagementRoute = ({
             resourceProgress,
           )
 
-          await progress('files', 5 + positionOffset)
+          await progress('files', 6 + positionOffset)
           const currentFiles = await runAgentImportRead(
             'Knowledge file listing',
             runProviderRequest,
@@ -1905,7 +2038,7 @@ export const createChannelManagementRoute = ({
             }
           }
 
-          await progress('connectors', 6 + positionOffset)
+          await progress('connectors', 7 + positionOffset)
           await reconcileConnectors(
             configuration,
             manifest.agent.connectors,
@@ -1915,7 +2048,7 @@ export const createChannelManagementRoute = ({
             resourceProgress,
           )
 
-          await progress('finalizing', 7 + positionOffset)
+          await progress('finalizing', 8 + positionOffset)
           await resourceProgress('finalizing', 0, 1)
           const finalSettingsInput: AgentSettingsInput = {
             rollout: { enabled: false },
@@ -3462,6 +3595,131 @@ export async function registerMetaWebhook(
 
 class MetaWebhookRegistrationError extends Error {}
 
+export async function getMetaDashboardAnalytics(
+  configuration: ChannelAgentConfiguration,
+  days: number,
+  request: typeof fetch = fetch,
+): Promise<ChannelDashboardAnalytics> {
+  const end = new Date()
+  const start = new Date(end)
+  start.setUTCDate(start.getUTCDate() - days)
+  const startSeconds = Math.floor(start.getTime() / 1_000)
+  const endSeconds = Math.floor(end.getTime() / 1_000)
+  const dateRange = {
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10),
+  }
+
+  const analytics = configuration.waWabaId
+    ? createWhatsAppAnalyticsClient({
+        accessToken: configuration.waSystemUserAccessToken,
+        wabaId: configuration.waWabaId,
+        fetch: request,
+      })
+    : null
+  const mba = createWhatsAppMbaClient({
+    accessToken: configuration.waSystemUserAccessToken,
+    phoneNumberId: configuration.waPhoneNumberId,
+    fetch: request,
+  })
+
+  const [messagingResult, conversationsResult, toolsResult] =
+    await Promise.allSettled([
+      analytics
+        ? analytics.getMessagingAnalytics({
+            start: startSeconds,
+            end: endSeconds,
+            granularity: 'DAY',
+            phoneNumbers: [configuration.waPhoneNumberId],
+          })
+        : Promise.reject(new Error('WABA ID is unavailable')),
+      mba.getConversationInsights({
+        ...dateRange,
+        metrics: ['ai_threads', 'ai_handoffs'],
+      }),
+      mba.getToolCallInsights(dateRange),
+    ])
+
+  const messaging =
+    messagingResult.status === 'fulfilled'
+      ? (() => {
+          const series = messagingResult.value.analytics.data_points.map(
+            (point) => ({
+              date: new Date(point.start * 1_000).toISOString().slice(0, 10),
+              sent: point.sent,
+              delivered: point.delivered,
+            }),
+          )
+          const sent = series.reduce((total, point) => total + point.sent, 0)
+          const delivered = series.reduce(
+            (total, point) => total + point.delivered,
+            0,
+          )
+          return {
+            sent,
+            delivered,
+            deliveryRate: sent > 0 ? delivered / sent : null,
+            series,
+          }
+        })()
+      : null
+
+  const agentAvailable =
+    conversationsResult.status === 'fulfilled' ||
+    toolsResult.status === 'fulfilled'
+  let threads = 0
+  let handoffs = 0
+  if (conversationsResult.status === 'fulfilled') {
+    for (const insight of conversationsResult.value.data) {
+      threads += insight.ai_threads?.count ?? 0
+      handoffs += insight.ai_handoffs?.count ?? 0
+    }
+  }
+  const tools = toolsResult.status === 'fulfilled' ? toolsResult.value.data : []
+  const toolCalls = tools.reduce((total, tool) => total + tool.thread_count, 0)
+  const weightedMetric = (
+    select: (tool: (typeof tools)[number]) => number | null | undefined,
+  ) => {
+    const measured = tools.filter((tool) => select(tool) != null)
+    const weight = measured.reduce(
+      (total, tool) => total + tool.thread_count,
+      0,
+    )
+    if (weight === 0) return null
+    return (
+      measured.reduce(
+        (total, tool) => total + (select(tool) ?? 0) * tool.thread_count,
+        0,
+      ) / weight
+    )
+  }
+
+  return {
+    period: {
+      start: start.toISOString(),
+      end: end.toISOString(),
+      days,
+    },
+    messaging,
+    agent: agentAvailable
+      ? {
+          threads,
+          handoffs,
+          handoffRate: threads > 0 ? handoffs / threads : null,
+          toolCalls,
+          toolSuccessRate: weightedMetric((tool) => tool.success_rate),
+          averageToolLatencyMs: weightedMetric((tool) => tool.avg_latency_ms),
+        }
+      : null,
+    unavailable: [
+      ...(messagingResult.status === 'rejected'
+        ? (['messaging'] as const)
+        : []),
+      ...(!agentAvailable ? (['agent'] as const) : []),
+    ],
+  }
+}
+
 export async function getMetaChannelQrCode(
   configuration: ChannelAgentConfiguration,
   request: typeof fetch = fetch,
@@ -4062,6 +4320,41 @@ class MetaAgentEvaluationsError extends Error {
   }
 }
 
+const metaAgentQrCodesService: AgentQrCodesService = {
+  list: async (configuration) =>
+    (
+      await createWhatsAppQrClient({
+        accessToken: configuration.waSystemUserAccessToken,
+        phoneNumberId: configuration.waPhoneNumberId,
+      }).list({ fields: ['prefilled_message'], limit: 100 })
+    ).data,
+  create: (configuration, prefilledMessage) =>
+    createWhatsAppQrClient({
+      accessToken: configuration.waSystemUserAccessToken,
+      phoneNumberId: configuration.waPhoneNumberId,
+    }).create({ prefilled_message: prefilledMessage }),
+  delete: async (configuration, code) => {
+    await createWhatsAppQrClient({
+      accessToken: configuration.waSystemUserAccessToken,
+      phoneNumberId: configuration.waPhoneNumberId,
+    }).delete(code)
+  },
+}
+
+const metaAgentComponentsService: AgentComponentsService = {
+  get: (configuration) =>
+    createWhatsAppComponentsClient({
+      accessToken: configuration.waSystemUserAccessToken,
+      phoneNumberId: configuration.waPhoneNumberId,
+    }).getConfiguration(),
+  set: async (configuration, input) => {
+    await createWhatsAppComponentsClient({
+      accessToken: configuration.waSystemUserAccessToken,
+      phoneNumberId: configuration.waPhoneNumberId,
+    }).setConfiguration(input)
+  },
+}
+
 const metaAgentSkillsService: AgentSkillsService = {
   list: (configuration) =>
     executeMetaSkills(configuration, (client) => client.listSkills()),
@@ -4620,6 +4913,7 @@ const agentExportProgressSteps = [
   'settings',
   'businessData',
   'skills',
+  'channelComponents',
   'knowledge',
   'files',
   'connectors',
@@ -4644,6 +4938,8 @@ interface BuildAgentExportOptions {
   agentSkills: AgentSkillsService
   agentConnectors: AgentConnectorsService
   agentKnowledge: AgentKnowledgeService
+  agentQrCodes: AgentQrCodesService
+  agentComponents: AgentComponentsService
   knowledgeArchive: AgentKnowledgeArchive
   progress: (step: AgentExportProgressStep, position: number) => Promise<void>
 }
@@ -4664,6 +4960,8 @@ async function buildAgentExport({
   agentSkills,
   agentConnectors,
   agentKnowledge,
+  agentQrCodes,
+  agentComponents,
   knowledgeArchive,
   progress,
 }: BuildAgentExportOptions): Promise<BuiltAgentExport> {
@@ -4684,13 +4982,19 @@ async function buildAgentExport({
   await progress('skills', 3)
   const skills = await agentSkills.list(configuration)
 
-  await progress('knowledge', 4)
+  await progress('channelComponents', 4)
+  const [qrCodes, components] = await Promise.all([
+    agentQrCodes.list(configuration),
+    agentComponents.get(configuration),
+  ])
+
+  await progress('knowledge', 5)
   const [faqs, websites] = await Promise.all([
     agentKnowledge.listFaqs(configuration),
     agentKnowledge.listWebsites(configuration),
   ])
 
-  await progress('files', 5)
+  await progress('files', 6)
   const providerFiles = await agentKnowledge.listFiles(configuration)
   const archivedFiles = await knowledgeArchive.getMany(
     organizationId,
@@ -4713,7 +5017,7 @@ async function buildAgentExport({
     }
   })
 
-  await progress('connectors', 6)
+  await progress('connectors', 7)
   const connectors = await agentConnectors.list(configuration)
   const connectorsWithTools = await Promise.all(
     connectors.map(async (connector) => {
@@ -4729,7 +5033,7 @@ async function buildAgentExport({
     }),
   )
 
-  await progress('packaging', 7)
+  await progress('packaging', 8)
   const exportedAt = new Date()
   const includedFileCount = knowledgeFiles.filter(
     (file) => file.included,
@@ -4771,6 +5075,18 @@ async function buildAgentExport({
       settings: toAgentSettingsSummary(providerSettings),
       allowlist: allowlistEntries.map(toAgentAllowlistEntry),
       businessInfo: toAgentBusinessInfo(businessInfo),
+      qrCodes: qrCodes
+        .map((qrCode) => ({
+          prefilledMessage: qrCode.prefilled_message ?? '',
+        }))
+        .filter((qrCode) => qrCode.prefilledMessage),
+      components: {
+        prompts: components.prompts ?? [],
+        commands: (components.commands ?? []).map((command) => ({
+          commandName: command.command_name,
+          commandDescription: command.command_description,
+        })),
+      },
       skills: skills.map(toAgentSkill),
       knowledge: {
         faqs: faqs.map(toFaq),
@@ -5382,6 +5698,88 @@ async function reconcileSkills(
     completed += 1
     await reportProgress('skills', completed, operationTotal)
   }
+}
+
+async function reconcileChannelComponents(
+  configuration: ChannelAgentConfiguration,
+  desiredQrCodes: AgentImportManifest['agent']['qrCodes'],
+  desiredComponents: AgentImportManifest['agent']['components'],
+  qrCodes: AgentQrCodesService,
+  components: AgentComponentsService,
+  runProviderRequest: RunAgentImportProviderRequest,
+  reportProgress: AgentImportResourceProgress,
+): Promise<void> {
+  const currentQrCodes = await runAgentImportRead(
+    'QR code listing',
+    runProviderRequest,
+    () => qrCodes.list(configuration),
+  )
+  const qrOperationTotal = currentQrCodes.length + desiredQrCodes.length
+  let completedQrOperations = 0
+  await reportProgress('qrCodes', 0, qrOperationTotal)
+  for (const qrCode of currentQrCodes) {
+    await runAgentImportMutation(
+      `QR code deletion (${qrCode.code})`,
+      runProviderRequest,
+      () => qrCodes.delete(configuration, qrCode.code),
+      async () =>
+        (await qrCodes.list(configuration)).some(
+          (candidate) => candidate.code === qrCode.code,
+        )
+          ? agentImportDoesNotMatch<void>()
+          : agentImportMatches(undefined),
+    )
+    completedQrOperations += 1
+    await reportProgress('qrCodes', completedQrOperations, qrOperationTotal)
+  }
+  for (const desired of desiredQrCodes) {
+    await runAgentImportMutation(
+      `QR code creation (${desired.prefilledMessage})`,
+      runProviderRequest,
+      () => qrCodes.create(configuration, desired.prefilledMessage),
+      async () => {
+        const matching = (await qrCodes.list(configuration)).find(
+          (candidate) =>
+            candidate.prefilled_message === desired.prefilledMessage,
+        )
+        return matching
+          ? agentImportMatches(matching)
+          : agentImportDoesNotMatch<MessageQrCode>()
+      },
+    )
+    completedQrOperations += 1
+    await reportProgress('qrCodes', completedQrOperations, qrOperationTotal)
+  }
+
+  const desiredConfiguration: WriteConversationalComponentsInput = {
+    prompts: desiredComponents.prompts,
+    commands: desiredComponents.commands.map((command) => ({
+      command_name: command.commandName,
+      command_description: command.commandDescription,
+    })),
+  }
+  await reportProgress('components', 0, 1)
+  await runAgentImportMutation(
+    'Conversational components update',
+    runProviderRequest,
+    () => components.set(configuration, desiredConfiguration),
+    async () => {
+      const current = await components.get(configuration)
+      return equalJson(
+        {
+          prompts: current.prompts ?? [],
+          commands: (current.commands ?? []).map((command) => ({
+            command_name: command.command_name,
+            command_description: command.command_description,
+          })),
+        },
+        desiredConfiguration,
+      )
+        ? agentImportMatches(undefined)
+        : agentImportDoesNotMatch<void>()
+    },
+  )
+  await reportProgress('components', 1, 1)
 }
 
 async function reconcileKnowledge(

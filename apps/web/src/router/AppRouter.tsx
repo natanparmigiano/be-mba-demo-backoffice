@@ -68,6 +68,8 @@ export function AppRouter() {
                 element={<AgentEvalPage />}
               />
               <Route path="/channels" element={<ChannelsPage />} />
+              <Route path="/channels/new" element={<ChannelsPage />} />
+              <Route path="/channels/:channelId" element={<ChannelsPage />} />
               <Route path="/contacts" element={<ContactsPage />} />
               <Route path="/groups" element={<GroupsPage />} />
               <Route

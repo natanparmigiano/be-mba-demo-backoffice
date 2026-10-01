@@ -167,26 +167,28 @@ Podman users can run the same flows with `podman compose`.
 
 The root [`render.yaml`](../render.yaml) describes the hosted equivalent of the simple profile. Applying it creates:
 
-- One starter Docker web service using the `app` entrypoint role and a 1 GiB
-  persistent disk mounted at `/var/data`.
+- One free Docker web service using the `app` entrypoint role without a
+  persistent disk.
 - One free Render PostgreSQL database.
 - One free Render Key Value service for Redis-compatible shared KV storage.
 
 It intentionally defines no Kafka or separate worker services.
 `ENABLE_WORKER_IN_PROCESS=true` keeps the event handlers in the web process.
 The injected `REDIS_URL` selects the Redis KV adapter, while the absence of
-Kafka variables selects the in-memory event adapter. `FILES_ADAPTER=fs` stores
-files below `/var/data/files` on the persistent disk.
+Kafka variables selects the in-memory event adapter. `FILES_ADAPTER=postgres`
+stores file blobs in `files.__files` so the demo can run without a filesystem.
+This mode is strictly for quick testing and is not recommended for production
+or general use; configure S3-compatible storage for production.
 
 Render supplies `PORT` at runtime, so the Blueprint does not override it. `DATABASE_URL` and `REDIS_URL` are populated from their services' internal connection strings, and Render generates `BETTER_AUTH_SECRET`. The Key Value service has no public IP allowlist and uses `allkeys-lru` eviction when it reaches its memory limit.
 
 During Blueprint creation, Render prompts for three non-synchronized variables:
 
-| Variable           | Value                                                                                            |
-| ------------------ | ------------------------------------------------------------------------------------------------ |
-| `BETTER_AUTH_URL`  | The final public service URL, such as `https://mba-demo-backoffice.onrender.com`                 |
-| `CORS_ORIGIN`      | The browser origin allowed to call the API; for the bundled app, use the same public service URL |
-| `FILES_PUBLIC_URL` | The public service URL used as the base for filesystem signed URLs; normally the same URL        |
+| Variable           | Value                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------- |
+| `BETTER_AUTH_URL`  | The final public service URL, such as `https://mba-demo-backoffice.onrender.com`                  |
+| `CORS_ORIGIN`      | The browser origin allowed to call the API; for the bundled app, use the same public service URL  |
+| `FILES_PUBLIC_URL` | The public service URL used as the base for application-served signed URLs; normally the same URL |
 
 These values are intentionally not hard-coded because Render can assign a different hostname and production deployments may use a custom domain.
 

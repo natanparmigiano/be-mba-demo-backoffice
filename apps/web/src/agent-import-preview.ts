@@ -2,6 +2,11 @@ export interface AgentImportPreview {
   allowlist: Array<Record<string, unknown>>
   businessInfo: Record<string, unknown>
   connectors: Array<Record<string, unknown>>
+  qrCodes: Array<Record<string, unknown>>
+  components: {
+    prompts: string[]
+    commands: Array<Record<string, unknown>>
+  }
   files: Array<Record<string, unknown>>
   format: string
   settings: Record<string, unknown>
@@ -104,12 +109,39 @@ function toAgentImportPreview(value: unknown): AgentImportPreview {
     settings: record(agent.settings, 'agent.settings'),
     allowlist: recordArray(agent.allowlist, 'agent.allowlist'),
     businessInfo: record(agent.businessInfo, 'agent.businessInfo'),
+    qrCodes: recordArray(agent.qrCodes ?? [], 'agent.qrCodes'),
+    components: componentsPreview(agent.components),
     skills: recordArray(agent.skills, 'agent.skills'),
     faqs: recordArray(knowledge.faqs, 'agent.knowledge.faqs'),
     websites: recordArray(knowledge.websites, 'agent.knowledge.websites'),
     files: recordArray(knowledge.files, 'agent.knowledge.files'),
     connectors: recordArray(agent.connectors, 'agent.connectors'),
   }
+}
+
+function componentsPreview(value: unknown): AgentImportPreview['components'] {
+  const components = record(value ?? {}, 'agent.components')
+  const prompts = stringArray(
+    components.prompts ?? [],
+    'agent.components.prompts',
+  )
+  return {
+    prompts,
+    commands: recordArray(
+      components.commands ?? [],
+      'agent.components.commands',
+    ),
+  }
+}
+
+function stringArray(value: unknown, name: string): string[] {
+  if (!Array.isArray(value)) throw new TypeError(`${name} must be an array`)
+  return value.map((item, index) => {
+    if (typeof item !== 'string') {
+      throw new TypeError(`${name}.${index} must be a string`)
+    }
+    return item
+  })
 }
 
 function record(value: unknown, name: string): Record<string, unknown> {

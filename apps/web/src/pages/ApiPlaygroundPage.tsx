@@ -17,6 +17,9 @@ import {
 import { MessagingPlayground } from './ApiPlaygroundMessaging'
 import { MediaPlayground } from './ApiPlaygroundMedia'
 import { QrPlayground } from './ApiPlaygroundQr'
+import { ComponentsPlayground } from './ApiPlaygroundComponents'
+import { FlowsPlayground } from './ApiPlaygroundFlows'
+import { TemplatesPlayground } from './ApiPlaygroundTemplates'
 import { Button, Checkbox, cn, Input, Select, Tabs } from '../components/ui'
 
 type ChannelsResponse = InferResponseType<
@@ -31,7 +34,14 @@ type OperationKey =
   | 'register'
   | 'twoStepPin'
   | 'deregister'
-type PackageTab = 'registration' | 'messaging' | 'media' | 'qr'
+type PackageTab =
+  | 'registration'
+  | 'messaging'
+  | 'media'
+  | 'qr'
+  | 'components'
+  | 'flows'
+  | 'templates'
 
 const initialOperationStates: Record<OperationKey, OperationState> = {
   phoneNumber: { status: 'idle' },
@@ -365,6 +375,18 @@ export function ApiPlaygroundPage() {
             value: 'qr',
             label: t('apiPlayground.qr.tab'),
           },
+          {
+            value: 'components',
+            label: t('apiPlayground.components.tab'),
+          },
+          {
+            value: 'flows',
+            label: t('apiPlayground.flows.tab'),
+          },
+          {
+            value: 'templates',
+            label: t('apiPlayground.templates.tab'),
+          },
         ]}
         value={activeTab}
         onValueChange={setActiveTab}
@@ -673,8 +695,26 @@ export function ApiPlaygroundPage() {
           channelId={selectedChannelId}
           mutationDisabled={mutationDisabled}
         />
-      ) : (
+      ) : activeTab === 'qr' ? (
         <QrPlayground
+          key={selectedChannelId}
+          channelId={selectedChannelId}
+          mutationDisabled={mutationDisabled}
+        />
+      ) : activeTab === 'components' ? (
+        <ComponentsPlayground
+          key={selectedChannelId}
+          channelId={selectedChannelId}
+          mutationDisabled={mutationDisabled}
+        />
+      ) : activeTab === 'flows' ? (
+        <FlowsPlayground
+          key={selectedChannelId}
+          channelId={selectedChannelId}
+          mutationDisabled={mutationDisabled}
+        />
+      ) : (
+        <TemplatesPlayground
           key={selectedChannelId}
           channelId={selectedChannelId}
           mutationDisabled={mutationDisabled}

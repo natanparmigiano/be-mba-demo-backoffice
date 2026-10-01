@@ -12,7 +12,10 @@ export const createFilesRoute = (fileStore: FileStore = defaultFiles) =>
       )
 
       if (!fileStore.verifySignedUrl) {
-        return c.json({ message: 'Filesystem file URLs are not enabled' }, 404)
+        return c.json(
+          { message: 'Application-served file URLs are not enabled' },
+          404,
+        )
       }
 
       if (!signedFile) return c.json({ message: INVALID_URL_MESSAGE }, 403)
@@ -37,7 +40,10 @@ export const createFilesRoute = (fileStore: FileStore = defaultFiles) =>
       )
 
       if (!fileStore.verifySignedUrl) {
-        return c.json({ message: 'Filesystem file URLs are not enabled' }, 404)
+        return c.json(
+          { message: 'Application-served file URLs are not enabled' },
+          404,
+        )
       }
 
       if (!signedFile) return c.json({ message: INVALID_URL_MESSAGE }, 403)

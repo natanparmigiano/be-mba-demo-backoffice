@@ -121,6 +121,13 @@ $defs:
           $ref: '#/$defs/allowlistEntry'
       businessInfo:
         $ref: '#/$defs/businessInfo'
+      qrCodes:
+        type: array
+        maxItems: 100
+        items:
+          $ref: '#/$defs/qrCode'
+      components:
+        $ref: '#/$defs/components'
       skills:
         type: array
         maxItems: 1000
@@ -179,6 +186,48 @@ $defs:
           type: string
           minLength: 1
           maxLength: 500
+  qrCode:
+    type: object
+    additionalProperties: false
+    required:
+      - prefilledMessage
+    properties:
+      prefilledMessage:
+        type: string
+        minLength: 1
+        maxLength: 1024
+  components:
+    type: object
+    additionalProperties: false
+    required:
+      - prompts
+      - commands
+    properties:
+      prompts:
+        type: array
+        maxItems: 4
+        items:
+          type: string
+          minLength: 1
+          maxLength: 80
+      commands:
+        type: array
+        maxItems: 30
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - commandName
+            - commandDescription
+          properties:
+            commandName:
+              type: string
+              minLength: 1
+              maxLength: 32
+            commandDescription:
+              type: string
+              minLength: 1
+              maxLength: 256
   allowlistEntry:
     type: object
     additionalProperties: false

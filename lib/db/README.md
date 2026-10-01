@@ -32,6 +32,7 @@ Each file under `src/schema` represents a PostgreSQL schema or schema group:
 | File        | PostgreSQL schema | Ownership                                                    |
 | ----------- | ----------------- | ------------------------------------------------------------ |
 | `auth.ts`   | `auth`            | Better Auth generated tables and relations                   |
+| `files.ts`  | `files`           | Non-production PostgreSQL file-storage fallback              |
 | `mba.ts`    | `mba`             | Application-owned WhatsApp chat data                         |
 | `runner.ts` | `runner`          | Versioned functions, MCP packs, API keys, and execution logs |
 | `index.ts`  | —                 | Re-exports the complete registry for Drizzle                 |
@@ -61,6 +62,11 @@ When adding a schema file, export it from `src/schema/index.ts`. Drizzle Kit rea
 
 Never hand-edit `auth.ts`; regenerate it with `yarn auth:generate` after Better
 Auth configuration or plugin changes.
+
+`files.__files` stores a path and binary body for the PostgreSQL files adapter.
+It exists only to support quick testing and short-lived demos without a
+persistent filesystem. It is not recommended for production or general use;
+production deployments should use the S3-compatible files adapter.
 
 ### MBA chats and messages
 

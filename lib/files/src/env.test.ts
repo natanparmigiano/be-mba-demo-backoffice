@@ -52,6 +52,14 @@ describe('files environment', () => {
     )
   })
 
+  it('parses PostgreSQL storage configuration with signed routes', () => {
+    assert.deepEqual(getFileStoreConfiguration({ FILES_ADAPTER: 'postgres' }), {
+      adapter: 'postgres',
+      publicUrl: 'http://localhost:3000',
+      signingSecret: 'development-only-files-signing-secret',
+    })
+  })
+
   it('rejects partial credentials and invalid adapter values', () => {
     assert.throws(
       () =>
@@ -64,7 +72,7 @@ describe('files environment', () => {
     )
     assert.throws(
       () => getFileStoreConfiguration({ FILES_ADAPTER: 'memory' }),
-      /either fs or s3/,
+      /fs, postgres, or s3/,
     )
   })
 })

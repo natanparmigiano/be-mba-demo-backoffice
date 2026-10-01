@@ -170,12 +170,9 @@ export function AgentsPage() {
         </div>
 
         {isLoading && channels.length === 0 ? (
-          <div
-            className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
-            role="status"
-          >
+          <div className="grid gap-4 lg:grid-cols-2" role="status">
             <span className="sr-only">{t('agents.loading')}</span>
-            {[0, 1, 2].map((item) => (
+            {[0, 1].map((item) => (
               <div
                 key={item}
                 className="h-60 animate-pulse rounded-2xl bg-muted"
@@ -189,7 +186,7 @@ export function AgentsPage() {
             description={t('agents.emptyDescription')}
           />
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid items-stretch gap-4 lg:grid-cols-2">
             {channels.map((channel) => (
               <ChannelAgentCard
                 key={channel.id}

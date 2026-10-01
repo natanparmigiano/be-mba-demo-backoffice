@@ -64,7 +64,11 @@ The adapter choices come entirely from environment variables:
 - `ENABLE_WORKER_IN_PROCESS=false`: the web application only publishes. Run a `worker` process using the same Kafka brokers.
 - `FILES_ADAPTER=fs`: store files below `FILES_DIRECTORY` and route signed
   transfers through Hono. `FILES_ADAPTER=s3`: store objects in S3 and return
-  native SigV4 URLs.
+  native SigV4 URLs. `FILES_ADAPTER=postgres`: store blobs in
+  `files.__files` and route signed transfers through Hono. PostgreSQL mode is
+  strictly for quick tests and short-lived demos without a persistent
+  filesystem. It is not recommended for production or general use; use S3 in
+  production.
 
 Never put a memory-mode publisher and its only subscriber in separate processes. Memory events cannot cross a process boundary, are not replayed, and disappear at restart.
 
@@ -72,12 +76,12 @@ Never put a memory-mode publisher and its only subscriber in separate processes.
 
 Scaling has three independent state planes:
 
-| State plane                    | Single-process option                      | Multi-instance option               | What it protects                                                                                   |
-| ------------------------------ | ------------------------------------------ | ----------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Authoritative application data | PostgreSQL                                 | The same shared PostgreSQL database | Durable records, uniqueness, transactions, and webhook idempotency                                 |
-| KV and auth secondary state    | Memory KV                                  | Redis through `REDIS_URL`           | Shared keys, atomic counters, TTLs, and cross-instance coordination without per-process collisions |
-| Event delivery                 | Memory event bus with embedded subscribers | Kafka with separate workers         | Cross-process delivery, consumer groups, and independent worker scaling                            |
-| File storage                   | Persistent filesystem volume               | Shared S3-compatible object storage | Durable bytes and direct signed upload/download access                                             |
+| State plane                    | Single-process option                                  | Multi-instance option               | What it protects                                                                                   |
+| ------------------------------ | ------------------------------------------------------ | ----------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Authoritative application data | PostgreSQL                                             | The same shared PostgreSQL database | Durable records, uniqueness, transactions, and webhook idempotency                                 |
+| KV and auth secondary state    | Memory KV                                              | Redis through `REDIS_URL`           | Shared keys, atomic counters, TTLs, and cross-instance coordination without per-process collisions |
+| Event delivery                 | Memory event bus with embedded subscribers             | Kafka with separate workers         | Cross-process delivery, consumer groups, and independent worker scaling                            |
+| File storage                   | Persistent filesystem; PostgreSQL only for quick tests | Shared S3-compatible object storage | Durable bytes and direct signed upload/download access                                             |
 
 Redis solves shared KV coordination; it does not turn the memory event adapter into a distributed event bus. A horizontally scaled production deployment should normally use both Redis and Kafka: Redis for shared state across app instances, and Kafka for decoupled event delivery to workers. PostgreSQL unique constraints remain the final protection against duplicate webhook persistence and event retries.
 
@@ -120,10 +124,10 @@ yarn install --frozen-lockfile
 | `ENABLE_WORKER_IN_PROCESS`    | No                     | App                 | Enables registered subscribers inside the HTTP process                               |
 | `SUBSCRIBE_TO_TOPICS`         | No                     | Subscriber process  | `all` or a comma-separated list of registered topics                                 |
 | `WA_WEBHOOK_MAX_RETRIES`      | No                     | Subscriber process  | Webhook retries before dead-lettering; defaults to `5` and accepts `0` through `100` |
-| `FILES_ADAPTER`               | No                     | App                 | `fs` (default) or `s3`                                                               |
+| `FILES_ADAPTER`               | No                     | App                 | `fs` (default), `postgres`, or `s3`; PostgreSQL is test/demo-only                    |
 | `FILES_DIRECTORY`             | FS                     | App                 | Durable filesystem storage root                                                      |
-| `FILES_PUBLIC_URL`            | FS production          | App                 | Public Hono base URL used in signed filesystem links                                 |
-| `FILES_SIGNING_SECRET`        | FS production          | App                 | HMAC secret of at least 32 bytes                                                     |
+| `FILES_PUBLIC_URL`            | FS/Postgres production | App                 | Public Hono base URL used in application-served signed links                         |
+| `FILES_SIGNING_SECRET`        | FS/Postgres production | App                 | HMAC secret of at least 32 bytes                                                     |
 | `FILES_S3_BUCKET`             | S3                     | App                 | Object bucket                                                                        |
 | `FILES_S3_CREATE_BUCKET`      | S3                     | App                 | Creates a missing bucket lazily; intended for local/demo infrastructure              |
 | `FILES_S3_REGION`             | S3                     | App                 | Signing region; defaults to `us-east-1`                                              |
@@ -306,16 +310,22 @@ The full profile is the correct local choice for validating asynchronous webhook
 
 [`render.yaml`](render.yaml) provisions the hosted demo topology:
 
-- One starter Docker web service running the `app` role with a 1 GiB persistent
-  disk mounted at `/var/data`.
+- One free Docker web service running the `app` role without a persistent disk.
 - One free Render PostgreSQL database.
 - One free Render Key Value service using the Redis-compatible adapter.
 - No Kafka service and no separate worker.
 
-The web service sets `ENABLE_WORKER_IN_PROCESS=true` and `FILES_ADAPTER=fs`.
+The web service sets `ENABLE_WORKER_IN_PROCESS=true` and
+`FILES_ADAPTER=postgres`.
 Each request is published to the memory event adapter and handled inside the
-same web process. Redis provides shared KV, while file bodies persist below
-`/var/data/files` on the Render disk.
+same web process. Redis provides shared KV, while file bodies are stored in
+`files.__files` in the Render PostgreSQL database.
+
+The PostgreSQL files adapter is a deliberate quick-testing compromise for this
+diskless demo Blueprint. It is not recommended for production or general use:
+database blobs increase database size, backup/restore time, replication
+traffic, and memory pressure. Configure the S3-compatible adapter for a
+production deployment.
 
 The managed Redis-compatible service means additional web instances can share KV and Better Auth secondary state without process-local collisions. Event handling remains embedded and instance-local, so Render scale-out still does not provide a shared event queue, replay, or a separately scalable worker tier.
 
@@ -323,15 +333,15 @@ The managed Redis-compatible service means additional web instances can share KV
 
 1. Push the repository to a Git provider supported by Render.
 2. In Render, create a new Blueprint and select the repository containing `render.yaml`.
-3. Review the three resources that will be created: the disk-backed web
-   service, PostgreSQL, and Key Value.
+3. Review the three resources that will be created: the web service,
+   PostgreSQL, and Key Value.
 4. Supply the prompted environment values:
 
    | Variable                     | Value                                                                        |
    | ---------------------------- | ---------------------------------------------------------------------------- |
    | `BETTER_AUTH_URL`            | Final public service URL, such as `https://mba-demo-backoffice.onrender.com` |
    | `CORS_ORIGIN`                | Browser origin allowed to call the API; normally the same public URL         |
-   | `FILES_PUBLIC_URL`           | Public base for signed filesystem URLs; normally the same public URL         |
+   | `FILES_PUBLIC_URL`           | Public base for application-served signed URLs; normally the same public URL |
    | `BETTER_AUTH_ADMIN_USER_IDS` | Optional comma-separated Better Auth user IDs                                |
 
 5. Apply the Blueprint and wait for the web service health check at `/api/health`.
@@ -344,9 +354,8 @@ failure prevents the service from becoming healthy.
 
 ### Render limitations
 
-- Persistent disks are unavailable on Render's free web plan, so this Blueprint
-  uses `starter`. Check current disk, database, and Key Value plan terms before
-  relying on their retention and capacity.
+- The Blueprint uses PostgreSQL for file blobs only to support a diskless quick
+  test. Do not treat that adapter or free-service retention as production-safe.
 - In-memory events are not replayable and disappear on restart.
 - Event subscribers cannot be moved to a separate service without also adding Kafka or another shared event implementation.
 - The Key Value service uses `allkeys-lru`; it is secondary storage, not the authoritative database.
@@ -390,6 +399,8 @@ docker run --name mba-demo-app --env-file production.env -p 8080:8080 mba-demo-b
 Use a hostname reachable from inside the container in `DATABASE_URL`;
 container-local `localhost` refers to the container itself. Mount a persistent,
 writable volume at `FILES_DIRECTORY`, or configure the S3 adapter instead.
+PostgreSQL mode can remove the volume requirement for a quick test, but is not
+recommended for production or general use.
 
 ### Split application and worker
 
