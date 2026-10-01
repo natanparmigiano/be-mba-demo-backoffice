@@ -54,6 +54,11 @@ The production image has two roles:
 | Web application | `app`               | Applies Drizzle migrations, starts Hono, serves `/api`, and serves the compiled React application |
 | Event worker    | `worker`            | Starts registered event subscribers without HTTP or migrations                                    |
 
+The image defaults to the `app` role. Platforms that override both Docker
+`ENTRYPOINT` and `CMD` must invoke `mba-demo-backend-entrypoint app` explicitly;
+the Render Blueprint leaves the Docker command unset so the image default is
+preserved.
+
 The Hono health endpoint is `GET /api/health`. Production containers listen on `PORT`; the supplied Compose profiles set it to `8080`, while Render injects it.
 
 The adapter choices come entirely from environment variables:

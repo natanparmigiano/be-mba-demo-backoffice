@@ -30,7 +30,8 @@ required by `isolated-vm`.
 
 ## Entrypoint roles
 
-`mba-demo-backend-entrypoint` requires one command:
+`mba-demo-backend-entrypoint` accepts one command. The image defaults to `app`,
+while deployment profiles can override it with `worker` when needed:
 
 | Command  | Behavior                                                                       |
 | -------- | ------------------------------------------------------------------------------ |
@@ -167,8 +168,8 @@ Podman users can run the same flows with `podman compose`.
 
 The root [`render.yaml`](../render.yaml) describes the hosted equivalent of the simple profile. Applying it creates:
 
-- One free Docker web service using the `app` entrypoint role without a
-  persistent disk.
+- One free Docker web service using the image's default `app` entrypoint role
+  without a persistent disk.
 - One free Render PostgreSQL database.
 - One free Render Key Value service for Redis-compatible shared KV storage.
 

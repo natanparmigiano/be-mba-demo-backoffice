@@ -92,3 +92,4 @@ EXPOSE 8080
 STOPSIGNAL SIGTERM
 
 ENTRYPOINT ["mba-demo-backend-entrypoint"]
+CMD ["app"]
