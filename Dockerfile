@@ -18,12 +18,16 @@ COPY lib/db/package.json ./lib/db/package.json
 COPY lib/events/package.json ./lib/events/package.json
 COPY lib/files/package.json ./lib/files/package.json
 COPY lib/kv/package.json ./lib/kv/package.json
+COPY lib/pubsub/package.json ./lib/pubsub/package.json
 COPY lib/runner/package.json ./lib/runner/package.json
 COPY lib/whatsapp/analytics/package.json ./lib/whatsapp/analytics/package.json
+COPY lib/whatsapp/components/package.json ./lib/whatsapp/components/package.json
+COPY lib/whatsapp/mba/package.json ./lib/whatsapp/mba/package.json
 COPY lib/whatsapp/media/package.json ./lib/whatsapp/media/package.json
 COPY lib/whatsapp/messaging/package.json ./lib/whatsapp/messaging/package.json
 COPY lib/whatsapp/moderation/package.json ./lib/whatsapp/moderation/package.json
 COPY lib/whatsapp/flows/package.json ./lib/whatsapp/flows/package.json
+COPY lib/whatsapp/qr/package.json ./lib/whatsapp/qr/package.json
 COPY lib/whatsapp/registration/package.json ./lib/whatsapp/registration/package.json
 COPY lib/whatsapp/subscriptions/package.json ./lib/whatsapp/subscriptions/package.json
 COPY lib/whatsapp/templates/package.json ./lib/whatsapp/templates/package.json
@@ -61,12 +65,16 @@ COPY --from=build --chown=node:node /app/lib/db/drizzle/ ./lib/db/drizzle/
 COPY --from=build --chown=node:node /app/lib/events/dist/ ./lib/events/dist/
 COPY --from=build --chown=node:node /app/lib/files/dist/ ./lib/files/dist/
 COPY --from=build --chown=node:node /app/lib/kv/dist/ ./lib/kv/dist/
+COPY --from=build --chown=node:node /app/lib/pubsub/dist/ ./lib/pubsub/dist/
 COPY --from=build --chown=node:node /app/lib/runner/dist/ ./lib/runner/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/analytics/dist/ ./lib/whatsapp/analytics/dist/
+COPY --from=build --chown=node:node /app/lib/whatsapp/components/dist/ ./lib/whatsapp/components/dist/
+COPY --from=build --chown=node:node /app/lib/whatsapp/mba/dist/ ./lib/whatsapp/mba/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/media/dist/ ./lib/whatsapp/media/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/messaging/dist/ ./lib/whatsapp/messaging/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/moderation/dist/ ./lib/whatsapp/moderation/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/flows/dist/ ./lib/whatsapp/flows/dist/
+COPY --from=build --chown=node:node /app/lib/whatsapp/qr/dist/ ./lib/whatsapp/qr/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/registration/dist/ ./lib/whatsapp/registration/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/subscriptions/dist/ ./lib/whatsapp/subscriptions/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/templates/dist/ ./lib/whatsapp/templates/dist/
