@@ -6,6 +6,7 @@ import type {
   UpdateRunnerFunctionInput,
   UpdateRunnerMcpInput,
 } from './schemas.js'
+import type { RunnerMcpImportPreview, RunnerMcpPackage } from './mcp-package.js'
 
 export type RunnerFunctionStatus = 'active' | 'archived'
 export type RunnerTerminalExecutionStatus = 'succeeded' | 'failed' | 'timed_out'
@@ -97,6 +98,11 @@ export type RunnerMcpMutationResult =
   | { status: 'not_found' }
   | { status: 'invalid_function_ids'; functionIds: number[] }
 
+export type RunnerMcpImportResult =
+  | { status: 'imported'; mcp: RunnerMcpDefinition }
+  | { status: 'blocked'; preview: RunnerMcpImportPreview }
+  | { status: 'overwrite_required'; preview: RunnerMcpImportPreview }
+
 export interface RunnerExecutionRevision {
   functionId: number
   organizationId: string
@@ -113,6 +119,11 @@ export type RunnerUpdateResult =
 export type RunnerArchiveResult =
   | { status: 'archived'; definition: RunnerFunctionDefinition }
   | { status: 'not_found' }
+
+export type RunnerDeleteFunctionResult =
+  | { status: 'deleted' }
+  | { status: 'not_found' }
+  | { status: 'execution_in_progress' }
 
 export type RunnerGetResult =
   { status: 'found'; details: RunnerFunctionDetails } | { status: 'not_found' }
@@ -213,6 +224,10 @@ export interface RunnerRepository {
     organizationId: string,
     functionId: number,
   ): Promise<RunnerArchiveResult>
+  deleteFunction(
+    organizationId: string,
+    functionId: number,
+  ): Promise<RunnerDeleteFunctionResult>
   restoreRevision(
     organizationId: string,
     functionId: number,
@@ -230,6 +245,19 @@ export interface RunnerRepository {
     input: UpdateRunnerMcpInput,
   ): Promise<RunnerMcpMutationResult>
   deleteMcp(organizationId: string, mcpId: number): Promise<boolean>
+  exportMcpPackage(
+    organizationId: string,
+    mcpId: number,
+  ): Promise<RunnerMcpPackage | undefined>
+  inspectMcpImport(
+    organizationId: string,
+    imported: RunnerMcpPackage,
+  ): Promise<RunnerMcpImportPreview>
+  importMcpPackage(
+    organizationId: string,
+    imported: RunnerMcpPackage,
+    overwrite: boolean,
+  ): Promise<RunnerMcpImportResult>
   listExecutions(
     organizationId: string,
     functionId: number,

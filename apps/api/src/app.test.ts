@@ -4,7 +4,6 @@ import { describe, it } from 'node:test'
 import type { WhatsAppChannelConfiguration } from '@mba-demo/db'
 import { MemoryEventBus } from '@mba-demo/events'
 import { app, createApp } from './app.js'
-import { DEMO_EVENT_TOPIC } from './routes/events.js'
 import {
   WA_CLOUD_WEBHOOK_FORWARD_TOPIC,
   WA_CLOUD_WEBHOOK_TOPIC,
@@ -44,31 +43,6 @@ describe('API', () => {
     assert.deepEqual(await enabledResponse.json(), { enabled: true })
     assert.equal(disabledResponse.status, 200)
     assert.deepEqual(await disabledResponse.json(), { enabled: false })
-  })
-
-  it('publishes events through the configured event bus', async () => {
-    const eventBus = new MemoryEventBus()
-    const received: string[] = []
-    eventBus.subscribe(DEMO_EVENT_TOPIC, (event) => {
-      received.push(event.value)
-    })
-    await eventBus.start()
-
-    const eventApp = createApp({ eventBus })
-    const response = await eventApp.request('/api/events', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ message: 'hello from Hono' }),
-    })
-
-    assert.equal(response.status, 202)
-    assert.deepEqual(await response.json(), {
-      accepted: true,
-      mode: 'memory',
-      topic: DEMO_EVENT_TOPIC,
-    })
-    assert.deepEqual(received, ['hello from Hono'])
-    await eventBus.close()
   })
 
   it('verifies and publishes valid WA Cloud webhook payloads', async () => {

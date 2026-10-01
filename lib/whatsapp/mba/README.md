@@ -55,6 +55,12 @@ infrastructure. The client validates documented local constraints such as date
 ranges, pagination limits, budget uniqueness, supported knowledge-file
 extensions, and connector authentication configuration.
 
+Connector-tool request bodies use normal nested TypeScript objects at the
+public API. The client converts nested `items` and `properties` nodes to the
+JSON object strings required by Meta on writes and converts them back to
+structured nodes on reads. Callers and portable formats therefore do not need
+to implement Meta's wire encoding.
+
 The package deliberately does not retry requests automatically. Several MBA
 resources have hourly limits, so callers should coordinate retries centrally,
 honor `429` responses, and apply backoff appropriate to their workload.

@@ -27,6 +27,7 @@
     "@mba-demo/wa-media": "0.0.0",
     "@mba-demo/wa-messaging": "0.0.0",
     "@mba-demo/wa-mba": "0.0.0",
+    "@mba-demo/wa-qr": "0.0.0",
     "@mba-demo/wa-registration": "0.0.0",
     "@mba-demo/wa-subscriptions": "0.0.0",
     "@mba-demo/wa-templates": "0.0.0",

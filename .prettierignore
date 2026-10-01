@@ -2,6 +2,7 @@
 **/node_modules/
 **/coverage/
 **/*.tsbuildinfo
+**/*.mcpx
 lib/db/src/schema/auth.ts
 lib/db/drizzle/meta/
 WhatsApp Cloud API/

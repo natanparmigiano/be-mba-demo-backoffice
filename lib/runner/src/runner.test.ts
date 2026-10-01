@@ -4,7 +4,9 @@ import {
   Runner,
   RunnerApiKeyInvalidError,
   RunnerApiKeyScopeError,
+  RunnerFunctionExecutionInProgressError,
   RunnerFunctionNameConflictError,
+  RunnerFunctionNotFoundError,
   RunnerMcpAccessForbiddenError,
   RunnerMcpNotFoundError,
   RunnerParameterValidationError,
@@ -46,6 +48,13 @@ describe('Runner function names', () => {
       'customer_lookup',
     )
     assert.equal(
+      createRunnerFunctionSchema.parse({
+        name: 'sales_tools__customer_lookup',
+        code: `() => true`,
+      }).name,
+      'sales_tools__customer_lookup',
+    )
+    assert.equal(
       createRunnerMcpSchema.parse({
         name: 'customer_tools',
         functionIds: [7],
@@ -62,6 +71,12 @@ describe('Runner function names', () => {
       createRunnerMcpSchema.parse({
         name: 'customer-tools',
         functionIds: [7],
+      }),
+    )
+    assert.throws(() =>
+      createRunnerFunctionSchema.parse({
+        name: 'sales_tools___customer_lookup',
+        code: `() => true`,
       }),
     )
   })
@@ -86,6 +101,37 @@ describe('Runner function names', () => {
         parameters: [],
       }),
       RunnerFunctionNameConflictError,
+    )
+  })
+
+  it('deletes only organization-owned functions and rejects active executions', async () => {
+    let deleted: string | undefined
+    const runner = new Runner({
+      repository: createRepository({
+        deleteFunction: async (organizationId, functionId) => {
+          deleted = `${organizationId}:${functionId}`
+          return { status: 'deleted' }
+        },
+      }),
+    })
+    await runner.deleteFunction('org-one', 7)
+    assert.equal(deleted, 'org-one:7')
+
+    await assert.rejects(
+      new Runner({
+        repository: createRepository({
+          deleteFunction: async () => ({ status: 'not_found' }),
+        }),
+      }).deleteFunction('org-one', 7),
+      RunnerFunctionNotFoundError,
+    )
+    await assert.rejects(
+      new Runner({
+        repository: createRepository({
+          deleteFunction: async () => ({ status: 'execution_in_progress' }),
+        }),
+      }).deleteFunction('org-one', 7),
+      RunnerFunctionExecutionInProgressError,
     )
   })
 })
@@ -422,6 +468,7 @@ function createRepository(
     },
     updateFunction: async () => ({ status: 'not_found' }),
     archiveFunction: async () => ({ status: 'not_found' }),
+    deleteFunction: async () => ({ status: 'not_found' }),
     restoreRevision: async () => ({ status: 'not_found' }),
     listMcps: async () => ({ status: 'found', mcps: [] }),
     getMcp: async () => ({ status: 'not_found' }),
@@ -431,6 +478,13 @@ function createRepository(
     }),
     updateMcp: async () => ({ status: 'not_found' }),
     deleteMcp: async () => false,
+    exportMcpPackage: async () => undefined,
+    inspectMcpImport: async () => {
+      throw new Error('Unexpected inspectMcpImport call')
+    },
+    importMcpPackage: async () => {
+      throw new Error('Unexpected importMcpPackage call')
+    },
     listExecutions: async () => ({ status: 'not_found' }),
     listApiKeys: async () => ({ status: 'found', apiKeys: [] }),
     createApiKey: async () => ({

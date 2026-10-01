@@ -18,6 +18,10 @@ import {
   type MediaPlaygroundRouteOptions,
 } from './routes/media-playground.js'
 import {
+  createQrPlaygroundRoute,
+  type QrPlaygroundRouteOptions,
+} from './routes/qr-playground.js'
+import {
   createChannelManagementRoute,
   type ChannelManagementRouteOptions,
 } from './routes/channels.js'
@@ -27,7 +31,6 @@ import {
 } from './routes/contacts.js'
 import { createChatsRoute, type ChatsRouteOptions } from './routes/chats.js'
 import { createAdminOrganizationsRoute } from './routes/admin-organizations.js'
-import { createEventsRoute } from './routes/events.js'
 import { createFilesRoute } from './routes/files.js'
 import { createGroupsRoute, type GroupsRouteOptions } from './routes/groups.js'
 import { createMcpRoute, type McpRouteOptions } from './routes/mcp.js'
@@ -50,6 +53,7 @@ interface CreateAppOptions {
   messagingPlayground?: MessagingPlaygroundRouteOptions
   mediaPlayground?: MediaPlaygroundRouteOptions
   mcp?: McpRouteOptions
+  qrPlayground?: QrPlaygroundRouteOptions
   runner?: RunnerRouteOptions
   waCloudWebhook?: WaCloudWebhookRouteOptions
   webRoot?: string
@@ -68,6 +72,7 @@ export const createApp = ({
   messagingPlayground,
   mediaPlayground,
   mcp,
+  qrPlayground,
   runner,
   waCloudWebhook,
   webRoot,
@@ -110,11 +115,11 @@ export const createApp = ({
       createMessagingPlaygroundRoute({ fileStore, ...messagingPlayground }),
     )
     .route('/api/playground/media', createMediaPlaygroundRoute(mediaPlayground))
+    .route('/api/playground/qr', createQrPlaygroundRoute(qrPlayground))
     .route('/api/admin/organizations', createAdminOrganizationsRoute())
     .route('/api/channels', createChannelManagementRoute(channelManagement))
     .route('/api/chats', createChatsRoute({ fileStore, ...chats }))
     .route('/api/contacts', createContactsRoute(contacts))
-    .route('/api/events', createEventsRoute(eventBus))
     .route('/api/files', createFilesRoute(fileStore))
     .route('/api/groups', createGroupsRoute(groups))
     .route('/api/mcp', createMcpRoute(mcp))

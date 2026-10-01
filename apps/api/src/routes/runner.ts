@@ -4,11 +4,13 @@ import {
   RunnerApiKeyInvalidError,
   RunnerApiKeyScopeError,
   RunnerFunctionArchivedError,
+  RunnerFunctionExecutionInProgressError,
   RunnerExecutionDispatchTimeoutError,
   RunnerFunctionNameConflictError,
   RunnerFunctionNotFoundError,
   RunnerMcpNameConflictError,
   RunnerMcpNotFoundError,
+  RUNNER_MCP_PACKAGE_MAX_BYTES,
   RunnerParameterValidationError,
   createRunnerApiKeySchema,
   createRunnerFunctionSchema,
@@ -28,6 +30,9 @@ import {
   type RunnerFunctionDetails,
   type RunnerFunctionSummary,
   type RunnerMcpDefinition,
+  type RunnerMcpImportPreview,
+  type RunnerMcpImportResult,
+  type RunnerMcpPackage,
   type RunnerMcpSummary,
   type RunnerApiKeyMetadata,
   type UpdateRunnerFunctionInput,
@@ -37,10 +42,22 @@ import { zValidator } from '@hono/zod-validator'
 import { and, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
+import {
+  parseRunnerMcpPackageYaml,
+  stringifyRunnerMcpPackageYaml,
+} from '../runner-mcp-package.js'
 
 const runnerApiKeyHeadersSchema = z.object({
   authorization: z.string().optional(),
   'x-api-key': z.string().optional(),
+})
+
+const runnerMcpImportInspectSchema = z.object({
+  yaml: z.string().min(1).max(RUNNER_MCP_PACKAGE_MAX_BYTES),
+})
+
+const runnerMcpImportSchema = runnerMcpImportInspectSchema.extend({
+  overwrite: z.boolean().default(false),
 })
 
 interface OrganizationAccess {
@@ -67,6 +84,7 @@ export interface RunnerManagementApi {
     organizationId: string,
     functionId: number,
   ): Promise<RunnerFunctionDefinition>
+  deleteFunction(organizationId: string, functionId: number): Promise<void>
   restoreRevision(
     organizationId: string,
     functionId: number,
@@ -84,6 +102,19 @@ export interface RunnerManagementApi {
     input: UpdateRunnerMcpInput,
   ): Promise<RunnerMcpDefinition>
   deleteMcp(organizationId: string, mcpId: number): Promise<void>
+  exportMcpPackage(
+    organizationId: string,
+    mcpId: number,
+  ): Promise<RunnerMcpPackage>
+  inspectMcpImport(
+    organizationId: string,
+    imported: RunnerMcpPackage,
+  ): Promise<RunnerMcpImportPreview>
+  importMcpPackage(
+    organizationId: string,
+    imported: RunnerMcpPackage,
+    overwrite: boolean,
+  ): Promise<RunnerMcpImportResult>
   listExecutions(
     organizationId: string,
     functionId: number,
@@ -222,6 +253,21 @@ export const createRunnerRoute = ({
         return handleRunnerError(c, error)
       }
     })
+    .delete('/functions/:id', async (c) => {
+      const functionId = parseFunctionId(c.req.param('id'))
+      if (!functionId) return c.json({ message: 'Invalid function ID' }, 400)
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      if (!canManageFunctions(access.role)) {
+        return c.json({ message: 'Organization owner or admin required' }, 403)
+      }
+      try {
+        await runner.deleteFunction(access.organizationId, functionId)
+        return c.json({ deleted: true as const, functionId })
+      } catch (error) {
+        return handleRunnerError(c, error)
+      }
+    })
     .post('/functions/:id/revisions/:revision/restore', async (c) => {
       const functionId = parseFunctionId(c.req.param('id'))
       const revision = parseFunctionId(c.req.param('revision'))
@@ -250,6 +296,76 @@ export const createRunnerRoute = ({
       const mcps = await runner.listMcps(access.organizationId)
       return c.json({ mcps: mcps.map(serializeMcpSummary) })
     })
+    .post(
+      '/mcps/import/inspect',
+      zValidator('json', runnerMcpImportInspectSchema),
+      async (c) => {
+        const access = await getAccess(c.req.raw.headers)
+        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        if (!canManageFunctions(access.role)) {
+          return c.json(
+            { message: 'Organization owner or admin required' },
+            403,
+          )
+        }
+        try {
+          const imported = parseRunnerMcpPackageYaml(c.req.valid('json').yaml)
+          const preview = await runner.inspectMcpImport(
+            access.organizationId,
+            imported,
+          )
+          return c.json({ preview })
+        } catch (error) {
+          return c.json({ message: getMcpPackageError(error) }, 400)
+        }
+      },
+    )
+    .post(
+      '/mcps/import',
+      zValidator('json', runnerMcpImportSchema),
+      async (c) => {
+        const access = await getAccess(c.req.raw.headers)
+        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        if (!canManageFunctions(access.role)) {
+          return c.json(
+            { message: 'Organization owner or admin required' },
+            403,
+          )
+        }
+        try {
+          const input = c.req.valid('json')
+          const imported = parseRunnerMcpPackageYaml(input.yaml)
+          const result = await runner.importMcpPackage(
+            access.organizationId,
+            imported,
+            input.overwrite,
+          )
+          if (result.status === 'blocked') {
+            return c.json(
+              {
+                code: 'MCP_IMPORT_BLOCKED' as const,
+                message: 'MCP import has blocking conflicts',
+                preview: result.preview,
+              },
+              409,
+            )
+          }
+          if (result.status === 'overwrite_required') {
+            return c.json(
+              {
+                code: 'MCP_IMPORT_OVERWRITE_REQUIRED' as const,
+                message: 'Confirm replacement of the existing MCP',
+                preview: result.preview,
+              },
+              409,
+            )
+          }
+          return c.json({ mcp: serializeMcp(result.mcp) })
+        } catch (error) {
+          return c.json({ message: getMcpPackageError(error) }, 400)
+        }
+      },
+    )
     .get('/mcps/:id', async (c) => {
       const mcpId = parseFunctionId(c.req.param('id'))
       if (!mcpId) return c.json({ message: 'Invalid MCP ID' }, 400)
@@ -258,6 +374,31 @@ export const createRunnerRoute = ({
       try {
         const mcp = await runner.getMcp(access.organizationId, mcpId)
         return c.json({ mcp: serializeMcp(mcp) })
+      } catch (error) {
+        return handleRunnerError(c, error)
+      }
+    })
+    .get('/mcps/:id/export', async (c) => {
+      const mcpId = parseFunctionId(c.req.param('id'))
+      if (!mcpId) return c.json({ message: 'Invalid MCP ID' }, 400)
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      if (!canManageFunctions(access.role)) {
+        return c.json({ message: 'Organization owner or admin required' }, 403)
+      }
+      try {
+        const exported = await runner.exportMcpPackage(
+          access.organizationId,
+          mcpId,
+        )
+        const yaml = stringifyRunnerMcpPackageYaml(exported)
+        c.header('Content-Type', 'application/yaml; charset=utf-8')
+        c.header(
+          'Content-Disposition',
+          `attachment; filename="${exported.mcp.name}.mcpx"`,
+        )
+        c.header('Cache-Control', 'private, no-store')
+        return c.body(yaml)
       } catch (error) {
         return handleRunnerError(c, error)
       }
@@ -609,6 +750,15 @@ function handleRunnerError(
       409,
     )
   }
+  if (error instanceof RunnerFunctionExecutionInProgressError) {
+    return c.json(
+      {
+        code: 'FUNCTION_EXECUTION_IN_PROGRESS' as const,
+        message: error.message,
+      },
+      409,
+    )
+  }
   if (error instanceof RunnerParameterValidationError) {
     return c.json({ message: error.message }, 400)
   }
@@ -616,4 +766,10 @@ function handleRunnerError(
     return c.json({ message: error.message }, 503)
   }
   throw error
+}
+
+function getMcpPackageError(error: unknown): string {
+  return error instanceof Error && error.message
+    ? error.message
+    : 'Invalid MCP package'
 }

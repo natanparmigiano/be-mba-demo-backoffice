@@ -277,6 +277,39 @@ export const agentKnowledgeFileArchives = mbaSchema.table(
   ],
 )
 
+export const agentBackups = mbaSchema.table(
+  'agent_backups',
+  {
+    id: bigint('id', { mode: 'number' })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    channelId: bigint('channel_id', { mode: 'number' }).notNull(),
+    fileName: text('file_name').notNull(),
+    storagePath: text('storage_path').notNull(),
+    byteSize: bigint('byte_size', { mode: 'number' }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('agent_backups_storage_path_uidx').on(table.storagePath),
+    index('agent_backups_channel_created_id_idx').on(
+      table.channelId,
+      table.createdAt,
+      table.id,
+    ),
+    foreignKey({
+      name: 'agent_backups_channel_organization_fk',
+      columns: [table.channelId, table.organizationId],
+      foreignColumns: [channels.id, channels.organizationId],
+    }).onDelete('restrict'),
+    check('agent_backups_byte_size_check', sql`${table.byteSize} > 0`),
+  ],
+)
+
 export const contacts = mbaSchema.table(
   'contacts',
   {

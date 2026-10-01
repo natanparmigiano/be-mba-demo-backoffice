@@ -20,6 +20,7 @@ exports rather than sibling source paths.
 | [`@mba-demo/wa-messaging`](whatsapp/messaging/README.md)         | Typed WhatsApp message sending | Graph API                | Injected fetch for tests                          |
 | [`@mba-demo/wa-mba`](whatsapp/mba/README.md)                     | Meta Business Agent management | MBA Platform API         | Injected fetch for tests                          |
 | [`@mba-demo/wa-moderation`](whatsapp/moderation/README.md)       | WhatsApp user blocklist        | Graph API                | Injected fetch for tests                          |
+| [`@mba-demo/wa-qr`](whatsapp/qr/README.md)                       | WhatsApp message QR codes      | Graph API                | Injected fetch for tests                          |
 | [`@mba-demo/wa-registration`](whatsapp/registration/README.md)   | Phone-number registration      | Graph API                | Injected fetch for tests                          |
 | [`@mba-demo/wa-subscriptions`](whatsapp/subscriptions/README.md) | WABA webhook subscriptions     | Graph API                | Injected fetch for tests                          |
 | [`@mba-demo/wa-templates`](whatsapp/templates/README.md)         | WhatsApp template management   | Graph API                | Injected fetch for tests                          |

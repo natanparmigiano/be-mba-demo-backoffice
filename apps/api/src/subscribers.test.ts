@@ -537,18 +537,19 @@ describe('WhatsApp webhook retry and dead-letter handling', () => {
   it('automatically includes the dead-letter topic', () => {
     assert.deepEqual(
       includeWhatsAppReliabilityTopics([
-        'demo.events.v1',
+        'runner.execution.requested.v1',
         'wa-cloud.webhook.v1',
       ]),
       [
-        'demo.events.v1',
+        'runner.execution.requested.v1',
         'wa-cloud.webhook.v1',
         WA_CLOUD_WEBHOOK_DEAD_LETTER_TOPIC,
       ],
     )
-    assert.deepEqual(includeWhatsAppReliabilityTopics(['demo.events.v1']), [
-      'demo.events.v1',
-    ])
+    assert.deepEqual(
+      includeWhatsAppReliabilityTopics(['runner.execution.requested.v1']),
+      ['runner.execution.requested.v1'],
+    )
   })
 })
 

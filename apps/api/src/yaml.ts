@@ -137,9 +137,9 @@ function parseJsonString(value: string): string {
     const parsed: unknown = JSON.parse(value)
     if (typeof parsed === 'string') return parsed
   } catch {
-    // AGTX deliberately supports only the serializer's safe YAML subset.
+    // Portable exports deliberately support only the serializer's safe subset.
   }
-  throw new TypeError('YAML scalar is outside the supported AGTX subset')
+  throw new TypeError('YAML scalar is outside the supported safe subset')
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

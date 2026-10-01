@@ -1,5 +1,6 @@
 import type { InferResponseType } from 'hono/client'
 import {
+  AlertTriangle,
   Archive,
   Braces,
   ChevronLeft,
@@ -107,6 +108,9 @@ export function FunctionsPage() {
   const [showParameters, setShowParameters] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isReverting, setIsReverting] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const [argumentsJson, setArgumentsJson] = useState('{}')
   const [executionPhase, setExecutionPhase] = useState<ExecutionPhase>('idle')
@@ -260,7 +264,8 @@ export function FunctionsPage() {
   }
 
   const closeFunction = () => {
-    if (isSaving || isReverting || executionPhase !== 'idle') return
+    if (isSaving || isReverting || isDeleting || executionPhase !== 'idle')
+      return
     detailRequestId.current += 1
     setShowParameters(false)
     setSelectedFunctionId(null)
@@ -391,6 +396,34 @@ export function FunctionsPage() {
     }
   }
 
+  const deleteFunction = async () => {
+    if (!selectedFunctionId) return
+    setIsDeleting(true)
+    setDeleteError(null)
+    try {
+      const response = await apiClient.api.runner.functions[':id'].$delete({
+        param: { id: String(selectedFunctionId) },
+      })
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, t('functions.danger.failed')),
+        )
+      }
+      setIsDeleteDialogOpen(false)
+      detailRequestId.current += 1
+      executionHistoryRequestId.current += 1
+      setSelectedFunctionId(null)
+      setDetails(null)
+      setExecutionHistory([])
+      setNotice(t('functions.danger.deleted'))
+      await refreshFunctions()
+    } catch (reason) {
+      setDeleteError(getErrorMessage(reason, t('functions.danger.failed')))
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const executeFunction = async () => {
     if (!selectedFunctionId) return
     setExecutionResult(null)
@@ -447,7 +480,8 @@ export function FunctionsPage() {
       code !== selectedRevisionDefinition?.code ||
       !parametersEqual(parameters, selectedRevisionDefinition?.parameters ?? [])
     : false
-  const isBusy = isSaving || isReverting || executionPhase !== 'idle'
+  const isBusy =
+    isSaving || isReverting || isDeleting || executionPhase !== 'idle'
 
   return (
     <div className="grid gap-6">
@@ -599,7 +633,7 @@ export function FunctionsPage() {
                   setCreateName(toSnakeCaseName(event.target.value))
                 }
                 required
-                maxLength={128}
+                maxLength={512}
                 autoFocus
                 disabled={isCreating}
               />
@@ -728,7 +762,7 @@ export function FunctionsPage() {
                           }
                           hint={t('functions.nameHint')}
                           label={t('functions.name')}
-                          maxLength={128}
+                          maxLength={512}
                           value={name}
                           onChange={(event) =>
                             setName(toSnakeCaseName(event.target.value))
@@ -802,7 +836,7 @@ export function FunctionsPage() {
                         {canManage && (
                           <Button
                             className="ml-auto"
-                            variant="danger"
+                            variant="outline"
                             disabled={isBusy}
                             onClick={() => void archiveFunction()}
                           >
@@ -951,6 +985,41 @@ export function FunctionsPage() {
                   </div>
                 </section>
 
+                <section className="overflow-hidden rounded-2xl border border-destructive/30 bg-card shadow-xs">
+                  <div className="flex items-start gap-4 p-6">
+                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-destructive/12 text-destructive">
+                      <AlertTriangle className="size-5" aria-hidden />
+                    </span>
+                    <div>
+                      <h2 className="font-bold text-destructive">
+                        {t('functions.danger.title')}
+                      </h2>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        {t('functions.danger.description')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end border-t border-destructive/20 bg-destructive/5 p-5">
+                    {canManage ? (
+                      <Button
+                        variant="danger"
+                        disabled={isBusy}
+                        onClick={() => {
+                          setDeleteError(null)
+                          setIsDeleteDialogOpen(true)
+                        }}
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                        {t('functions.danger.delete')}
+                      </Button>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {t('agent.managersOnly')}
+                      </p>
+                    )}
+                  </div>
+                </section>
+
                 <Dialog
                   open={showParameters}
                   onOpenChange={setShowParameters}
@@ -1079,6 +1148,53 @@ export function FunctionsPage() {
                     </div>
                   </div>
                 </Dialog>
+
+                <Dialog
+                  dismissible={!isDeleting}
+                  open={isDeleteDialogOpen}
+                  title={t('functions.danger.dialogTitle')}
+                  description={t('functions.danger.dialogDescription', {
+                    name: details.function.name,
+                  })}
+                  icon={
+                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-destructive/12 text-destructive">
+                      <Trash2 className="size-5" aria-hidden />
+                    </span>
+                  }
+                  onOpenChange={(open) => {
+                    if (!isDeleting) {
+                      setIsDeleteDialogOpen(open)
+                      if (!open) setDeleteError(null)
+                    }
+                  }}
+                >
+                  <div className="grid w-full gap-4">
+                    {deleteError && (
+                      <p
+                        className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                        role="alert"
+                      >
+                        {deleteError}
+                      </p>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        disabled={isDeleting}
+                        variant="ghost"
+                        onClick={() => setIsDeleteDialogOpen(false)}
+                      >
+                        {t('functions.danger.cancel')}
+                      </Button>
+                      <Button
+                        isLoading={isDeleting}
+                        variant="danger"
+                        onClick={() => void deleteFunction()}
+                      >
+                        {t('functions.danger.confirm')}
+                      </Button>
+                    </div>
+                  </div>
+                </Dialog>
               </>
             )}
             <div className="flex justify-end">
@@ -1154,16 +1270,19 @@ function executionStatusTone(
 }
 
 function isSnakeCaseName(value: string): boolean {
-  return value.length <= 128 && /^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(value)
+  return value.length <= 512 && /^[a-z0-9]+(?:_{1,2}[a-z0-9]+)*$/.test(value)
 }
 
 function toSnakeCaseName(value: string): string {
   return value
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\uE000/g, '')
     .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/_{2,}/g, '\uE000')
+    .replace(/[^a-z0-9\uE000]+/g, '_')
+    .replace(/\uE000/g, '__')
     .replace(/^_+/, '')
 }
 

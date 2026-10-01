@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 export const RUNNER_FUNCTION_CODE_MAX_LENGTH = 100_000
 export const RUNNER_FUNCTION_PARAMETER_LIMIT = 100
+export const RUNNER_ENTITY_NAME_MAX_LENGTH = 512
 
 export const runnerParameterDefinitionSchema = z.object({
   name: z
@@ -15,7 +16,7 @@ export const runnerParameterDefinitionSchema = z.object({
   description: z.string().trim().max(500).nullable().optional(),
 })
 
-const parameterListSchema = z
+export const runnerParameterListSchema = z
   .array(runnerParameterDefinitionSchema)
   .max(RUNNER_FUNCTION_PARAMETER_LIMIT)
   .superRefine((parameters, context) => {
@@ -32,31 +33,41 @@ const parameterListSchema = z
     }
   })
 
-const functionCodeSchema = z
+export const runnerFunctionCodeSchema = z
   .string()
   .trim()
   .min(1)
   .max(RUNNER_FUNCTION_CODE_MAX_LENGTH)
 
-const runnerEntityNameSchema = z
+export const runnerFunctionNameSchema = z
   .string()
   .trim()
   .min(1)
-  .max(128)
+  .max(RUNNER_ENTITY_NAME_MAX_LENGTH)
+  .regex(
+    /^[a-z0-9]+(?:_{1,2}[a-z0-9]+)*$/,
+    'Name must use snake_case with optional double-underscore namespaces',
+  )
+
+export const runnerMcpNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(RUNNER_ENTITY_NAME_MAX_LENGTH)
   .regex(/^[a-z0-9]+(?:_[a-z0-9]+)*$/, 'Name must use snake_case')
 
 export const createRunnerFunctionSchema = z.object({
-  name: runnerEntityNameSchema,
+  name: runnerFunctionNameSchema,
   description: z.string().trim().max(2_000).nullable().optional(),
-  code: functionCodeSchema,
-  parameters: parameterListSchema.default([]),
+  code: runnerFunctionCodeSchema,
+  parameters: runnerParameterListSchema.default([]),
 })
 
 export const updateRunnerFunctionSchema = z.object({
-  name: runnerEntityNameSchema.optional(),
+  name: runnerFunctionNameSchema.optional(),
   description: z.string().trim().max(2_000).nullable().optional(),
-  code: functionCodeSchema,
-  parameters: parameterListSchema,
+  code: runnerFunctionCodeSchema,
+  parameters: runnerParameterListSchema,
 })
 
 const runnerMcpFunctionIdsSchema = z
@@ -68,7 +79,7 @@ const runnerMcpFunctionIdsSchema = z
   })
 
 export const createRunnerMcpSchema = z.object({
-  name: runnerEntityNameSchema,
+  name: runnerMcpNameSchema,
   description: z.string().trim().max(2_000).nullable().optional(),
   functionIds: runnerMcpFunctionIdsSchema,
 })

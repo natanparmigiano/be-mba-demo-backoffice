@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import { describe, it } from 'node:test'
+import { WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS } from '@mba-demo/wa-subscriptions'
+import { whatsappWebhookChangeSchema } from '@mba-demo/wa-webhooks'
 import { createAgentExportArchive } from '../agent-export.js'
+import { parseAgentArchive } from '../agent-import.js'
+import { parseRunnerMcpPackageYaml } from '../runner-mcp-package.js'
 import { stringifyYaml } from '../yaml.js'
 import {
   addMetaAgentAllowlistEntry,
@@ -11,7 +16,7 @@ import {
   getMetaAgentSettings,
   listMetaAgentAllowlist,
   onboardMetaAgent,
-  overrideMetaWebhook,
+  registerMetaWebhook,
   removeMetaAgentAllowlistEntry,
   replaceMetaAgentBusinessInfo,
   updateMetaAgentSettings,
@@ -135,6 +140,7 @@ describe('channel management route', () => {
       | { organizationId: string; channelId: number; confirmation: string }
       | undefined
     let metaDeleteCalled = false
+    let deletedBackupPaths: readonly string[] = []
     const impact = { contacts: 12, groups: 3, messages: 480 }
     const route = createChannelManagementRoute({
       getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
@@ -145,9 +151,23 @@ describe('channel management route', () => {
         }),
         delete: async (organizationId, channelId, confirmation) => {
           deletion = { organizationId, channelId, confirmation }
-          return { status: 'deleted', impact }
+          return {
+            status: 'deleted',
+            impact,
+            backupStoragePaths: ['agent-backups/org/7/backup.agtx'],
+          }
         },
       }),
+      agentBackups: {
+        list: async () => [],
+        create: async () => {
+          throw new Error('not used')
+        },
+        getArchive: async () => null,
+        deleteStoredFiles: async (paths) => {
+          deletedBackupPaths = paths
+        },
+      },
       deleteAgent: async () => {
         metaDeleteCalled = true
         return {}
@@ -177,6 +197,7 @@ describe('channel management route', () => {
       confirmation: channel.waPhoneNumber,
     })
     assert.equal(metaDeleteCalled, false)
+    assert.deepEqual(deletedBackupPaths, ['agent-backups/org/7/backup.agtx'])
   })
 
   it('requires manager access and matching confirmation to delete a channel', async () => {
@@ -335,6 +356,118 @@ describe('channel management route', () => {
     })
   })
 
+  it('reads and manages phone-number registration for the owned channel', async () => {
+    const calls: string[] = []
+    let providerStatus = 'UNREGISTERED'
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+      getPhoneNumberRegistration: async () => ({
+        id: 'phone-id',
+        status: providerStatus,
+        display_phone_number: '+55 11 99999-0000',
+        verified_name: 'Example Business',
+      }),
+      registerPhoneNumber: async (_configuration, pin) => {
+        calls.push(`register:${pin}`)
+        providerStatus = 'CONNECTED'
+        return { success: true }
+      },
+      deregisterPhoneNumber: async () => {
+        calls.push('deregister')
+        providerStatus = 'UNREGISTERED'
+        return { success: true }
+      },
+    })
+
+    const before = await route.request('/7/registration')
+    const invalid = await route.request(
+      '/7/registration/register',
+      jsonRequest('POST', { pin: '123' }),
+    )
+    const registered = await route.request(
+      '/7/registration/register',
+      jsonRequest('POST', { pin: '123456' }),
+    )
+    const afterRegistration = await route.request('/7/registration')
+    const deregistered = await route.request('/7/registration/deregister', {
+      method: 'POST',
+    })
+
+    assert.deepEqual(await before.json(), {
+      status: 'unregistered',
+      providerStatus: 'UNREGISTERED',
+      displayPhoneNumber: '+55 11 99999-0000',
+      verifiedName: 'Example Business',
+    })
+    assert.equal(invalid.status, 400)
+    assert.equal(registered.status, 200)
+    assert.deepEqual(await afterRegistration.json(), {
+      status: 'registered',
+      providerStatus: 'CONNECTED',
+      displayPhoneNumber: '+55 11 99999-0000',
+      verifiedName: 'Example Business',
+    })
+    assert.equal(deregistered.status, 200)
+    assert.deepEqual(calls, ['register:123456', 'deregister'])
+  })
+
+  it('prevents regular members from changing phone-number registration', async () => {
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      repository: createRepository(),
+    })
+
+    const register = await route.request(
+      '/7/registration/register',
+      jsonRequest('POST', { pin: '123456' }),
+    )
+    const deregister = await route.request('/7/registration/deregister', {
+      method: 'POST',
+    })
+
+    assert.equal(register.status, 403)
+    assert.equal(deregister.status, 403)
+  })
+
+  it('returns the first Meta message QR code for an owned channel', async () => {
+    let downloadedImageUrl: string | undefined
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      repository: createRepository(),
+      getQrCode: async () => ({
+        code: 'QR123',
+        qr_image_url: 'https://cdn.example.com/qr.svg',
+        deep_link_url: 'https://wa.me/message/QR123',
+        prefilled_message: 'Tell me more',
+      }),
+      downloadQrImage: async (imageUrl) => {
+        downloadedImageUrl = imageUrl
+        return {
+          body: new TextEncoder().encode('<svg />').buffer,
+          contentType: 'image/svg+xml',
+        }
+      },
+    })
+
+    const response = await route.request('/7/qr-code')
+    const imageResponse = await route.request('/7/qr-code/image')
+
+    assert.equal(response.status, 200)
+    assert.deepEqual(await response.json(), {
+      qrCode: {
+        code: 'QR123',
+        imageUrl: '/api/channels/7/qr-code/image',
+        deepLinkUrl: 'https://wa.me/message/QR123',
+        prefilledMessage: 'Tell me more',
+      },
+    })
+    assert.equal(imageResponse.status, 200)
+    assert.equal(imageResponse.headers.get('content-type'), 'image/svg+xml')
+    assert.equal(await imageResponse.text(), '<svg />')
+    assert.equal(downloadedImageUrl, 'https://cdn.example.com/qr.svg')
+  })
+
   it('streams an AGTX ZIP with YAML, available files, and missing-file metadata', async () => {
     const connector = {
       id: 'connector-one',
@@ -350,9 +483,59 @@ describe('channel management route', () => {
       },
       connection_status: { status: 'ACTIVE' as const },
     }
+    const mcpConnector = {
+      id: 'connector-mcp',
+      name: 'dunder_mifflin_mcp',
+      description: 'Dunder Mifflin MCP',
+      base_url: 'https://mcp.example.com/api/mcp/1',
+      connector_protocol: 'MCP' as const,
+      auth_type: 'API_KEY' as const,
+      auth_config: {
+        api_key: {
+          headers: [{ field_name: 'Authorization', value: 'mcp-secret' }],
+        },
+      },
+      connection_status: { status: 'ACTIVE' as const },
+      mcp_tool_sync: { status: 'READY' as const, tool_count: 6 },
+    }
+    const listedToolConnectorIds: string[] = []
+    let storedBackup: Uint8Array | undefined
+    const backup = {
+      id: 19,
+      channelId: 7,
+      fileName: 'agent-5511999990000.agtx',
+      byteSize: 123,
+      createdAt: new Date('2026-10-01T18:00:00.000Z'),
+    }
     const route = createChannelManagementRoute({
-      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
       repository: createRepository({ list: async () => [channel] }),
+      agentBackups: {
+        list: async (organizationId, channelId) => {
+          assert.equal(organizationId, 'org-one')
+          assert.equal(channelId, 7)
+          return [backup]
+        },
+        create: async (organizationId, channelId, fileName, archive) => {
+          assert.equal(organizationId, 'org-one')
+          assert.equal(channelId, 7)
+          assert.equal(fileName, 'agent-5511999990000.agtx')
+          storedBackup = archive
+          return { ...backup, byteSize: archive.byteLength }
+        },
+        getArchive: async (organizationId, channelId, backupId) => {
+          assert.equal(organizationId, 'org-one')
+          assert.equal(channelId, 7)
+          assert.equal(backupId, backup.id)
+          return storedBackup
+            ? {
+                backup: { ...backup, byteSize: storedBackup.byteLength },
+                archive: storedBackup,
+              }
+            : null
+        },
+        deleteStoredFiles: async () => undefined,
+      },
       getAgentSettings: async () => [
         {
           agent_id: 'agent-one',
@@ -387,21 +570,24 @@ describe('channel management route', () => {
         delete: async () => undefined,
       },
       agentConnectors: {
-        list: async () => [connector],
+        list: async () => [connector, mcpConnector],
         get: async () => connector,
         create: async () => connector,
         update: async () => connector,
         delete: async () => undefined,
         logs: async () => ({ data: [] }),
-        listTools: async () => [
-          {
-            id: 'tool-one',
-            name: 'get_order',
-            description: 'Gets an order',
-            request_definition: { method: 'GET', path: '/orders/{id}' },
-            user_auth_required: false,
-          },
-        ],
+        listTools: async (_configuration, connectorId) => {
+          listedToolConnectorIds.push(connectorId)
+          return [
+            {
+              id: 'tool-one',
+              name: 'get_order',
+              description: 'Gets an order',
+              request_definition: { method: 'GET', path: '/orders/{id}' },
+              user_auth_required: false,
+            },
+          ]
+        },
         createTool: async () => {
           throw new Error('not used')
         },
@@ -478,6 +664,17 @@ describe('channel management route', () => {
     const archive = decodeSseArchive(stream)
     const entries = readStoredZipEntries(archive)
     const document = new TextDecoder().decode(entries.get('agent.yaml'))
+    const exportedManifest = parseAgentArchive(archive).manifest as {
+      agent: {
+        connectors: Array<{
+          name: string
+          tools?: unknown[]
+        }>
+      }
+    }
+    const exportedMcp = exportedManifest.agent.connectors.find(
+      ({ name }) => name === 'dunder_mifflin_mcp',
+    )
 
     assert.equal(response.status, 200)
     assert.match(
@@ -498,7 +695,10 @@ describe('channel management route', () => {
     assert.match(document, /path: "files\/001-guide.pdf"/)
     assert.match(document, /providerFileId: "file-two"[\s\S]*?path: null/)
     assert.match(document, /name: "get_order"/)
+    assert.deepEqual(listedToolConnectorIds, ['connector-one'])
+    assert.equal(Object.hasOwn(exportedMcp ?? {}, 'tools'), false)
     assert.equal(document.includes('secret-token'), false)
+    assert.equal(document.includes('mcp-secret'), false)
     assert.equal(
       new TextDecoder().decode(entries.get('files/001-guide.pdf')),
       'PDF bytes',
@@ -515,6 +715,61 @@ describe('channel management route', () => {
         'connectors',
         'packaging',
       ],
+    )
+
+    const listResponse = await route.request('/7/agent-backups')
+    assert.equal(listResponse.status, 200)
+    assert.deepEqual(await listResponse.json(), {
+      backups: [{ ...backup, createdAt: backup.createdAt.toISOString() }],
+    })
+
+    const backupResponse = await route.request('/7/agent-backups', {
+      method: 'POST',
+    })
+    const backupStream = await backupResponse.text()
+    assert.equal(backupResponse.status, 200)
+    const savedBackup = storedBackup
+    assert.ok(savedBackup)
+    assert.doesNotThrow(() => parseAgentArchive(savedBackup))
+    assert.deepEqual(
+      Array.from(
+        backupStream.matchAll(/"step":"([^"]+)"/g),
+        (match) => match[1],
+      ),
+      [
+        'settings',
+        'businessData',
+        'skills',
+        'knowledge',
+        'files',
+        'connectors',
+        'packaging',
+      ],
+    )
+    assert.equal(
+      (
+        JSON.parse(readSseData(backupStream, 'complete')) as {
+          backup: { id: number }
+        }
+      ).backup.id,
+      backup.id,
+    )
+
+    const restoreResponse = await route.request(
+      `/7/agent-backups/${backup.id}/archive`,
+    )
+    assert.equal(restoreResponse.status, 200)
+    assert.equal(
+      restoreResponse.headers.get('content-type'),
+      'application/vnd.mba.agent+zip',
+    )
+    assert.match(
+      restoreResponse.headers.get('content-disposition') ?? '',
+      /agent-5511999990000\.agtx/,
+    )
+    assert.deepEqual(
+      new Uint8Array(await restoreResponse.arrayBuffer()),
+      savedBackup,
     )
   })
 
@@ -534,11 +789,33 @@ describe('channel management route', () => {
     const packageFile = createImportPackage()
     const route = createChannelManagementRoute({
       getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
-      repository: createRepository(),
+      repository: createRepository({ list: async () => [channel] }),
       agentImportRequestIntervalMs: 0,
       agentImportRetryBackoffMs: [0, 0, 0, 0, 0],
       reportImportLog: (event, details, error) => {
         importLogs.push({ event, details, hasError: error !== undefined })
+      },
+      getAgentSettings: async () => [
+        {
+          agent_id: 'agent-target',
+          channel: 'whatsapp',
+          rollout: { enabled: false },
+        },
+      ],
+      agentBackups: {
+        list: async () => [],
+        create: async (_organizationId, _channelId, fileName, archive) => {
+          calls.push('backup')
+          return {
+            id: 1,
+            channelId: 7,
+            fileName,
+            byteSize: archive.byteLength,
+            createdAt: new Date('2026-10-01T18:00:00.000Z'),
+          }
+        },
+        getArchive: async () => null,
+        deleteStoredFiles: async () => undefined,
       },
       updateAgentSettings: async (_configuration, input) => {
         calls.push(`settings:${input.rollout?.enabled}`)
@@ -644,6 +921,9 @@ describe('channel management route', () => {
           throw new Error('not used')
         },
         deleteTool: async () => undefined,
+        refreshMcpTools: async (_configuration, connectorId) => {
+          calls.push(`refresh:${connectorId}`)
+        },
       },
       agentEvaluations: {
         listCases: async () => {
@@ -671,7 +951,13 @@ describe('channel management route', () => {
 
     const importForm = new FormData()
     importForm.set('package', packageFile)
-    importForm.set('options', JSON.stringify({ connectorCredentials: {} }))
+    importForm.set(
+      'options',
+      JSON.stringify({
+        connectorCredentials: {},
+        createBackupBeforeImport: true,
+      }),
+    )
     const importResponse = await route.request('/7/agent-import', {
       method: 'POST',
       body: importForm,
@@ -684,6 +970,7 @@ describe('channel management route', () => {
         .filter(({ resource }) => resource === undefined)
         .map(({ step }) => step),
       [
+        'backup',
         'settings',
         'businessData',
         'skills',
@@ -691,6 +978,20 @@ describe('channel management route', () => {
         'files',
         'connectors',
         'finalizing',
+      ],
+    )
+    assert.deepEqual(
+      readSseDataAll(stream, 'backup-progress').map(
+        (data) => (JSON.parse(data) as { step: string }).step,
+      ),
+      [
+        'settings',
+        'businessData',
+        'skills',
+        'knowledge',
+        'files',
+        'connectors',
+        'packaging',
       ],
     )
     assert.deepEqual(
@@ -717,6 +1018,7 @@ describe('channel management route', () => {
       importedFiles: 1,
     })
     assert.deepEqual(calls, [
+      'backup',
       'settings:false',
       'business:Portable business',
       'allowlist:+5511999990000',
@@ -727,6 +1029,8 @@ describe('channel management route', () => {
       'archive:file-new',
       'connector:orders_connector',
       'tool:get_order',
+      'connector:legacy_mcp_connector',
+      'refresh:connector-new',
       'settings:false',
     ])
     assert.equal(allowlistAddAttempts, 1)
@@ -753,7 +1057,7 @@ describe('channel management route', () => {
       faqs: 1,
       websites: 1,
       files: 1,
-      connectors: 1,
+      connectors: 2,
       tools: 1,
     })
     assert.equal(
@@ -765,6 +1069,76 @@ describe('channel management route', () => {
       ),
       true,
     )
+  })
+
+  it('keeps the documented AGTX and MCPX Dunder Mifflin samples paired', async () => {
+    const [agentBytes, mcpText] = await Promise.all([
+      readFile(
+        new URL(
+          '../../../../docs/agtx/sample_dunder_mifflin.agtx',
+          import.meta.url,
+        ),
+      ),
+      readFile(
+        new URL(
+          '../../../../docs/mcpx/sample_dunder_mifflin.mcpx',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
+    ])
+    const manifest = parseAgentArchive(new Uint8Array(agentBytes)).manifest as {
+      agent: {
+        connectors: Array<{
+          name: string
+          connectorProtocol: string
+          mcpToolSync?: { toolCount?: number }
+          tools?: Array<{ name: string }>
+        }>
+      }
+    }
+    const mcpPackage = parseRunnerMcpPackageYaml(mcpText)
+    const [connector] = manifest.agent.connectors
+
+    assert.equal(manifest.agent.connectors.length, 1)
+    assert.equal(connector?.name, mcpPackage.mcp.name)
+    assert.equal(connector?.connectorProtocol, 'MCP')
+    assert.equal(
+      connector?.mcpToolSync?.toolCount,
+      mcpPackage.mcp.functions.length,
+    )
+    assert.equal(Object.hasOwn(connector ?? {}, 'tools'), false)
+
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+    })
+    const form = new FormData()
+    form.set(
+      'package',
+      new File(
+        [Uint8Array.from(agentBytes).buffer],
+        'sample_dunder_mifflin.agtx',
+        { type: 'application/vnd.mba.agent+zip' },
+      ),
+    )
+    const response = await route.request('/7/agent-import/inspect', {
+      method: 'POST',
+      body: form,
+    })
+
+    assert.equal(response.status, 200, await response.clone().text())
+    const inspected = (await response.json()) as { requirements: unknown }
+    assert.deepEqual(inspected.requirements, {
+      files: [],
+      connectors: [
+        {
+          name: 'dunder_mifflin_mcp',
+          authType: 'API_KEY',
+          requiresCertificate: false,
+        },
+      ],
+    })
   })
 
   it('reports the exact failed import step and reason', async () => {
@@ -1133,6 +1507,13 @@ describe('channel management route', () => {
       },
       connection_status: { status: 'ACTIVE' as const },
     }
+    const mcpConnector = {
+      ...connector,
+      id: 'connector-mcp',
+      name: 'dunder_mifflin_mcp',
+      connector_protocol: 'MCP' as const,
+      mcp_tool_sync: { status: 'READY' as const, tool_count: 6 },
+    }
     const tool = {
       id: 'tool-one',
       name: 'get_order',
@@ -1147,7 +1528,7 @@ describe('channel management route', () => {
       },
       get: async (_configuration, connectorId) => {
         calls.push(`get:${connectorId}`)
-        return connector
+        return connectorId === mcpConnector.id ? mcpConnector : connector
       },
       create: async (_configuration, input) => {
         calls.push(`create:${input.name}`)
@@ -1192,6 +1573,9 @@ describe('channel management route', () => {
       },
       deleteTool: async (_configuration, connectorId, toolId) => {
         calls.push(`deleteTool:${connectorId}:${toolId}`)
+      },
+      refreshMcpTools: async (_configuration, connectorId) => {
+        calls.push(`refreshMcpTools:${connectorId}`)
       },
     }
     const route = createChannelManagementRoute({
@@ -1240,6 +1624,14 @@ describe('channel management route', () => {
     const toolsResponse = await route.request(
       '/7/agent-connectors/connector-one/tools',
     )
+    const refreshMcpToolsResponse = await route.request(
+      '/7/agent-connectors/connector-mcp/refresh-mcp-tools',
+      { method: 'POST' },
+    )
+    const refreshHttpToolsResponse = await route.request(
+      '/7/agent-connectors/connector-one/refresh-mcp-tools',
+      { method: 'POST' },
+    )
     const createToolResponse = await route.request(
       '/7/agent-connectors/connector-one/tools',
       jsonRequest('POST', toolInput),
@@ -1271,6 +1663,8 @@ describe('channel management route', () => {
     assert.equal(updateResponse.status, 200)
     assert.equal(logsResponse.status, 200)
     assert.equal(toolsResponse.status, 200)
+    assert.equal(refreshMcpToolsResponse.status, 200)
+    assert.equal(refreshHttpToolsResponse.status, 400)
     assert.equal(createToolResponse.status, 201)
     assert.equal(updateToolResponse.status, 200)
     assert.equal(deleteToolResponse.status, 200)
@@ -1286,6 +1680,10 @@ describe('channel management route', () => {
       'update:connector-one:orders_connector',
       'logs:connector-one',
       'listTools:connector-one',
+      'get:connector-mcp',
+      'refreshMcpTools:connector-mcp',
+      'get:connector-mcp',
+      'get:connector-one',
       'createTool:connector-one:get_order',
       'updateTool:connector-one:tool-one',
       'deleteTool:connector-one:tool-one',
@@ -1627,12 +2025,12 @@ describe('channel management route', () => {
     assert.deepEqual(await response.json(), { deletedAgentId: 'agent-one' })
   })
 
-  it('sets the stored channel webhook override for an organization manager', async () => {
+  it('registers the webhook and subscribes the app for an organization manager', async () => {
     let requestedCallbackUrl: string | undefined
     const route = createChannelManagementRoute({
       getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
       repository: createRepository(),
-      setWebhookOverride: async (_configuration, callbackUrl) => {
+      registerWebhook: async (_configuration, callbackUrl) => {
         requestedCallbackUrl = callbackUrl
       },
     })
@@ -1648,7 +2046,7 @@ describe('channel management route', () => {
     assert.equal(requestedCallbackUrl, callbackUrl)
     assert.deepEqual(await response.json(), {
       success: true,
-      message: 'Meta webhook override updated successfully',
+      message: 'Meta webhook registered and app subscribed successfully',
       callbackUrl,
     })
   })
@@ -1686,37 +2084,38 @@ describe('channel management route', () => {
   })
 })
 
-describe('Meta webhook override', () => {
-  it('sends the collection request shape without leaking credentials', async () => {
-    let requestUrl: string | undefined
-    let requestInit: RequestInit | undefined
+describe('Meta webhook registration', () => {
+  it('subscribes to exactly every webhook field the application parses', () => {
+    const parsedFields = whatsappWebhookChangeSchema.options.map(
+      (schema) => schema.shape.field.value,
+    )
+
+    assert.deepEqual(
+      [...WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS].sort(),
+      parsedFields.sort(),
+    )
+  })
+
+  it('registers supported fields before subscribing the app to the WABA', async () => {
+    const requests: Array<{ url: string; init?: RequestInit }> = []
     const request = (async (
       input: string | URL | Request,
       init?: RequestInit,
     ) => {
-      requestUrl =
+      const url =
         typeof input === 'string'
           ? input
           : input instanceof URL
             ? input.toString()
             : input.url
-      requestInit = init
-      return new Response(
-        JSON.stringify({
-          data: [
-            {
-              override_callback_uri:
-                'https://example.com/api/wa-cloud/webhook/7',
-              whatsapp_business_api_data: { id: 'app-id' },
-            },
-          ],
-        }),
-        { status: 200 },
-      )
+      requests.push({ url, init })
+      return new Response(JSON.stringify({ success: true }), { status: 200 })
     }) as typeof fetch
 
-    await overrideMetaWebhook(
+    await registerMetaWebhook(
       {
+        waAppId: 'app-id',
+        waAppSecret: 'app-secret',
         waWabaId: 'waba-id',
         waWebhookVerifyToken: 'verify-secret',
         waSystemUserAccessToken: 'access-secret',
@@ -1725,23 +2124,40 @@ describe('Meta webhook override', () => {
       request,
     )
 
+    assert.equal(requests.length, 2)
     assert.equal(
-      requestUrl,
+      requests[0]?.url,
+      'https://graph.facebook.com/v26.0/app-id/subscriptions',
+    )
+    assert.equal(requests[0]?.init?.method, 'POST')
+    assert.equal(
+      new Headers(requests[0]?.init?.headers).get('content-type'),
+      'application/x-www-form-urlencoded',
+    )
+    assert.ok(requests[0]?.init?.body instanceof URLSearchParams)
+    const registrationBody = requests[0]?.init?.body
+    assert.equal(registrationBody.get('object'), 'whatsapp_business_account')
+    assert.equal(
+      registrationBody.get('callback_url'),
+      'https://example.com/api/wa-cloud/webhook/7',
+    )
+    assert.equal(registrationBody.get('verify_token'), 'verify-secret')
+    assert.equal(
+      registrationBody.get('fields'),
+      WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS.join(','),
+    )
+    assert.equal(registrationBody.get('access_token'), 'app-id|app-secret')
+
+    assert.equal(
+      requests[1]?.url,
       'https://graph.facebook.com/v26.0/waba-id/subscribed_apps',
     )
-    assert.equal(requestInit?.method, 'POST')
+    assert.equal(requests[1]?.init?.method, 'POST')
     assert.equal(
-      new Headers(requestInit?.headers).get('authorization'),
+      new Headers(requests[1]?.init?.headers).get('authorization'),
       'Bearer access-secret',
     )
-    const rawRequestBody = requestInit?.body
-    assert.equal(typeof rawRequestBody, 'string')
-    if (typeof rawRequestBody !== 'string') throw new Error('Missing JSON body')
-    const requestBody: unknown = JSON.parse(rawRequestBody)
-    assert.deepEqual(requestBody, {
-      override_callback_uri: 'https://example.com/api/wa-cloud/webhook/7',
-      verify_token: 'verify-secret',
-    })
+    assert.equal(requests[1]?.init?.body, undefined)
   })
 })
 
@@ -2067,6 +2483,8 @@ function createRepository(
     list: async () => [],
     getVerifyToken: async () => 'verify-secret',
     getWebhookConfiguration: async () => ({
+      waAppId: 'app-id',
+      waAppSecret: 'app-secret',
       waWabaId: 'waba-id',
       waWebhookVerifyToken: 'verify-secret',
       waSystemUserAccessToken: 'access-secret',
@@ -2184,6 +2602,39 @@ function createImportPackage(includeEvaluations = false): File {
               requestDefinition: {
                 method: 'GET',
                 path: '/orders/{id}',
+                pathParameters: {},
+                queryParameters: {},
+                headers: {},
+                body: null,
+              },
+              userAuthRequired: false,
+              userAuthActionConfig: null,
+              transformationSpec: null,
+            },
+          ],
+        },
+        {
+          id: 'connector-mcp-source',
+          name: 'legacy_mcp_connector',
+          description: 'MCP connector with legacy packaged tools',
+          baseUrl: 'https://mcp.example.com/api/mcp/1',
+          connectorProtocol: 'MCP',
+          authType: 'NONE',
+          hasAuthConfiguration: false,
+          requiresCertificate: false,
+          hasCertificate: false,
+          connectionStatus: 'ACTIVE',
+          connectionError: null,
+          userAuthInjectionConfig: null,
+          mcpToolSync: null,
+          tools: [
+            {
+              id: 'legacy-mcp-tool-source',
+              name: 'ignored_legacy_tool',
+              description: 'Must be ignored in favor of MCP refresh',
+              requestDefinition: {
+                method: 'GET',
+                path: '/ignored',
                 pathParameters: {},
                 queryParameters: {},
                 headers: {},

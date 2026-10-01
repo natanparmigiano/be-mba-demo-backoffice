@@ -3,12 +3,14 @@ import {
   Check,
   ChevronLeft,
   Copy,
+  Download,
   Package,
   Plus,
   RefreshCw,
   Save,
   Server,
   Trash2,
+  Upload,
 } from 'lucide-react'
 import { useCallback, useEffect, useState, type SubmitEvent } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -37,6 +39,10 @@ type FunctionsResponse = InferResponseType<
   200
 >
 type FunctionSummary = FunctionsResponse['functions'][number]
+type McpImportInspection = InferResponseType<
+  (typeof apiClient.api.runner.mcps)['import']['inspect']['$post'],
+  200
+>['preview']
 
 export function McpsPage() {
   const { t, i18n } = useTranslation()
@@ -63,6 +69,17 @@ export function McpsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [endpointCopied, setEndpointCopied] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importYaml, setImportYaml] = useState('')
+  const [importFileName, setImportFileName] = useState('')
+  const [importPreview, setImportPreview] =
+    useState<McpImportInspection | null>(null)
+  const [isInspectingImport, setIsInspectingImport] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [overwriteConfirmed, setOverwriteConfirmed] = useState(false)
+  const [importInputKey, setImportInputKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
@@ -223,6 +240,273 @@ export function McpsPage() {
     }
   }
 
+  const exportMcp = async () => {
+    if (typeof selectedMcpId !== 'number') return
+    setIsExporting(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/runner/mcps/${selectedMcpId}/export`)
+      if (!response.ok) {
+        throw new Error(await readApiError(response, t('mcps.exportFailed')))
+      }
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = getDownloadFileName(
+        response.headers.get('content-disposition'),
+        `${details?.name ?? name}.mcpx`,
+      )
+      anchor.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 0)
+      setNotice(t('mcps.exported'))
+    } catch (reason) {
+      setError(getErrorMessage(reason, t('mcps.exportFailed')))
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const openImport = () => {
+    setImportYaml('')
+    setImportFileName('')
+    setImportPreview(null)
+    setImportError(null)
+    setOverwriteConfirmed(false)
+    setImportInputKey((value) => value + 1)
+    setImportOpen(true)
+  }
+
+  const selectImportFile = async (file: File | null) => {
+    setImportPreview(null)
+    setImportError(null)
+    setOverwriteConfirmed(false)
+    setImportFileName(file?.name ?? '')
+    setImportYaml('')
+    if (!file) return
+    if (file.size === 0 || file.size > 10 * 1024 * 1024) {
+      setImportError(t('mcps.importPanel.invalidSize'))
+      return
+    }
+    try {
+      setImportYaml(await file.text())
+    } catch {
+      setImportError(t('mcps.importPanel.readFailed'))
+    }
+  }
+
+  const inspectImport = async () => {
+    if (!importYaml || isInspectingImport) return
+    setIsInspectingImport(true)
+    setImportError(null)
+    setImportPreview(null)
+    setOverwriteConfirmed(false)
+    try {
+      const response = await apiClient.api.runner.mcps['import'][
+        'inspect'
+      ].$post({ json: { yaml: importYaml } })
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, t('mcps.importPanel.inspectFailed')),
+        )
+      }
+      setImportPreview((await response.json()).preview)
+    } catch (reason) {
+      setImportError(
+        getErrorMessage(reason, t('mcps.importPanel.inspectFailed')),
+      )
+    } finally {
+      setIsInspectingImport(false)
+    }
+  }
+
+  const importMcp = async () => {
+    if (!importYaml || !importPreview || !importPreview.canImport) return
+    if (importPreview.mode === 'overwrite' && !overwriteConfirmed) return
+    setIsImporting(true)
+    setImportError(null)
+    try {
+      const response = await apiClient.api.runner.mcps['import'].$post({
+        json: {
+          yaml: importYaml,
+          overwrite: importPreview.mode === 'overwrite',
+        },
+      })
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, t('mcps.importPanel.importFailed')),
+        )
+      }
+      const imported = (await response.json()).mcp
+      setImportOpen(false)
+      await refresh()
+      await openMcp(imported.id)
+      setNotice(t('mcps.importPanel.imported', { name: imported.name }))
+    } catch (reason) {
+      setImportError(
+        getErrorMessage(reason, t('mcps.importPanel.importFailed')),
+      )
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const importDialog = (
+    <Dialog
+      dismissible={!isInspectingImport && !isImporting}
+      open={importOpen}
+      title={t('mcps.importPanel.title')}
+      description={t('mcps.importPanel.description')}
+      icon={
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+          <Upload className="size-5" aria-hidden />
+        </span>
+      }
+      size="xl"
+      onOpenChange={(open) => {
+        if (!isInspectingImport && !isImporting) setImportOpen(open)
+      }}
+    >
+      <div className="grid w-full gap-4">
+        <Input
+          key={importInputKey}
+          accept=".mcpx,application/yaml,text/yaml,text/plain"
+          disabled={isInspectingImport || isImporting}
+          label={t('mcps.importPanel.file')}
+          type="file"
+          onChange={(event) =>
+            void selectImportFile(event.target.files?.[0] ?? null)
+          }
+        />
+        {importFileName && !importPreview && (
+          <p className="text-sm text-muted-foreground">{importFileName}</p>
+        )}
+        {importError && (
+          <p
+            className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+            role="alert"
+          >
+            {importError}
+          </p>
+        )}
+        {importPreview && (
+          <div className="grid gap-4">
+            <div className="rounded-xl border bg-muted/20 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-bold">{importPreview.mcpName}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t(`mcps.importPanel.mode.${importPreview.mode}`)}
+                  </p>
+                </div>
+                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+                  {t('mcps.importPanel.functionCount', {
+                    count: importPreview.functions.length,
+                  })}
+                </span>
+              </div>
+              <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-muted-foreground">
+                    {t('mcps.importPanel.executionHistory')}
+                  </dt>
+                  <dd className="font-semibold">
+                    {importPreview.affectedExecutionCount}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">
+                    {t('mcps.importPanel.apiKeys')}
+                  </dt>
+                  <dd className="font-semibold">
+                    {importPreview.affectedApiKeyCount}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+            <div className="max-h-64 overflow-y-auto rounded-xl border">
+              {importPreview.functions.map((fn) => (
+                <div
+                  className="grid gap-1 border-b px-4 py-3 last:border-b-0 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-center"
+                  key={`${fn.sourceName}:${fn.targetName}`}
+                >
+                  <code className="truncate text-xs">{fn.sourceName}</code>
+                  <span className="text-muted-foreground">→</span>
+                  <code className="truncate text-xs font-bold text-primary">
+                    {fn.targetName}
+                  </code>
+                  <span className="text-xs text-muted-foreground">
+                    {t('mcps.importPanel.revisionCount', {
+                      count: fn.revisionCount,
+                    })}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {importPreview.removedFunctionNames.length > 0 && (
+              <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+                {t('mcps.importPanel.removedFunctions', {
+                  names: importPreview.removedFunctionNames.join(', '),
+                })}
+              </div>
+            )}
+            {importPreview.blockers.map((blocker) => (
+              <div
+                className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                key={`${blocker.code}:${blocker.functionNames.join(',')}`}
+              >
+                {t(`mcps.importPanel.blockers.${blocker.code}`, {
+                  names: blocker.functionNames.join(', '),
+                })}
+              </div>
+            ))}
+            {importPreview.mode === 'overwrite' && importPreview.canImport && (
+              <Checkbox
+                checked={overwriteConfirmed}
+                label={t('mcps.importPanel.confirmOverwrite', {
+                  name: importPreview.mcpName,
+                })}
+                onChange={(event) =>
+                  setOverwriteConfirmed(event.target.checked)
+                }
+              />
+            )}
+          </div>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button
+            disabled={isInspectingImport || isImporting}
+            variant="ghost"
+            onClick={() => setImportOpen(false)}
+          >
+            {t('mcps.cancel')}
+          </Button>
+          {!importPreview ? (
+            <Button
+              disabled={!importYaml}
+              isLoading={isInspectingImport}
+              onClick={() => void inspectImport()}
+            >
+              {t('mcps.importPanel.inspect')}
+            </Button>
+          ) : (
+            <Button
+              disabled={
+                !importPreview.canImport ||
+                (importPreview.mode === 'overwrite' && !overwriteConfirmed)
+              }
+              isLoading={isImporting}
+              onClick={() => void importMcp()}
+            >
+              <Upload className="size-4" />
+              {t('mcps.importPanel.import')}
+            </Button>
+          )}
+        </div>
+      </div>
+    </Dialog>
+  )
+
   if (selectedMcpId !== null) {
     const isNew = selectedMcpId === 'new'
     return (
@@ -252,6 +536,16 @@ export function McpsPage() {
               {isNew ? t('mcps.createTitle') : (details?.name ?? name)}
             </h1>
           </div>
+          {canManage && !isNew && (
+            <Button
+              variant="outline"
+              isLoading={isExporting}
+              onClick={() => void exportMcp()}
+            >
+              <Download className="size-4" />
+              {t('mcps.export')}
+            </Button>
+          )}
         </header>
 
         {(error || notice) && (
@@ -337,7 +631,7 @@ export function McpsPage() {
                   }
                   hint={t('mcps.nameHint')}
                   label={t('mcps.name')}
-                  maxLength={128}
+                  maxLength={512}
                   required
                   value={name}
                   onChange={(event) =>
@@ -446,6 +740,7 @@ export function McpsPage() {
             </Button>
           </div>
         </Dialog>
+        {importDialog}
       </div>
     )
   }
@@ -470,10 +765,16 @@ export function McpsPage() {
             {t('mcps.refresh')}
           </Button>
           {canManage && (
-            <Button disabled={functions.length === 0} onClick={openNewMcp}>
-              <Plus className="size-4" />
-              {t('mcps.new')}
-            </Button>
+            <>
+              <Button variant="outline" onClick={openImport}>
+                <Upload className="size-4" />
+                {t('mcps.import')}
+              </Button>
+              <Button disabled={functions.length === 0} onClick={openNewMcp}>
+                <Plus className="size-4" />
+                {t('mcps.new')}
+              </Button>
+            </>
           )}
         </div>
       </header>
@@ -566,8 +867,17 @@ export function McpsPage() {
           </div>
         )}
       </section>
+      {importDialog}
     </div>
   )
+}
+
+function getDownloadFileName(
+  contentDisposition: string | null,
+  fallback: string,
+): string {
+  const match = contentDisposition?.match(/filename="([^"]+)"/i)
+  return match?.[1] ?? fallback
 }
 
 function formatDate(value: string, locale: string): string {
@@ -577,7 +887,7 @@ function formatDate(value: string, locale: string): string {
 }
 
 function isSnakeCaseName(value: string): boolean {
-  return value.length <= 128 && /^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(value)
+  return value.length <= 512 && /^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(value)
 }
 
 function toSnakeCaseName(value: string): string {

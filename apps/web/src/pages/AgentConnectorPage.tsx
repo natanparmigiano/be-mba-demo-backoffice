@@ -129,6 +129,7 @@ export function AgentConnectorPage() {
   const [form, setForm] = useState<ConnectorForm>(emptyConnectorForm)
   const [credentialRows, setCredentialRows] = useState<CredentialRow[]>([])
   const [nextCredentialId, setNextCredentialId] = useState(1)
+  const [isEditingCredentials, setIsEditingCredentials] = useState(isNew)
   const [tools, setTools] = useState<ConnectorTool[]>([])
   const [logs, setLogs] = useState<ConnectorLog[]>([])
   const [logStats, setLogStats] = useState<LogsResponse['stats']>(null)
@@ -136,6 +137,7 @@ export function AgentConnectorPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLoadingLogs, setIsLoadingLogs] = useState(false)
+  const [isRefreshingMcpTools, setIsRefreshingMcpTools] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -206,6 +208,7 @@ export function AgentConnectorPage() {
       setChannel(selectedChannel)
       if (isNew) {
         setForm(emptyConnectorForm())
+        setIsEditingCredentials(true)
         return
       }
       const currentConnectorId = connectorId!
@@ -243,6 +246,7 @@ export function AgentConnectorPage() {
       const loadedLogs = await logsResponse.json()
       setConnector(loadedConnector)
       setForm(toConnectorForm(loadedConnector))
+      setIsEditingCredentials(!loadedConnector.hasAuthConfiguration)
       setTools((await toolsResponse.json()).tools)
       setLogs(loadedLogs.logs)
       setLogStats(loadedLogs.stats)
@@ -261,7 +265,13 @@ export function AgentConnectorPage() {
     if (
       !channelId ||
       !canManage ||
-      !isConnectorFormValid(form, isNew, connector, credentialRows)
+      !isConnectorFormValid(
+        form,
+        isNew,
+        connector,
+        credentialRows,
+        isEditingCredentials,
+      )
     )
       return
     setIsSaving(true)
@@ -293,6 +303,7 @@ export function AgentConnectorPage() {
         setConnector(saved)
         setForm(toConnectorForm(saved))
         setCredentialRows([])
+        setIsEditingCredentials(!saved.hasAuthConfiguration)
         setNotice(t('connector.saved'))
       }
     } catch (reason) {
@@ -451,6 +462,46 @@ export function AgentConnectorPage() {
     }
   }
 
+  const refreshMcpTools = async () => {
+    if (
+      !channelId ||
+      !connectorId ||
+      !canManage ||
+      connector?.connectorProtocol !== 'MCP'
+    )
+      return
+    setIsRefreshingMcpTools(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const endpoint =
+        apiClient.api.channels[':id']['agent-connectors'][':connectorId']
+      const response = await endpoint['refresh-mcp-tools'].$post({
+        param: { id: String(channelId), connectorId },
+      })
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, t('connector.tools.refreshFailed')),
+        )
+      }
+      setConnector((await response.json()).connector)
+      const toolsResponse = await endpoint.tools.$get({
+        param: { id: String(channelId), connectorId },
+      })
+      if (!toolsResponse.ok) {
+        throw new Error(
+          await readApiError(toolsResponse, t('connector.tools.loadFailed')),
+        )
+      }
+      setTools((await toolsResponse.json()).tools)
+      setNotice(t('connector.tools.refreshed'))
+    } catch (reason) {
+      setError(getErrorMessage(reason, t('connector.tools.refreshFailed')))
+    } finally {
+      setIsRefreshingMcpTools(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="grid min-h-80 place-items-center text-sm text-muted-foreground">
@@ -468,6 +519,42 @@ export function AgentConnectorPage() {
         {error ?? t('agent.channelNotFound')}
       </p>
     )
+  }
+
+  const credentialsArePreserved = Boolean(
+    !isNew &&
+    connector?.hasAuthConfiguration &&
+    connector.authType === form.authType &&
+    !isEditingCredentials,
+  )
+
+  const editCredentials = () => {
+    setIsEditingCredentials(true)
+    if (form.authType === 'API_KEY' && credentialRows.length === 0) {
+      setCredentialRows([
+        {
+          id: nextCredentialId,
+          location: 'headers',
+          fieldName: '',
+          value: '',
+          prefix: '',
+        },
+      ])
+      setNextCredentialId((current) => current + 1)
+    }
+  }
+
+  const cancelCredentialChanges = () => {
+    setCredentialRows([])
+    setForm((current) => ({
+      ...current,
+      oauthTokenUrl: '',
+      oauthScopes: [],
+      oauthContentType: 'application/x-www-form-urlencoded',
+      oauthClientId: '',
+      oauthClientSecret: '',
+    }))
+    setIsEditingCredentials(false)
   }
 
   return (
@@ -583,13 +670,15 @@ export function AgentConnectorPage() {
             <Select
               label={t('connector.form.authType')}
               value={form.authType}
-              onChange={(event) =>
-                updateForm(
-                  setForm,
-                  'authType',
-                  event.target.value as ConnectorForm['authType'],
+              onChange={(event) => {
+                const authType = event.target.value as ConnectorForm['authType']
+                updateForm(setForm, 'authType', authType)
+                setCredentialRows([])
+                setIsEditingCredentials(
+                  !connector?.hasAuthConfiguration ||
+                    authType !== connector.authType,
                 )
-              }
+              }}
             >
               <option value="NONE">{t('connector.form.authNone')}</option>
               <option value="API_KEY">{t('connector.form.authApiKey')}</option>
@@ -607,188 +696,258 @@ export function AgentConnectorPage() {
                     {t('connector.credentials.apiKey')}
                   </h3>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {connector?.hasAuthConfiguration
+                    {credentialsArePreserved
                       ? t('connector.credentials.preserved')
                       : t('connector.credentials.required')}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setCredentialRows((current) => [
-                      ...current,
-                      {
-                        id: nextCredentialId,
-                        location: 'headers',
-                        fieldName: '',
-                        value: '',
-                        prefix: '',
-                      },
-                    ])
-                    setNextCredentialId((current) => current + 1)
-                  }}
-                >
-                  <Plus className="size-4" aria-hidden />
-                  {t('connector.credentials.add')}
-                </Button>
-              </div>
-              <div className="mt-4 grid gap-3">
-                {credentialRows.map((row) => (
-                  <div
-                    className="grid items-start gap-2 md:grid-cols-[10rem_1fr_1fr_1fr_auto]"
-                    key={row.id}
-                  >
-                    <Select
-                      aria-label={t('connector.credentials.location')}
-                      value={row.location}
-                      onChange={(event) =>
-                        updateCredentialRow(
-                          setCredentialRows,
-                          row.id,
-                          'location',
-                          event.target.value as CredentialLocation,
-                        )
-                      }
-                    >
-                      <option value="headers">
-                        {t('connector.credentials.headers')}
-                      </option>
-                      <option value="queryParams">
-                        {t('connector.credentials.query')}
-                      </option>
-                      <option value="bodyParams">
-                        {t('connector.credentials.body')}
-                      </option>
-                    </Select>
-                    <Input
-                      aria-label={t('connector.credentials.fieldName')}
-                      placeholder={t('connector.credentials.fieldName')}
-                      value={row.fieldName}
-                      onChange={(event) =>
-                        updateCredentialRow(
-                          setCredentialRows,
-                          row.id,
-                          'fieldName',
-                          event.target.value,
-                        )
-                      }
-                    />
-                    <Input
-                      aria-label={t('connector.credentials.value')}
-                      placeholder={t('connector.credentials.value')}
-                      type="password"
-                      value={row.value}
-                      onChange={(event) =>
-                        updateCredentialRow(
-                          setCredentialRows,
-                          row.id,
-                          'value',
-                          event.target.value,
-                        )
-                      }
-                    />
-                    <Input
-                      aria-label={t('connector.credentials.prefix')}
-                      placeholder={t('connector.credentials.prefix')}
-                      value={row.prefix}
-                      onChange={(event) =>
-                        updateCredentialRow(
-                          setCredentialRows,
-                          row.id,
-                          'prefix',
-                          event.target.value,
-                        )
-                      }
-                    />
+                {credentialsArePreserved ? (
+                  canManage && (
                     <Button
-                      aria-label={t('connector.credentials.remove')}
-                      className="mt-0"
-                      size="icon"
+                      size="sm"
                       type="button"
-                      variant="ghost"
-                      onClick={() =>
-                        setCredentialRows((current) =>
-                          current.filter(
-                            (candidate) => candidate.id !== row.id,
-                          ),
-                        )
-                      }
+                      variant="outline"
+                      onClick={editCredentials}
                     >
-                      <Trash2 className="size-4" aria-hidden />
+                      <Pencil className="size-4" aria-hidden />
+                      {t('connector.credentials.edit')}
+                    </Button>
+                  )
+                ) : (
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {!isNew &&
+                      connector?.hasAuthConfiguration &&
+                      connector.authType === form.authType && (
+                        <Button
+                          size="sm"
+                          type="button"
+                          variant="ghost"
+                          onClick={cancelCredentialChanges}
+                        >
+                          {t('connector.credentials.cancelEdit')}
+                        </Button>
+                      )}
+                    <Button
+                      disabled={!canManage}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setCredentialRows((current) => [
+                          ...current,
+                          {
+                            id: nextCredentialId,
+                            location: 'headers',
+                            fieldName: '',
+                            value: '',
+                            prefix: '',
+                          },
+                        ])
+                        setNextCredentialId((current) => current + 1)
+                      }}
+                    >
+                      <Plus className="size-4" aria-hidden />
+                      {t('connector.credentials.add')}
                     </Button>
                   </div>
-                ))}
+                )}
               </div>
+              {!credentialsArePreserved && (
+                <div className="mt-4 grid gap-3">
+                  {credentialRows.map((row) => (
+                    <div
+                      className="grid items-start gap-2 md:grid-cols-[10rem_1fr_1fr_1fr_auto]"
+                      key={row.id}
+                    >
+                      <Select
+                        aria-label={t('connector.credentials.location')}
+                        value={row.location}
+                        onChange={(event) =>
+                          updateCredentialRow(
+                            setCredentialRows,
+                            row.id,
+                            'location',
+                            event.target.value as CredentialLocation,
+                          )
+                        }
+                      >
+                        <option value="headers">
+                          {t('connector.credentials.headers')}
+                        </option>
+                        <option value="queryParams">
+                          {t('connector.credentials.query')}
+                        </option>
+                        <option value="bodyParams">
+                          {t('connector.credentials.body')}
+                        </option>
+                      </Select>
+                      <Input
+                        aria-label={t('connector.credentials.fieldName')}
+                        placeholder={t('connector.credentials.fieldName')}
+                        value={row.fieldName}
+                        onChange={(event) =>
+                          updateCredentialRow(
+                            setCredentialRows,
+                            row.id,
+                            'fieldName',
+                            event.target.value,
+                          )
+                        }
+                      />
+                      <Input
+                        aria-label={t('connector.credentials.value')}
+                        placeholder={t('connector.credentials.value')}
+                        type="password"
+                        value={row.value}
+                        onChange={(event) =>
+                          updateCredentialRow(
+                            setCredentialRows,
+                            row.id,
+                            'value',
+                            event.target.value,
+                          )
+                        }
+                      />
+                      <Input
+                        aria-label={t('connector.credentials.prefix')}
+                        placeholder={t('connector.credentials.prefix')}
+                        value={row.prefix}
+                        onChange={(event) =>
+                          updateCredentialRow(
+                            setCredentialRows,
+                            row.id,
+                            'prefix',
+                            event.target.value,
+                          )
+                        }
+                      />
+                      <Button
+                        aria-label={t('connector.credentials.remove')}
+                        className="mt-0"
+                        size="icon"
+                        type="button"
+                        variant="ghost"
+                        onClick={() =>
+                          setCredentialRows((current) =>
+                            current.filter(
+                              (candidate) => candidate.id !== row.id,
+                            ),
+                          )
+                        }
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {form.authType === 'OAUTH2_CLIENT_CREDENTIALS' && (
             <div className="grid gap-x-5 rounded-xl border bg-muted/10 p-4 md:grid-cols-2">
-              <div className="mb-3 flex items-center gap-2 md:col-span-2">
-                <KeyRound className="size-4 text-primary" aria-hidden />
-                <h3 className="font-bold">
-                  {t('connector.credentials.oauth')}
-                </h3>
-                {connector?.hasAuthConfiguration && (
-                  <span className="text-xs text-muted-foreground">
-                    {t('connector.credentials.leaveBlank')}
-                  </span>
-                )}
+              <div className="mb-3 flex items-center gap-3 md:col-span-2">
+                <KeyRound
+                  className="size-4 shrink-0 text-primary"
+                  aria-hidden
+                />
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold">
+                    {t('connector.credentials.oauth')}
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {credentialsArePreserved
+                      ? t('connector.credentials.preserved')
+                      : t('connector.credentials.required')}
+                  </p>
+                </div>
+                {credentialsArePreserved
+                  ? canManage && (
+                      <Button
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                        onClick={editCredentials}
+                      >
+                        <Pencil className="size-4" aria-hidden />
+                        {t('connector.credentials.edit')}
+                      </Button>
+                    )
+                  : !isNew &&
+                    connector?.hasAuthConfiguration &&
+                    connector.authType === form.authType && (
+                      <Button
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                        onClick={cancelCredentialChanges}
+                      >
+                        {t('connector.credentials.cancelEdit')}
+                      </Button>
+                    )}
               </div>
-              <Input
-                label={t('connector.credentials.tokenUrl')}
-                type="url"
-                value={form.oauthTokenUrl}
-                onChange={(event) =>
-                  updateForm(setForm, 'oauthTokenUrl', event.target.value)
-                }
-              />
-              <Select
-                label={t('connector.credentials.contentType')}
-                value={form.oauthContentType}
-                onChange={(event) =>
-                  updateForm(
-                    setForm,
-                    'oauthContentType',
-                    event.target.value as ConnectorForm['oauthContentType'],
-                  )
-                }
-              >
-                <option value="application/x-www-form-urlencoded">
-                  application/x-www-form-urlencoded
-                </option>
-                <option value="application/json">application/json</option>
-              </Select>
-              <Input
-                label={t('connector.credentials.clientId')}
-                value={form.oauthClientId}
-                onChange={(event) =>
-                  updateForm(setForm, 'oauthClientId', event.target.value)
-                }
-              />
-              <Input
-                label={t('connector.credentials.clientSecret')}
-                type="password"
-                value={form.oauthClientSecret}
-                onChange={(event) =>
-                  updateForm(setForm, 'oauthClientSecret', event.target.value)
-                }
-              />
-              <div className="md:col-span-2">
-                <TagInput
-                  getRemoveLabel={(tag) =>
-                    t('connector.credentials.removeScope', { tag })
-                  }
-                  hint={t('connector.credentials.scopeHint')}
-                  label={t('connector.credentials.scopes')}
-                  value={form.oauthScopes}
-                  onValueChange={(value) =>
-                    updateForm(setForm, 'oauthScopes', value)
+              {!credentialsArePreserved && (
+                <Input
+                  label={t('connector.credentials.tokenUrl')}
+                  type="url"
+                  value={form.oauthTokenUrl}
+                  onChange={(event) =>
+                    updateForm(setForm, 'oauthTokenUrl', event.target.value)
                   }
                 />
-              </div>
+              )}
+              {!credentialsArePreserved && (
+                <Select
+                  label={t('connector.credentials.contentType')}
+                  value={form.oauthContentType}
+                  onChange={(event) =>
+                    updateForm(
+                      setForm,
+                      'oauthContentType',
+                      event.target.value as ConnectorForm['oauthContentType'],
+                    )
+                  }
+                >
+                  <option value="application/x-www-form-urlencoded">
+                    application/x-www-form-urlencoded
+                  </option>
+                  <option value="application/json">application/json</option>
+                </Select>
+              )}
+              {!credentialsArePreserved && (
+                <Input
+                  label={t('connector.credentials.clientId')}
+                  value={form.oauthClientId}
+                  onChange={(event) =>
+                    updateForm(setForm, 'oauthClientId', event.target.value)
+                  }
+                />
+              )}
+              {!credentialsArePreserved && (
+                <Input
+                  label={t('connector.credentials.clientSecret')}
+                  type="password"
+                  value={form.oauthClientSecret}
+                  onChange={(event) =>
+                    updateForm(setForm, 'oauthClientSecret', event.target.value)
+                  }
+                />
+              )}
+              {!credentialsArePreserved && (
+                <div className="md:col-span-2">
+                  <TagInput
+                    getRemoveLabel={(tag) =>
+                      t('connector.credentials.removeScope', { tag })
+                    }
+                    hint={t('connector.credentials.scopeHint')}
+                    label={t('connector.credentials.scopes')}
+                    value={form.oauthScopes}
+                    onValueChange={(value) =>
+                      updateForm(setForm, 'oauthScopes', value)
+                    }
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -856,7 +1015,13 @@ export function AgentConnectorPage() {
             {canManage ? (
               <Button
                 disabled={
-                  !isConnectorFormValid(form, isNew, connector, credentialRows)
+                  !isConnectorFormValid(
+                    form,
+                    isNew,
+                    connector,
+                    credentialRows,
+                    isEditingCredentials,
+                  )
                 }
                 isLoading={isSaving}
                 type="submit"
@@ -876,19 +1041,35 @@ export function AgentConnectorPage() {
         <>
           <SectionCard
             action={
-              canManage ? (
+              canManage && connector?.connectorProtocol === 'MCP' ? (
+                <Button
+                  isLoading={isRefreshingMcpTools}
+                  onClick={() => void refreshMcpTools()}
+                >
+                  <RefreshCw className="size-4" aria-hidden />
+                  {t('connector.tools.refresh')}
+                </Button>
+              ) : canManage ? (
                 <Button onClick={openNewTool}>
                   <Plus className="size-4" aria-hidden />
                   {t('connector.tools.add')}
                 </Button>
               ) : undefined
             }
-            description={t('connector.tools.description')}
+            description={t(
+              connector?.connectorProtocol === 'MCP'
+                ? 'connector.tools.mcpDescription'
+                : 'connector.tools.description',
+            )}
             title={t('connector.tools.title')}
           >
             {tools.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                {t('connector.tools.empty')}
+                {t(
+                  connector?.connectorProtocol === 'MCP'
+                    ? 'connector.tools.mcpEmpty'
+                    : 'connector.tools.empty',
+                )}
               </p>
             ) : (
               <div className="grid gap-3">
@@ -910,7 +1091,7 @@ export function AgentConnectorPage() {
                         {tool.requestDefinition.path}
                       </code>
                     </div>
-                    {canManage && (
+                    {canManage && connector?.connectorProtocol !== 'MCP' && (
                       <div className="flex shrink-0 gap-1">
                         <Button
                           aria-label={t('connector.tools.edit')}
@@ -1276,6 +1457,7 @@ function isConnectorFormValid(
   isNew: boolean,
   connector: AgentConnector | null,
   credentials: CredentialRow[],
+  isEditingCredentials: boolean,
 ) {
   if (
     !isSnakeCase(form.name) ||
@@ -1288,8 +1470,13 @@ function isConnectorFormValid(
     const hasNewCredentials =
       credentials.length > 0 &&
       credentials.every((row) => row.fieldName.trim() && row.value)
-    if (!hasNewCredentials && (isNew || !connector?.hasAuthConfiguration))
-      return false
+    const canPreserveCredentials = Boolean(
+      !isNew &&
+      connector?.hasAuthConfiguration &&
+      connector.authType === form.authType &&
+      !isEditingCredentials,
+    )
+    if (!hasNewCredentials && !canPreserveCredentials) return false
   }
   if (form.authType === 'OAUTH2_CLIENT_CREDENTIALS') {
     const hasNewCredentials = Boolean(
@@ -1297,8 +1484,13 @@ function isConnectorFormValid(
       form.oauthClientId.trim() &&
       form.oauthClientSecret,
     )
-    if (!hasNewCredentials && (isNew || !connector?.hasAuthConfiguration))
-      return false
+    const canPreserveCredentials = Boolean(
+      !isNew &&
+      connector?.hasAuthConfiguration &&
+      connector.authType === form.authType &&
+      !isEditingCredentials,
+    )
+    if (!hasNewCredentials && !canPreserveCredentials) return false
   }
   return true
 }

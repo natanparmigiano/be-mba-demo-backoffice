@@ -54,6 +54,68 @@ unzip -p agent-5511999990000.agtx agent.yaml
 unzip agent-5511999990000.agtx -d agent-export
 ```
 
+## Worked sample: Dunder Mifflin
+
+[`sample_dunder_mifflin.agtx`](./sample_dunder_mifflin.agtx) is a complete fictional example
+for Dunder Mifflin Paper Company. It demonstrates agent settings, business
+information, an allowlist, skills, FAQs, the Dunder Mifflin Wikipedia knowledge
+website, and one API-key MCP connector configured to discover six tools. That
+`dunder_mifflin_mcp` connector is the agent-side counterpart of
+[`../mcpx/sample_dunder_mifflin.mcpx`](../mcpx/sample_dunder_mifflin.mcpx).
+It deliberately contains no knowledge files, API keys, certificates, or other
+secrets.
+
+The connector host uses the reserved `.example` domain. It documents the
+portable MCP connector and synced-tool shapes but does not provide a working
+service. Import the counterpart MCPX package, expose its MCP endpoint, replace
+the sample connector URL with that endpoint, and supply a scoped runner bearer
+token before expecting its tools to execute.
+
+From the repository root, verify that the ZIP directory and CRC32 checksums are
+valid before extracting anything:
+
+```bash
+unzip -l docs/agtx/sample_dunder_mifflin.agtx
+unzip -t docs/agtx/sample_dunder_mifflin.agtx
+```
+
+Read the manifest without extracting it:
+
+```bash
+unzip -p docs/agtx/sample_dunder_mifflin.agtx agent.yaml | less
+```
+
+To decompress the package into a new temporary directory and print its path:
+
+```bash
+agtx_extract_dir="$(mktemp -d)"
+unzip docs/agtx/sample_dunder_mifflin.agtx -d "$agtx_extract_dir"
+echo "$agtx_extract_dir"
+```
+
+Open `$agtx_extract_dir/agent.yaml` in a text editor and analyze it in this
+order:
+
+1. Confirm `format: "agtx"` and `version: 1`.
+2. Review `security` and `importRequirements` for omitted credentials, files,
+   and certificates.
+3. Treat `source.channel` as provenance, not destination configuration.
+4. Review `agent.settings`, `businessInfo`, `skills`, and `knowledge` for the
+   behavior and information that import will reconcile.
+5. Review every connector's `baseUrl`, `connectorProtocol`, and `authType`.
+   HTTP connectors also carry nested tool definitions; MCP tools are refreshed
+   from the server and are intentionally absent. Connector credentials are
+   always absent.
+6. Compare the manifest with [`schema.yml`](./schema.yml), particularly field
+   names, required properties, enums, and nullability.
+7. Match each non-null `agent.knowledge.files[].path` to an archive entry under
+   `files/`. This sample has no such entries.
+
+`unzip -t` validates ZIP entry checksums; it does not validate the YAML schema
+or AGTX security rules. The application's Inspect package action performs the
+full manifest, path, reference, and import-requirement validation without
+applying the package.
+
 ## What information does it contain?
 
 The manifest can contain:
@@ -66,7 +128,8 @@ The manifest can contain:
 - agent skills and their instructions;
 - FAQs and knowledge websites;
 - Meta knowledge-file references and, when available, their bundled bytes;
-- connector definitions and connector tools, without credentials.
+- connector definitions and explicit HTTP connector tools, without
+  credentials; MCP tools are discovered from their server after import.
 
 The export deliberately excludes:
 
@@ -279,15 +342,15 @@ again in the destination organization's file store.
 
 Connector entries contain their source ID, snake-case name, description, base
 URL, protocol, authentication type, certificate requirements, non-secret
-connection metadata, optional user-auth injection configuration, MCP sync
-metadata, and `tools`.
+connection metadata, optional user-auth injection configuration, and MCP sync
+metadata.
 
 Credential values and certificate material are not present. During inspection,
 the importer asks for authentication configuration when `authType` is not
 `NONE`, and for PEM certificate material when `requiresCertificate` is true.
 Import reconciles connectors by `name`.
 
-Each connector tool contains:
+HTTP connectors also include `tools`. Each HTTP connector tool contains:
 
 - a source ID, snake-case name, and description;
 - an HTTP method and path;
@@ -297,6 +360,12 @@ Each connector tool contains:
 
 Tools are reconciled by name within their connector. Source connector and tool
 IDs are not portable identities.
+
+MCP connectors omit `tools` from export because their tool catalog belongs to
+the remote MCP server. During import, any legacy MCP `tools` field is ignored.
+After the connector, authentication, and certificate configuration are
+reconciled, import calls Meta's MCP tool refresh action so the current tools are
+discovered from the configured server.
 
 ## YAML profile
 
@@ -329,8 +398,8 @@ application, follow the profile and the version 1 schema exactly.
    understand the agent's behavior.
 7. Review `agent.knowledge`. For every file, follow `path` into the ZIP. A null
    path means the file must be supplied during import.
-8. Review connectors and tools, remembering that their credentials are not
-   included.
+8. Review connectors and any explicit HTTP tools, remembering that credentials
+   and MCP tool catalogs are not included.
 9. Treat provider IDs and status fields as provenance. The importer uses stable
    names, questions, URLs, or phone numbers when reconciling destination data.
 10. Validate all paths and checksums before using file bytes. Never extract

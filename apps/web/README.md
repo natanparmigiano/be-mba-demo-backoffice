@@ -57,15 +57,15 @@ The build command runs TypeScript project validation before creating the product
 | `/chat/:chatId`                       | Private        | Opens a tenant-authorized chat directly while retaining the paginated inbox.       |
 | `/organization`                       | Private        | Manages organizations, invitations, and members.                                   |
 | `/agents`                             | Private        | Displays organization channels available for agent configuration.                  |
-| `/agents/:id`                         | Private        | Manages agent rollout, audience, business information, skills, and knowledge.      |
+| `/agents/:id`                         | Private        | Manages agent configuration, backups, AGTX export, and reviewed AGTX import.       |
 | `/agents/:id/connectors/:connectorId` | Private        | Creates or edits a connector, its tools, and recent logs.                          |
 | `/channels`                           | Private        | Manages WhatsApp channels and webhook forwarding.                                  |
 | `/contacts`                           | Private        | Searches and filters cursor-paginated organization contacts.                       |
 | `/groups`                             | Private        | Searches and filters cursor-paginated WhatsApp groups.                             |
 | `/functions`                          | Private        | Manages active-organization JavaScript functions, revisions, and parameters.       |
-| `/mcps`                               | Private        | Manages organization MCP packs and their function membership.                      |
+| `/mcps`                               | Private        | Manages MCP membership and reviewed MCPX package export/import.                    |
 | `/api-keys`                           | Private        | Manages organization API keys and their function/MCP scopes.                       |
-| `/api-playground`                     | Private        | Runs registration, messaging, and media package operations for a selected channel. |
+| `/api-playground`                     | Private        | Runs registration, messaging, media, and QR-code package operations for a channel. |
 | `/admin`                              | Admin          | Manages application users, roles, bans, credentials, and sessions.                 |
 | Any other path                        | Fallback       | Redirects to `/`, after which the private guard applies.                           |
 

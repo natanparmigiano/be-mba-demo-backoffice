@@ -295,6 +295,60 @@ const en = {
         action: 'Delete media',
       },
     },
+    qr: {
+      tab: 'QR codes',
+      code: 'QR code',
+      codeHint: 'Use the code returned when the QR code was created.',
+      prefilledMessage: 'Prefilled message',
+      prefilledMessageHint:
+        'This text appears in the conversation when the customer opens the link.',
+      imageFormat: 'Image format',
+      imageFormatHint: 'Generate or retrieve an SVG or PNG image URL.',
+      noImage: 'Do not generate an image',
+      create: {
+        title: 'Create QR code',
+        description:
+          'Create a click-to-chat QR code with a prefilled message and optional image.',
+        action: 'Create QR code',
+      },
+      get: {
+        title: 'Get QR code',
+        description: 'Retrieve one message QR code by its code.',
+        action: 'Get QR code',
+      },
+      image: {
+        title: 'Get QR code image URL',
+        description: 'Retrieve a provider-managed SVG or PNG image URL.',
+        action: 'Get image URL',
+      },
+      list: {
+        title: 'List QR codes',
+        description:
+          'List message QR codes with field selection, image format, and cursor pagination.',
+        fields: 'Fields',
+        fieldOptions: {
+          code: 'QR code',
+          prefilledMessage: 'Prefilled message',
+          deepLinkUrl: 'Deep-link URL',
+        },
+        limit: 'Page size',
+        before: 'Before cursor',
+        after: 'After cursor',
+        cursorHint: 'Optional Graph API pagination cursor.',
+        action: 'List QR codes',
+      },
+      update: {
+        title: 'Update QR code',
+        description: 'Replace the message prefilled by an existing QR code.',
+        action: 'Update QR code',
+      },
+      delete: {
+        title: 'Delete QR code',
+        description: 'Permanently delete a message QR code.',
+        confirm: 'I understand and want to delete this QR code.',
+        action: 'Delete QR code',
+      },
+    },
   },
   functions: {
     metaDescription:
@@ -316,7 +370,8 @@ const en = {
     name: 'Name',
     nameHint:
       'Names are converted to snake_case as you type, for example get_customer.',
-    nameError: 'Use lowercase letters, numbers, and single underscores only.',
+    nameError:
+      'Use lowercase letters, numbers, and single or namespace double underscores only.',
     revision: 'Revision',
     updated: 'Updated',
     actions: 'Actions',
@@ -333,6 +388,19 @@ const en = {
     archived: 'Function archived.',
     archiveConfirm:
       'Archive this function? Existing API keys will no longer execute it.',
+    danger: {
+      title: 'Danger zone',
+      description:
+        'Permanently delete this function, every revision and execution record, and remove it from MCPs and API-key scopes.',
+      delete: 'Delete function',
+      dialogTitle: 'Delete function?',
+      dialogDescription:
+        'This permanently deletes {{name}} and all of its history. This action cannot be undone.',
+      cancel: 'Cancel',
+      confirm: 'Delete function',
+      deleted: 'The function was deleted.',
+      failed: 'Could not delete the function.',
+    },
     functionEditor: 'Function editor',
     backToFunctions: 'Back to functions',
     editorDescription:
@@ -405,6 +473,48 @@ const en = {
     description:
       'Package existing functions into reusable MCP definitions and manage their membership.',
     refresh: 'Refresh',
+    export: 'Export MCPX',
+    exported: 'The MCP package was exported.',
+    exportFailed: 'Could not export the MCP package.',
+    import: 'Import MCPX',
+    importPanel: {
+      title: 'Import MCP package',
+      description:
+        'Select an exported MCPX package, review every change, and approve the import.',
+      file: 'MCPX file',
+      invalidSize: 'Choose a non-empty MCPX file no larger than 10 MB.',
+      readFailed: 'Could not read the selected MCPX file.',
+      inspect: 'Preview import',
+      inspectFailed: 'Could not inspect the MCP package.',
+      import: 'Import MCP',
+      importFailed: 'Could not import the MCP package.',
+      imported: '{{name}} was imported.',
+      mode: {
+        create: 'Creates a new MCP',
+        overwrite: 'Replaces the existing MCP',
+      },
+      functionCount_one: '{{count}} function',
+      functionCount_other: '{{count}} functions',
+      revisionCount_one: '{{count}} revision',
+      revisionCount_other: '{{count}} revisions',
+      executionHistory: 'Execution records removed',
+      apiKeys: 'Direct API-key scopes affected',
+      removedFunctions: 'Functions removed by this replacement: {{names}}',
+      confirmOverwrite:
+        'I understand that importing {{name}} replaces its functions, revisions, and execution history.',
+      blockers: {
+        active_executions:
+          'Wait for queued or running executions to finish: {{names}}',
+        duplicate_target_names:
+          'Multiple package functions resolve to the same name: {{names}}',
+        shared_functions:
+          'These functions are also used by another MCP and cannot be replaced safely: {{names}}',
+        target_name_conflicts:
+          'These imported names already belong to functions outside this MCP: {{names}}',
+        target_names_too_long:
+          'These prefixed names are invalid or exceed 512 characters: {{names}}',
+      },
+    },
     new: 'New MCP',
     directory: 'MCP directory',
     count_one: '{{count}} MCP',
@@ -742,9 +852,10 @@ const en = {
     credentials: {
       apiKey: 'API key fields',
       oauth: 'OAuth credentials',
-      preserved: 'Existing credentials stay unchanged unless replaced below.',
+      preserved: 'Credentials are securely saved and currently active.',
       required: 'Add at least one credential field.',
-      leaveBlank: 'Leave blank to preserve the current credentials.',
+      edit: 'Edit',
+      cancelEdit: 'Cancel credential changes',
       add: 'Add field',
       remove: 'Remove credential field',
       location: 'Credential location',
@@ -766,11 +877,17 @@ const en = {
       title: 'Connector tools',
       description:
         'Define the operations this agent can invoke through the connector.',
+      mcpDescription:
+        'Tools are discovered from the MCP server and managed by its current catalog.',
       add: 'Add tool',
+      refresh: 'Refresh tools',
+      refreshed: 'MCP tool refresh requested successfully.',
+      refreshFailed: 'Could not refresh tools from the MCP server.',
       update: 'Update tool',
       edit: 'Edit tool',
       delete: 'Delete {{name}}',
       empty: 'No connector tools have been added yet.',
+      mcpEmpty: 'No tools have been discovered from this MCP server yet.',
       loadFailed: 'Could not load connector tools.',
       saveFailed: 'Could not save the connector tool.',
       deleteFailed: 'Could not delete the connector tool.',
@@ -872,6 +989,19 @@ const en = {
     channelNotFound: 'Channel not found.',
     loadFailed: 'Could not load the agent.',
     businessId: 'Business ID',
+    registration: {
+      title: 'Number Registration',
+      registeredDescription:
+        'This phone number is registered with the WhatsApp Cloud API. Agent management is available.',
+      unregisteredDescription:
+        'Register this phone number before configuring or enabling its agent. All agent management remains unavailable until registration is complete.',
+      errorDescription:
+        'Registration could not be verified. Agent management remains unavailable until the phone number is confirmed as registered.',
+      register: 'Register number',
+      manage: 'Manage registration',
+      retry: 'Check again',
+      managersOnly: 'An organization owner or admin must register this number.',
+    },
     enableTitle: 'Enable Meta Business Agent',
     enableDescription:
       'Check this WhatsApp number’s eligibility, then onboard it to create its Meta Business Agent configuration.',
@@ -891,9 +1021,43 @@ const en = {
       knowledgeBase: 'Knowledge Base',
       connectors: 'Connectors',
       evals: 'Evals',
+      backups: 'Backups',
       export: 'Export',
       import: 'Import',
       pending: 'Configuration for this section will be added next.',
+    },
+    backups: {
+      title: 'Agent backups',
+      description:
+        'Create and review durable AGTX snapshots of this agent configuration.',
+      action: 'Backup',
+      loading: 'Loading backups…',
+      loadFailed: 'Could not load agent backups.',
+      createFailed: 'Could not create the agent backup.',
+      restore: 'Restore',
+      restoreLabel: 'Restore {{fileName}}',
+      restoreFailed: 'Could not load the agent backup for restoration.',
+      restoreReady:
+        'The backup is ready in Import. Inspect it and provide any required credentials or files before restoring it.',
+      emptyTitle: 'No backups yet',
+      emptyDescription:
+        'Create a backup to preserve the current agent configuration and locally archived knowledge files.',
+      confirmTitle: 'Create agent backup?',
+      confirmDescription:
+        'This exports the current agent configuration and stores the AGTX package for this channel.',
+      confirm: 'Create backup',
+      cancel: 'Cancel',
+      close: 'Close',
+      progressTitle: 'Backup progress',
+      progressDescription:
+        'The current agent configuration is being exported and stored.',
+      complete: 'The agent backup was created successfully.',
+      columns: {
+        createdAt: 'Created',
+        fileName: 'File',
+        size: 'Size',
+        actions: 'Actions',
+      },
     },
     exportPanel: {
       title: 'Export agent configuration',
@@ -963,6 +1127,9 @@ const en = {
       certificateRequired:
         'Provide the required connector certificate and private key.',
       filesRequired: 'Provide every missing knowledge file.',
+      createBackup: 'Create a backup before importing',
+      createBackupDescription:
+        'Save the current agent as an AGTX backup before applying any imported changes.',
       missingFilesTitle: 'Files required',
       missingFilesDescription:
         'These files were referenced by Meta but were not included in the package.',
@@ -1021,6 +1188,7 @@ const en = {
         connectors: 'Connectors',
       },
       steps: {
+        backup: 'Backing up the current agent',
         settings: 'Importing agent settings',
         businessData: 'Reconciling business data and allowlist',
         skills: 'Reconciling skills',
@@ -1261,14 +1429,14 @@ const en = {
     channelUpdated: 'Channel updated.',
     channelDeleted: 'Channel deleted.',
     noChannelSelected: 'No channel selected.',
-    setWebhookTitle: 'Set this webhook for the WABA?',
+    setWebhookTitle: 'Register this webhook with Meta?',
     setWebhookDescription:
-      'This overrides the callback URL for the entire WhatsApp Business Account, not only this phone number.',
+      'This registers the app-level callback and supported fields, then subscribes the app to this WhatsApp Business Account.',
     setWebhookWarning:
-      'All webhook events for WABA {{wabaId}} will be pointed to this application. Other integrations using the current callback may stop receiving events.',
+      'The callback belongs to Meta app {{appId}} and applies to its WhatsApp webhook subscriptions. Registering another callback for the same app can replace this one.',
     newWebhookUrl: 'New webhook URL',
-    setWebhook: 'Set webhook',
-    webhookSet: 'Webhook configured: {{url}}',
+    setWebhook: 'Register webhook',
+    webhookSet: 'Webhook registered and app subscribed: {{url}}',
     deleteTitle: 'Delete channel?',
     deleteDescription:
       'This permanently removes {{channel}} and all of its local data.',
@@ -1301,7 +1469,8 @@ const en = {
     webhookUrl: 'Webhook URL',
     webhookVerifyToken: 'Webhook verify token',
     managersOnly: 'Restricted to organization managers',
-    applyWebhookHint: 'Apply this URL and verify token to the WABA.',
+    applyWebhookHint:
+      'Register this URL and every supported event field, then subscribe the app to the WABA.',
     credentials: 'Credentials',
     appSecret: 'App secret',
     verifyToken: 'Verify token',
@@ -1338,6 +1507,46 @@ const en = {
     verifyTokenHint: 'Copy this into the Meta webhook configuration.',
     systemUserAccessToken: 'System user access token',
     accessTokenHint: 'Used for Cloud API calls.',
+    registration: {
+      title: 'Cloud API registration',
+      status: {
+        loading: 'Checking registration…',
+        registered: 'Phone number registered',
+        unregistered: 'Phone number not registered',
+        error: 'Could not check registration',
+      },
+      register: 'Register number',
+      deregister: 'Unregister number',
+      manage: 'Open channel registration settings',
+      registerTitle: 'Register phone number',
+      registerDescription:
+        'Register {{phone}} with the WhatsApp Cloud API using its two-step verification PIN.',
+      deregisterTitle: 'Unregister phone number',
+      deregisterDescription:
+        'Remove the WhatsApp Cloud API registration for {{phone}}.',
+      deregisterWarning:
+        'The number will no longer be able to send or receive messages through the Cloud API until it is registered again.',
+      pin: 'Two-step verification PIN',
+      pinError: 'Enter exactly six digits.',
+      failed: 'Could not update the phone-number registration.',
+      registeredNotice: 'The phone number was registered.',
+      deregisteredNotice: 'The phone number was unregistered.',
+      verifiedName: 'Verified name',
+    },
+    qr: {
+      title: 'WhatsApp QR code',
+      alt: 'WhatsApp QR code for {{phone}}',
+      loading: 'Loading QR code…',
+      empty: 'No QR code configured',
+      error: 'Could not load the QR code',
+      openNamed: 'Show QR code for {{channel}}',
+      dialogTitle: 'WhatsApp QR code',
+      dialogDescription:
+        'Scan this code to start a WhatsApp conversation with {{phone}}.',
+      formDescription:
+        'The first message QR code currently configured for this phone number.',
+      close: 'Close',
+    },
     saveChanges: 'Save changes',
     requestFailed: 'Request failed',
     operationFailed: 'The operation failed.',
@@ -2350,6 +2559,62 @@ const pt: typeof en = {
         action: 'Excluir mídia',
       },
     },
+    qr: {
+      tab: 'Códigos QR',
+      code: 'Código QR',
+      codeHint: 'Use o código retornado quando o código QR foi criado.',
+      prefilledMessage: 'Mensagem predefinida',
+      prefilledMessageHint:
+        'Este texto aparece na conversa quando o cliente abre o link.',
+      imageFormat: 'Formato da imagem',
+      imageFormatHint: 'Gere ou obtenha uma URL de imagem SVG ou PNG.',
+      noImage: 'Não gerar imagem',
+      create: {
+        title: 'Criar código QR',
+        description:
+          'Crie um código QR para iniciar uma conversa com mensagem predefinida e imagem opcional.',
+        action: 'Criar código QR',
+      },
+      get: {
+        title: 'Obter código QR',
+        description: 'Consulte um código QR de mensagem pelo seu código.',
+        action: 'Obter código QR',
+      },
+      image: {
+        title: 'Obter URL da imagem do código QR',
+        description:
+          'Obtenha uma URL de imagem SVG ou PNG gerenciada pela Meta.',
+        action: 'Obter URL da imagem',
+      },
+      list: {
+        title: 'Listar códigos QR',
+        description:
+          'Liste códigos QR de mensagem com seleção de campos, formato de imagem e paginação por cursor.',
+        fields: 'Campos',
+        fieldOptions: {
+          code: 'Código QR',
+          prefilledMessage: 'Mensagem predefinida',
+          deepLinkUrl: 'URL do link direto',
+        },
+        limit: 'Tamanho da página',
+        before: 'Cursor anterior',
+        after: 'Próximo cursor',
+        cursorHint: 'Cursor opcional de paginação da Graph API.',
+        action: 'Listar códigos QR',
+      },
+      update: {
+        title: 'Atualizar código QR',
+        description:
+          'Substitua a mensagem predefinida por um código QR existente.',
+        action: 'Atualizar código QR',
+      },
+      delete: {
+        title: 'Excluir código QR',
+        description: 'Exclua permanentemente um código QR de mensagem.',
+        confirm: 'Entendo e quero excluir este código QR.',
+        action: 'Excluir código QR',
+      },
+    },
   },
   functions: {
     metaDescription:
@@ -2371,7 +2636,8 @@ const pt: typeof en = {
     name: 'Nome',
     nameHint:
       'Os nomes são convertidos para snake_case enquanto você digita, por exemplo buscar_cliente.',
-    nameError: 'Use apenas letras minúsculas, números e sublinhados simples.',
+    nameError:
+      'Use letras minúsculas, números e sublinhados simples ou duplos de namespace.',
     revision: 'Revisão',
     updated: 'Atualizada',
     actions: 'Ações',
@@ -2388,6 +2654,19 @@ const pt: typeof en = {
     archived: 'Função arquivada.',
     archiveConfirm:
       'Arquivar esta função? As chaves existentes não poderão mais executá-la.',
+    danger: {
+      title: 'Zona de perigo',
+      description:
+        'Exclua permanentemente esta função, todas as revisões e execuções, e remova-a dos MCPs e dos escopos das chaves de API.',
+      delete: 'Excluir função',
+      dialogTitle: 'Excluir função?',
+      dialogDescription:
+        'Isso excluirá permanentemente {{name}} e todo o seu histórico. Esta ação não pode ser desfeita.',
+      cancel: 'Cancelar',
+      confirm: 'Excluir função',
+      deleted: 'A função foi excluída.',
+      failed: 'Não foi possível excluir a função.',
+    },
     functionEditor: 'Editor de funções',
     backToFunctions: 'Voltar para funções',
     editorDescription:
@@ -2458,6 +2737,48 @@ const pt: typeof en = {
     description:
       'Agrupe funções existentes em definições MCP reutilizáveis e gerencie seus componentes.',
     refresh: 'Atualizar',
+    export: 'Exportar MCPX',
+    exported: 'O pacote MCP foi exportado.',
+    exportFailed: 'Não foi possível exportar o pacote MCP.',
+    import: 'Importar MCPX',
+    importPanel: {
+      title: 'Importar pacote MCP',
+      description:
+        'Selecione um pacote MCPX exportado, revise todas as alterações e aprove a importação.',
+      file: 'Arquivo MCPX',
+      invalidSize: 'Escolha um arquivo MCPX não vazio de até 10 MB.',
+      readFailed: 'Não foi possível ler o arquivo MCPX selecionado.',
+      inspect: 'Visualizar importação',
+      inspectFailed: 'Não foi possível inspecionar o pacote MCP.',
+      import: 'Importar MCP',
+      importFailed: 'Não foi possível importar o pacote MCP.',
+      imported: '{{name}} foi importado.',
+      mode: {
+        create: 'Cria um novo MCP',
+        overwrite: 'Substitui o MCP existente',
+      },
+      functionCount_one: '{{count}} função',
+      functionCount_other: '{{count}} funções',
+      revisionCount_one: '{{count}} revisão',
+      revisionCount_other: '{{count}} revisões',
+      executionHistory: 'Registros de execução removidos',
+      apiKeys: 'Escopos diretos de chaves de API afetados',
+      removedFunctions: 'Funções removidas por esta substituição: {{names}}',
+      confirmOverwrite:
+        'Entendo que importar {{name}} substitui suas funções, revisões e histórico de execuções.',
+      blockers: {
+        active_executions:
+          'Aguarde a conclusão das execuções na fila ou em andamento: {{names}}',
+        duplicate_target_names:
+          'Várias funções do pacote resultam no mesmo nome: {{names}}',
+        shared_functions:
+          'Estas funções também são usadas por outro MCP e não podem ser substituídas com segurança: {{names}}',
+        target_name_conflicts:
+          'Estes nomes importados já pertencem a funções fora deste MCP: {{names}}',
+        target_names_too_long:
+          'Estes nomes prefixados são inválidos ou excedem 512 caracteres: {{names}}',
+      },
+    },
     new: 'Novo MCP',
     directory: 'Diretório de MCPs',
     count_one: '{{count}} MCP',
@@ -2805,10 +3126,10 @@ const pt: typeof en = {
     credentials: {
       apiKey: 'Campos da chave de API',
       oauth: 'Credenciais OAuth',
-      preserved:
-        'As credenciais atuais serão mantidas se não forem substituídas abaixo.',
+      preserved: 'As credenciais estão salvas com segurança e estão ativas.',
       required: 'Adicione ao menos um campo de credencial.',
-      leaveBlank: 'Deixe em branco para manter as credenciais atuais.',
+      edit: 'Editar',
+      cancelEdit: 'Cancelar alterações nas credenciais',
       add: 'Adicionar campo',
       remove: 'Remover campo de credencial',
       location: 'Local da credencial',
@@ -2830,11 +3151,18 @@ const pt: typeof en = {
       title: 'Ferramentas do conector',
       description:
         'Defina as operações que o agente pode executar por meio do conector.',
+      mcpDescription:
+        'As ferramentas são descobertas no servidor MCP e gerenciadas pelo catálogo atual dele.',
       add: 'Adicionar ferramenta',
+      refresh: 'Atualizar ferramentas',
+      refreshed: 'A atualização das ferramentas MCP foi solicitada.',
+      refreshFailed:
+        'Não foi possível atualizar as ferramentas a partir do servidor MCP.',
       update: 'Atualizar ferramenta',
       edit: 'Editar ferramenta',
       delete: 'Excluir {{name}}',
       empty: 'Nenhuma ferramenta foi adicionada ao conector ainda.',
+      mcpEmpty: 'Nenhuma ferramenta foi descoberta neste servidor MCP ainda.',
       loadFailed: 'Não foi possível carregar as ferramentas do conector.',
       saveFailed: 'Não foi possível salvar a ferramenta do conector.',
       deleteFailed: 'Não foi possível excluir a ferramenta do conector.',
@@ -2941,6 +3269,20 @@ const pt: typeof en = {
     channelNotFound: 'Canal não encontrado.',
     loadFailed: 'Não foi possível carregar o agente.',
     businessId: 'ID do negócio',
+    registration: {
+      title: 'Registro do número',
+      registeredDescription:
+        'Este número de telefone está registrado na API do WhatsApp Cloud. O gerenciamento do agente está disponível.',
+      unregisteredDescription:
+        'Registre este número de telefone antes de configurar ou habilitar o agente. Todo o gerenciamento ficará indisponível até que o registro seja concluído.',
+      errorDescription:
+        'Não foi possível verificar o registro. O gerenciamento do agente ficará indisponível até que o número seja confirmado como registrado.',
+      register: 'Registrar número',
+      manage: 'Gerenciar registro',
+      retry: 'Verificar novamente',
+      managersOnly:
+        'Um proprietário ou administrador da organização deve registrar este número.',
+    },
     enableTitle: 'Habilitar o Meta Business Agent',
     enableDescription:
       'Verifique a elegibilidade deste número do WhatsApp e depois cadastre-o para criar a configuração do Meta Business Agent.',
@@ -2962,9 +3304,44 @@ const pt: typeof en = {
       knowledgeBase: 'Base de conhecimento',
       connectors: 'Conectores',
       evals: 'Avaliações',
+      backups: 'Backups',
       export: 'Exportar',
       import: 'Importar',
       pending: 'A configuração desta seção será adicionada em seguida.',
+    },
+    backups: {
+      title: 'Backups do agente',
+      description:
+        'Crie e consulte snapshots AGTX duráveis da configuração deste agente.',
+      action: 'Backup',
+      loading: 'Carregando backups…',
+      loadFailed: 'Não foi possível carregar os backups do agente.',
+      createFailed: 'Não foi possível criar o backup do agente.',
+      restore: 'Restaurar',
+      restoreLabel: 'Restaurar {{fileName}}',
+      restoreFailed:
+        'Não foi possível carregar o backup do agente para restauração.',
+      restoreReady:
+        'O backup está pronto em Importar. Inspecione-o e forneça as credenciais ou arquivos necessários antes de restaurá-lo.',
+      emptyTitle: 'Nenhum backup ainda',
+      emptyDescription:
+        'Crie um backup para preservar a configuração atual do agente e os arquivos de conhecimento arquivados localmente.',
+      confirmTitle: 'Criar backup do agente?',
+      confirmDescription:
+        'Isso exporta a configuração atual do agente e armazena o pacote AGTX deste canal.',
+      confirm: 'Criar backup',
+      cancel: 'Cancelar',
+      close: 'Fechar',
+      progressTitle: 'Progresso do backup',
+      progressDescription:
+        'A configuração atual do agente está sendo exportada e armazenada.',
+      complete: 'O backup do agente foi criado com sucesso.',
+      columns: {
+        createdAt: 'Criado em',
+        fileName: 'Arquivo',
+        size: 'Tamanho',
+        actions: 'Ações',
+      },
     },
     exportPanel: {
       title: 'Exportar configuração do agente',
@@ -3033,6 +3410,9 @@ const pt: typeof en = {
         'A configuração de credenciais de {{name}} não é um JSON válido.',
       certificateRequired: 'Forneça o certificado e a chave privada exigidos.',
       filesRequired: 'Forneça todos os arquivos de conhecimento ausentes.',
+      createBackup: 'Criar um backup antes de importar',
+      createBackupDescription:
+        'Salve o agente atual como backup AGTX antes de aplicar qualquer alteração importada.',
       missingFilesTitle: 'Arquivos necessários',
       missingFilesDescription:
         'Estes arquivos foram referenciados pela Meta, mas não estavam no pacote.',
@@ -3092,6 +3472,7 @@ const pt: typeof en = {
         connectors: 'Conectores',
       },
       steps: {
+        backup: 'Fazendo backup do agente atual',
         settings: 'Importando configurações do agente',
         businessData: 'Reconciliando dados da empresa e lista de permissão',
         skills: 'Reconciliando habilidades',
@@ -3335,14 +3716,14 @@ const pt: typeof en = {
     channelUpdated: 'Canal atualizado.',
     channelDeleted: 'Canal excluído.',
     noChannelSelected: 'Nenhum canal selecionado.',
-    setWebhookTitle: 'Definir este webhook para a WABA?',
+    setWebhookTitle: 'Registrar este webhook na Meta?',
     setWebhookDescription:
-      'Isso substitui a URL de retorno de toda a conta do WhatsApp Business, não apenas deste número de telefone.',
+      'Isso registra o callback e os campos compatíveis no nível da aplicação e depois inscreve a aplicação nesta conta do WhatsApp Business.',
     setWebhookWarning:
-      'Todos os eventos de webhook da WABA {{wabaId}} serão direcionados para esta aplicação. Outras integrações que usam a URL atual podem parar de receber eventos.',
+      'O callback pertence à aplicação Meta {{appId}} e vale para suas inscrições de webhook do WhatsApp. Registrar outro callback na mesma aplicação pode substituir este.',
     newWebhookUrl: 'Nova URL do webhook',
-    setWebhook: 'Definir webhook',
-    webhookSet: 'Webhook configurado: {{url}}',
+    setWebhook: 'Registrar webhook',
+    webhookSet: 'Webhook registrado e aplicação inscrita: {{url}}',
     deleteTitle: 'Excluir canal?',
     deleteDescription:
       'Isso remove permanentemente {{channel}} e todos os seus dados locais.',
@@ -3376,7 +3757,8 @@ const pt: typeof en = {
     webhookUrl: 'URL do webhook',
     webhookVerifyToken: 'Token de verificação do webhook',
     managersOnly: 'Restrito aos gestores da organização',
-    applyWebhookHint: 'Aplique esta URL e o token de verificação à WABA.',
+    applyWebhookHint:
+      'Registre esta URL e todos os campos compatíveis e depois inscreva a aplicação na WABA.',
     credentials: 'Credenciais',
     appSecret: 'Segredo da aplicação',
     verifyToken: 'Token de verificação',
@@ -3414,6 +3796,46 @@ const pt: typeof en = {
     verifyTokenHint: 'Copie este valor para a configuração de webhook da Meta.',
     systemUserAccessToken: 'Token de acesso do usuário do sistema',
     accessTokenHint: 'Usado nas chamadas da Cloud API.',
+    registration: {
+      title: 'Registro na Cloud API',
+      status: {
+        loading: 'Verificando o registro…',
+        registered: 'Número de telefone registrado',
+        unregistered: 'Número de telefone não registrado',
+        error: 'Não foi possível verificar o registro',
+      },
+      register: 'Registrar número',
+      deregister: 'Desregistrar número',
+      manage: 'Abrir configurações de registro do canal',
+      registerTitle: 'Registrar número de telefone',
+      registerDescription:
+        'Registre {{phone}} na API do WhatsApp Cloud usando o PIN da verificação em duas etapas.',
+      deregisterTitle: 'Desregistrar número de telefone',
+      deregisterDescription:
+        'Remova o registro de {{phone}} da API do WhatsApp Cloud.',
+      deregisterWarning:
+        'O número não poderá mais enviar ou receber mensagens pela Cloud API até que seja registrado novamente.',
+      pin: 'PIN da verificação em duas etapas',
+      pinError: 'Digite exatamente seis dígitos.',
+      failed: 'Não foi possível atualizar o registro do número de telefone.',
+      registeredNotice: 'O número de telefone foi registrado.',
+      deregisteredNotice: 'O número de telefone foi desregistrado.',
+      verifiedName: 'Nome verificado',
+    },
+    qr: {
+      title: 'Código QR do WhatsApp',
+      alt: 'Código QR do WhatsApp para {{phone}}',
+      loading: 'Carregando código QR…',
+      empty: 'Nenhum código QR configurado',
+      error: 'Não foi possível carregar o código QR',
+      openNamed: 'Exibir código QR de {{channel}}',
+      dialogTitle: 'Código QR do WhatsApp',
+      dialogDescription:
+        'Escaneie este código para iniciar uma conversa no WhatsApp com {{phone}}.',
+      formDescription:
+        'O primeiro código QR de mensagem configurado atualmente para este número de telefone.',
+      close: 'Fechar',
+    },
     saveChanges: 'Salvar alterações',
     requestFailed: 'A solicitação falhou',
     operationFailed: 'A operação falhou.',
@@ -4436,6 +4858,61 @@ const es: typeof en = {
         action: 'Eliminar archivo',
       },
     },
+    qr: {
+      tab: 'Códigos QR',
+      code: 'Código QR',
+      codeHint: 'Usa el código devuelto al crear el código QR.',
+      prefilledMessage: 'Mensaje predefinido',
+      prefilledMessageHint:
+        'Este texto aparece en la conversación cuando el cliente abre el enlace.',
+      imageFormat: 'Formato de imagen',
+      imageFormatHint: 'Genera u obtiene una URL de imagen SVG o PNG.',
+      noImage: 'No generar imagen',
+      create: {
+        title: 'Crear código QR',
+        description:
+          'Crea un código QR para iniciar un chat con un mensaje predefinido y una imagen opcional.',
+        action: 'Crear código QR',
+      },
+      get: {
+        title: 'Obtener código QR',
+        description: 'Consulta un código QR de mensaje por su código.',
+        action: 'Obtener código QR',
+      },
+      image: {
+        title: 'Obtener URL de imagen del código QR',
+        description: 'Obtén una URL de imagen SVG o PNG gestionada por Meta.',
+        action: 'Obtener URL de imagen',
+      },
+      list: {
+        title: 'Listar códigos QR',
+        description:
+          'Lista códigos QR de mensaje con selección de campos, formato de imagen y paginación por cursor.',
+        fields: 'Campos',
+        fieldOptions: {
+          code: 'Código QR',
+          prefilledMessage: 'Mensaje predefinido',
+          deepLinkUrl: 'URL de enlace directo',
+        },
+        limit: 'Tamaño de página',
+        before: 'Cursor anterior',
+        after: 'Cursor siguiente',
+        cursorHint: 'Cursor opcional de paginación de Graph API.',
+        action: 'Listar códigos QR',
+      },
+      update: {
+        title: 'Actualizar código QR',
+        description:
+          'Reemplaza el mensaje predefinido de un código QR existente.',
+        action: 'Actualizar código QR',
+      },
+      delete: {
+        title: 'Eliminar código QR',
+        description: 'Elimina permanentemente un código QR de mensaje.',
+        confirm: 'Entiendo y quiero eliminar este código QR.',
+        action: 'Eliminar código QR',
+      },
+    },
   },
   functions: {
     metaDescription:
@@ -4457,7 +4934,8 @@ const es: typeof en = {
     name: 'Nombre',
     nameHint:
       'Los nombres se convierten a snake_case mientras escribes, por ejemplo buscar_cliente.',
-    nameError: 'Usa solo letras minúsculas, números y guiones bajos simples.',
+    nameError:
+      'Usa letras minúsculas, números y guiones bajos simples o dobles de namespace.',
     revision: 'Revisión',
     updated: 'Actualizada',
     actions: 'Acciones',
@@ -4474,6 +4952,19 @@ const es: typeof en = {
     archived: 'Función archivada.',
     archiveConfirm:
       '¿Archivar esta función? Las claves existentes ya no podrán ejecutarla.',
+    danger: {
+      title: 'Zona de peligro',
+      description:
+        'Elimina permanentemente esta función, todas sus revisiones y ejecuciones, y quítala de los MCP y los alcances de claves de API.',
+      delete: 'Eliminar función',
+      dialogTitle: '¿Eliminar función?',
+      dialogDescription:
+        'Esto eliminará permanentemente {{name}} y todo su historial. Esta acción no se puede deshacer.',
+      cancel: 'Cancelar',
+      confirm: 'Eliminar función',
+      deleted: 'La función fue eliminada.',
+      failed: 'No se pudo eliminar la función.',
+    },
     functionEditor: 'Editor de funciones',
     backToFunctions: 'Volver a funciones',
     editorDescription:
@@ -4545,6 +5036,48 @@ const es: typeof en = {
     description:
       'Agrupa funciones existentes en definiciones MCP reutilizables y administra sus componentes.',
     refresh: 'Actualizar',
+    export: 'Exportar MCPX',
+    exported: 'El paquete MCP fue exportado.',
+    exportFailed: 'No se pudo exportar el paquete MCP.',
+    import: 'Importar MCPX',
+    importPanel: {
+      title: 'Importar paquete MCP',
+      description:
+        'Selecciona un paquete MCPX exportado, revisa todos los cambios y aprueba la importación.',
+      file: 'Archivo MCPX',
+      invalidSize: 'Selecciona un archivo MCPX no vacío de hasta 10 MB.',
+      readFailed: 'No se pudo leer el archivo MCPX seleccionado.',
+      inspect: 'Previsualizar importación',
+      inspectFailed: 'No se pudo inspeccionar el paquete MCP.',
+      import: 'Importar MCP',
+      importFailed: 'No se pudo importar el paquete MCP.',
+      imported: '{{name}} fue importado.',
+      mode: {
+        create: 'Crea un MCP nuevo',
+        overwrite: 'Reemplaza el MCP existente',
+      },
+      functionCount_one: '{{count}} función',
+      functionCount_other: '{{count}} funciones',
+      revisionCount_one: '{{count}} revisión',
+      revisionCount_other: '{{count}} revisiones',
+      executionHistory: 'Registros de ejecución eliminados',
+      apiKeys: 'Alcances directos de claves de API afectados',
+      removedFunctions: 'Funciones eliminadas por este reemplazo: {{names}}',
+      confirmOverwrite:
+        'Entiendo que importar {{name}} reemplaza sus funciones, revisiones y el historial de ejecuciones.',
+      blockers: {
+        active_executions:
+          'Espera a que terminen las ejecuciones en cola o en curso: {{names}}',
+        duplicate_target_names:
+          'Varias funciones del paquete producen el mismo nombre: {{names}}',
+        shared_functions:
+          'Estas funciones también pertenecen a otro MCP y no pueden reemplazarse de forma segura: {{names}}',
+        target_name_conflicts:
+          'Estos nombres importados ya pertenecen a funciones fuera de este MCP: {{names}}',
+        target_names_too_long:
+          'Estos nombres con prefijo no son válidos o superan los 512 caracteres: {{names}}',
+      },
+    },
     new: 'Nuevo MCP',
     directory: 'Directorio de MCPs',
     count_one: '{{count}} MCP',
@@ -4892,10 +5425,10 @@ const es: typeof en = {
     credentials: {
       apiKey: 'Campos de la clave de API',
       oauth: 'Credenciales OAuth',
-      preserved:
-        'Las credenciales actuales se mantienen si no se reemplazan abajo.',
+      preserved: 'Las credenciales están guardadas de forma segura y activas.',
       required: 'Agrega al menos un campo de credencial.',
-      leaveBlank: 'Déjalo en blanco para mantener las credenciales actuales.',
+      edit: 'Editar',
+      cancelEdit: 'Cancelar cambios de credenciales',
       add: 'Agregar campo',
       remove: 'Eliminar campo de credencial',
       location: 'Ubicación de la credencial',
@@ -4917,11 +5450,20 @@ const es: typeof en = {
       title: 'Herramientas del conector',
       description:
         'Define las operaciones que el agente puede ejecutar mediante el conector.',
+      mcpDescription:
+        'Las herramientas se descubren desde el servidor MCP y se administran mediante su catálogo actual.',
       add: 'Agregar herramienta',
+      refresh: 'Actualizar herramientas',
+      refreshed:
+        'Se solicitó correctamente la actualización de herramientas MCP.',
+      refreshFailed:
+        'No se pudieron actualizar las herramientas desde el servidor MCP.',
       update: 'Actualizar herramienta',
       edit: 'Editar herramienta',
       delete: 'Eliminar {{name}}',
       empty: 'Todavía no se agregaron herramientas al conector.',
+      mcpEmpty:
+        'Todavía no se descubrieron herramientas desde este servidor MCP.',
       loadFailed: 'No se pudieron cargar las herramientas del conector.',
       saveFailed: 'No se pudo guardar la herramienta del conector.',
       deleteFailed: 'No se pudo eliminar la herramienta del conector.',
@@ -5027,6 +5569,20 @@ const es: typeof en = {
     channelNotFound: 'Canal no encontrado.',
     loadFailed: 'No se pudo cargar el agente.',
     businessId: 'ID del negocio',
+    registration: {
+      title: 'Registro del número',
+      registeredDescription:
+        'Este número de teléfono está registrado en la API de WhatsApp Cloud. La gestión del agente está disponible.',
+      unregisteredDescription:
+        'Registra este número de teléfono antes de configurar o habilitar su agente. Toda la gestión permanecerá deshabilitada hasta completar el registro.',
+      errorDescription:
+        'No se pudo verificar el registro. La gestión del agente permanecerá deshabilitada hasta confirmar que el número está registrado.',
+      register: 'Registrar número',
+      manage: 'Gestionar registro',
+      retry: 'Comprobar de nuevo',
+      managersOnly:
+        'Un propietario o administrador de la organización debe registrar este número.',
+    },
     enableTitle: 'Habilitar Meta Business Agent',
     enableDescription:
       'Comprueba la elegibilidad de este número de WhatsApp y luego regístralo para crear su configuración de Meta Business Agent.',
@@ -5048,9 +5604,44 @@ const es: typeof en = {
       knowledgeBase: 'Base de conocimiento',
       connectors: 'Conectores',
       evals: 'Evaluaciones',
+      backups: 'Copias de seguridad',
       export: 'Exportar',
       import: 'Importar',
       pending: 'La configuración de esta sección se agregará a continuación.',
+    },
+    backups: {
+      title: 'Copias de seguridad del agente',
+      description:
+        'Crea y consulta instantáneas AGTX duraderas de la configuración de este agente.',
+      action: 'Crear copia',
+      loading: 'Cargando copias de seguridad…',
+      loadFailed: 'No se pudieron cargar las copias de seguridad del agente.',
+      createFailed: 'No se pudo crear la copia de seguridad del agente.',
+      restore: 'Restaurar',
+      restoreLabel: 'Restaurar {{fileName}}',
+      restoreFailed:
+        'No se pudo cargar la copia de seguridad del agente para restaurarla.',
+      restoreReady:
+        'La copia está lista en Importar. Revísala y proporciona las credenciales o archivos necesarios antes de restaurarla.',
+      emptyTitle: 'Todavía no hay copias de seguridad',
+      emptyDescription:
+        'Crea una copia para conservar la configuración actual del agente y los archivos de conocimiento archivados localmente.',
+      confirmTitle: '¿Crear una copia de seguridad del agente?',
+      confirmDescription:
+        'Esto exporta la configuración actual del agente y almacena el paquete AGTX de este canal.',
+      confirm: 'Crear copia',
+      cancel: 'Cancelar',
+      close: 'Cerrar',
+      progressTitle: 'Progreso de la copia',
+      progressDescription:
+        'La configuración actual del agente se está exportando y almacenando.',
+      complete: 'La copia de seguridad del agente se creó correctamente.',
+      columns: {
+        createdAt: 'Creada',
+        fileName: 'Archivo',
+        size: 'Tamaño',
+        actions: 'Acciones',
+      },
     },
     exportPanel: {
       title: 'Exportar configuración del agente',
@@ -5120,6 +5711,9 @@ const es: typeof en = {
       certificateRequired:
         'Proporciona el certificado y la clave privada requeridos.',
       filesRequired: 'Proporciona todos los archivos de conocimiento ausentes.',
+      createBackup: 'Crear una copia de seguridad antes de importar',
+      createBackupDescription:
+        'Guarda el agente actual como copia AGTX antes de aplicar cambios importados.',
       missingFilesTitle: 'Archivos requeridos',
       missingFilesDescription:
         'Meta hacía referencia a estos archivos, pero no estaban incluidos en el paquete.',
@@ -5178,6 +5772,7 @@ const es: typeof en = {
         connectors: 'Conectores',
       },
       steps: {
+        backup: 'Creando copia del agente actual',
         settings: 'Importando configuración del agente',
         businessData: 'Conciliando datos comerciales y lista de permitidos',
         skills: 'Conciliando habilidades',
@@ -5422,14 +6017,14 @@ const es: typeof en = {
     channelUpdated: 'Canal actualizado.',
     channelDeleted: 'Canal eliminado.',
     noChannelSelected: 'Ningún canal seleccionado.',
-    setWebhookTitle: '¿Configurar este webhook para la WABA?',
+    setWebhookTitle: '¿Registrar este webhook en Meta?',
     setWebhookDescription:
-      'Esto reemplaza la URL de retorno de toda la cuenta de WhatsApp Business, no solo de este número de teléfono.',
+      'Esto registra el callback y los campos compatibles a nivel de aplicación y luego suscribe la aplicación a esta cuenta de WhatsApp Business.',
     setWebhookWarning:
-      'Todos los eventos de webhook de la WABA {{wabaId}} se dirigirán a esta aplicación. Otras integraciones que usan la URL actual pueden dejar de recibir eventos.',
+      'El callback pertenece a la aplicación de Meta {{appId}} y se aplica a sus suscripciones de webhook de WhatsApp. Registrar otro callback para la misma aplicación puede reemplazar este.',
     newWebhookUrl: 'Nueva URL del webhook',
-    setWebhook: 'Configurar webhook',
-    webhookSet: 'Webhook configurado: {{url}}',
+    setWebhook: 'Registrar webhook',
+    webhookSet: 'Webhook registrado y aplicación suscrita: {{url}}',
     deleteTitle: '¿Eliminar canal?',
     deleteDescription:
       'Esto elimina permanentemente {{channel}} y todos sus datos locales.',
@@ -5463,7 +6058,8 @@ const es: typeof en = {
     webhookUrl: 'URL del webhook',
     webhookVerifyToken: 'Token de verificación del webhook',
     managersOnly: 'Restringido a gestores de la organización',
-    applyWebhookHint: 'Aplica esta URL y el token de verificación a la WABA.',
+    applyWebhookHint:
+      'Registra esta URL y todos los campos compatibles y luego suscribe la aplicación a la WABA.',
     credentials: 'Credenciales',
     appSecret: 'Secreto de la aplicación',
     verifyToken: 'Token de verificación',
@@ -5501,6 +6097,46 @@ const es: typeof en = {
     verifyTokenHint: 'Copia este valor en la configuración de webhook de Meta.',
     systemUserAccessToken: 'Token de acceso del usuario del sistema',
     accessTokenHint: 'Se usa para llamadas a la Cloud API.',
+    registration: {
+      title: 'Registro en la Cloud API',
+      status: {
+        loading: 'Comprobando el registro…',
+        registered: 'Número de teléfono registrado',
+        unregistered: 'Número de teléfono no registrado',
+        error: 'No se pudo comprobar el registro',
+      },
+      register: 'Registrar número',
+      deregister: 'Dar de baja el número',
+      manage: 'Abrir la configuración de registro del canal',
+      registerTitle: 'Registrar número de teléfono',
+      registerDescription:
+        'Registra {{phone}} en la API de WhatsApp Cloud con su PIN de verificación en dos pasos.',
+      deregisterTitle: 'Dar de baja el número de teléfono',
+      deregisterDescription:
+        'Elimina el registro de {{phone}} de la API de WhatsApp Cloud.',
+      deregisterWarning:
+        'El número ya no podrá enviar ni recibir mensajes mediante la Cloud API hasta que se registre nuevamente.',
+      pin: 'PIN de verificación en dos pasos',
+      pinError: 'Ingresa exactamente seis dígitos.',
+      failed: 'No se pudo actualizar el registro del número de teléfono.',
+      registeredNotice: 'El número de teléfono fue registrado.',
+      deregisteredNotice: 'El número de teléfono fue dado de baja.',
+      verifiedName: 'Nombre verificado',
+    },
+    qr: {
+      title: 'Código QR de WhatsApp',
+      alt: 'Código QR de WhatsApp para {{phone}}',
+      loading: 'Cargando código QR…',
+      empty: 'No hay ningún código QR configurado',
+      error: 'No se pudo cargar el código QR',
+      openNamed: 'Mostrar el código QR de {{channel}}',
+      dialogTitle: 'Código QR de WhatsApp',
+      dialogDescription:
+        'Escanea este código para iniciar una conversación de WhatsApp con {{phone}}.',
+      formDescription:
+        'El primer código QR de mensaje configurado actualmente para este número de teléfono.',
+      close: 'Cerrar',
+    },
     saveChanges: 'Guardar cambios',
     requestFailed: 'La solicitud falló',
     operationFailed: 'La operación falló.',

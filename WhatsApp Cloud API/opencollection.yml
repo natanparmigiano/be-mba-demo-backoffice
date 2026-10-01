@@ -20,13 +20,13 @@ request:
     token: "{{User-Access-Token}}"
   variables:
     - name: User-Access-Token
-      value: EAAAqYoMEA4EBSjqgmiKYrlj2oyVZBGCRZAPyWgiNZCrKxtZAArhVhgOlFckfHFVo1UnccxYlJIdlZBuPMffS3XZC9Ygo7uiGmPBo13y5DHbQuZB0N2VEHwaWxznSOUs9C6jsJPG1dsON9PntShZBklAKggY47yLH6gJqfp7aIB0Gh1Lv83yMZB63fRikTlLtuq81BaGY452kfojcjFsM1F2Pts2KEE3TI
+      value: EAAAXAzgbbfYBSmsWbcHtjcFivfo2sbavbh2OAyYzZBWZCCjcPzA4OWz7nArEz6t7R0v86pnneZA7V6dLNiU1NZAkfFvCTR4yNo8rKBtJ6y7egpxeIFp8QMVC285EnX1jrxWr9VmHwBrEDXGc2Gpj00bHaZCFPXZAqaqLdODrxhoUi9EUNp1NndPo0ZB3udYmlygyArmCt6GjcrRZAyQPeG95ZA6vtANW5
     - name: Version
       value: v26.0
     - name: WABA-ID
       value: "40902594742319"
     - name: Phone-Number-ID
-      value: "14102802820274"
+      value: "38902596294742"
     - name: Recipient-Phone-Number
       value: " +5511932761156"
     - name: Pin

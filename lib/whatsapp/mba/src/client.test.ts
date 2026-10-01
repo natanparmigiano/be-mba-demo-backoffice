@@ -5,7 +5,7 @@ import {
   WhatsAppMbaApiError,
   WhatsAppMbaResponseError,
 } from './index.js'
-import type { Fetch } from './index.js'
+import type { ConnectorToolInput, Fetch } from './index.js'
 
 interface RecordedRequest {
   input: string | URL | Request
@@ -286,6 +286,101 @@ describe('WhatsAppMbaClient', () => {
       input: '{"order_id":"123"}',
     })
     assertCommonHeaders(requests)
+  })
+
+  it('encodes nested connector body nodes for Meta and decodes the response', async () => {
+    const itemNode = {
+      type: 'object',
+      description: 'A quote line',
+      required: ['sku', 'quantity'],
+      properties: {
+        sku: JSON.stringify({ type: 'string', description: 'Catalog SKU' }),
+        quantity: JSON.stringify({
+          type: 'integer',
+          description: 'Requested quantity',
+        }),
+      },
+    }
+    const wireTool = {
+      id: 'quote-tool-id',
+      name: 'create_quote',
+      description: 'Creates a quote',
+      request_definition: {
+        method: 'POST',
+        path: '/quotes',
+        body: {
+          content_type: 'application/json',
+          params: {
+            items: {
+              type: 'array',
+              description: 'Requested items',
+              items: JSON.stringify(itemNode),
+            },
+          },
+          required: ['items'],
+        },
+      },
+      user_auth_required: false,
+    }
+    const input: ConnectorToolInput = {
+      name: wireTool.name,
+      description: wireTool.description,
+      request_definition: {
+        method: 'POST',
+        path: '/quotes',
+        body: {
+          content_type: 'application/json',
+          params: {
+            items: {
+              type: 'array',
+              description: 'Requested items',
+              items: {
+                type: 'object',
+                description: 'A quote line',
+                required: ['sku', 'quantity'],
+                properties: {
+                  sku: { type: 'string', description: 'Catalog SKU' },
+                  quantity: {
+                    type: 'integer',
+                    description: 'Requested quantity',
+                  },
+                },
+              },
+            },
+          },
+          required: ['items'],
+        },
+      },
+      user_auth_required: false,
+    }
+    const { client, requests } = clientWith([response(wireTool, 201)])
+
+    const created = await client.createConnectorTool('connector-id', input)
+
+    const sent = requestJson(requests[0]) as {
+      request_definition: {
+        body: { params: { items: { items: string } } }
+      }
+    }
+    const sentItemNode = JSON.parse(
+      sent.request_definition.body.params.items.items,
+    ) as { properties: Record<string, string> }
+    assert.deepEqual(sentItemNode, itemNode)
+    assert.equal(typeof sentItemNode.properties.sku, 'string')
+    const createdItems = created.request_definition.body?.params.items
+    assert.ok(createdItems)
+    assert.deepEqual(createdItems.items, {
+      type: 'object',
+      description: 'A quote line',
+      required: ['sku', 'quantity'],
+      properties: {
+        sku: { type: 'string', description: 'Catalog SKU' },
+        quantity: {
+          type: 'integer',
+          description: 'Requested quantity',
+        },
+      },
+    })
   })
 
   it('covers instructions, UI skills, and every knowledge endpoint', async () => {

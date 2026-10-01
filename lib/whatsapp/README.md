@@ -12,12 +12,13 @@ directly.
 | ------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------- |
 | [`@mba-demo/wa-waba`](waba/README.md)                   | Discover and read WhatsApp Business Accounts                     | Business or WABA ID per call             |
 | [`@mba-demo/wa-registration`](registration/README.md)   | Verify, register, and deregister a business phone number         | Phone number ID                          |
-| [`@mba-demo/wa-subscriptions`](subscriptions/README.md) | Manage an app's webhook subscription and callback override       | WABA ID                                  |
+| [`@mba-demo/wa-subscriptions`](subscriptions/README.md) | Register app webhooks and manage WABA app subscriptions          | App credentials and WABA ID              |
 | [`@mba-demo/wa-templates`](templates/README.md)         | Create and manage message templates and template groups          | WABA ID                                  |
 | [`@mba-demo/wa-flows`](flows/README.md)                 | Manage Flows, assets, previews, metrics, and endpoint encryption | WABA ID; phone number ID for encryption  |
 | [`@mba-demo/wa-media`](media/README.md)                 | Upload, retrieve, download, and delete media                     | Phone number ID                          |
 | [`@mba-demo/wa-messaging`](messaging/README.md)         | Send messages and update read/typing state                       | Phone number ID                          |
 | [`@mba-demo/wa-moderation`](moderation/README.md)       | List, block, and unblock WhatsApp users                          | Phone number ID                          |
+| [`@mba-demo/wa-qr`](qr/README.md)                       | Create and manage message QR codes and generated images          | Phone number ID                          |
 | [`@mba-demo/wa-analytics`](analytics/README.md)         | Query messaging, pricing, template, call, and group analytics    | WABA ID                                  |
 | [`@mba-demo/wa-webhooks`](webhooks/README.md)           | Validate and type inbound webhook payloads                       | No client                                |
 | [`@mba-demo/wa-mba`](mba/README.md)                     | Configure and operate the Meta Business Agent platform           | Phone number ID; Business ID for budgets |
@@ -101,7 +102,9 @@ registering again. Two-step verification cannot be disabled through the API.
 
 ## Webhook subscriptions
 
-Create `@mba-demo/wa-subscriptions` with `accessToken` and `wabaId`. A WABA
+Use `createWhatsAppWebhookRegistrationClient` with the app ID and secret to
+register the callback and parsed event fields. Then create
+`@mba-demo/wa-subscriptions` with `accessToken` and `wabaId`; a WABA
 subscription covers every phone number attached to that WABA.
 
 | Method                              | Operation                                                       |
@@ -240,6 +243,23 @@ successful HTTP response. A user is eligible for blocking only after messaging
 the business in the preceding 24 hours. The blocklist supports up to 64,000
 users.
 
+## Message QR codes
+
+Create `@mba-demo/wa-qr` with `accessToken` and `phoneNumberId`.
+
+| Method                                | Operation                                                                              |
+| ------------------------------------- | -------------------------------------------------------------------------------------- |
+| `create(input, options?)`             | Create a QR code with a prefilled message and optionally generate an SVG or PNG image. |
+| `get(code, options?)`                 | Retrieve one message QR code by code.                                                  |
+| `getImageUrl(code, format, options?)` | Retrieve a provider-managed SVG or PNG image URL.                                      |
+| `list(options?)`                      | List QR codes with field selection, image format, and cursor pagination.               |
+| `update(code, input, options?)`       | Replace the QR code's prefilled message.                                               |
+| `delete(code, options?)`              | Permanently delete the QR code.                                                        |
+
+Image URLs point to Meta's CDN and should not be treated as durable application
+storage. `list()` automatically selects `code` whenever custom fields or an
+image format are requested.
+
 ## Analytics
 
 Create `@mba-demo/wa-analytics` with `accessToken` and `wabaId`.
@@ -365,9 +385,10 @@ especially for asynchronous evaluation/event jobs and rate-limited resources.
 2. Verify and register its phone number with `wa-registration`.
 3. Subscribe the app and configure callbacks with `wa-subscriptions`.
 4. Create templates and Flows with `wa-templates` and `wa-flows`.
-5. Upload reusable media with `wa-media` and send through `wa-messaging`.
-6. Authenticate and parse callbacks with `wa-webhooks`.
-7. Use `wa-moderation`, `wa-analytics`, and `wa-mba` as required by the product.
+5. Create click-to-chat QR codes with `wa-qr` when needed.
+6. Upload reusable media with `wa-media` and send through `wa-messaging`.
+7. Authenticate and parse callbacks with `wa-webhooks`.
+8. Use `wa-moderation`, `wa-analytics`, and `wa-mba` as required by the product.
 
 ## Verification
 

@@ -405,7 +405,14 @@ $defs:
       - connectionError
       - userAuthInjectionConfig
       - mcpToolSync
-      - tools
+    allOf:
+      - if:
+          properties:
+            connectorProtocol:
+              const: HTTP
+        then:
+          required:
+            - tools
     properties:
       id:
         type: string
@@ -453,6 +460,7 @@ $defs:
       tools:
         type: array
         maxItems: 500
+        description: 'Explicit HTTP connector tools. Omitted and ignored for MCP connectors, whose tools are refreshed from the server.'
         items:
           $ref: '#/$defs/connectorTool'
   userAuthInjectionConfig:

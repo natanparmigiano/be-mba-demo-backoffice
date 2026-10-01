@@ -52,6 +52,10 @@ exact revision, API key, validated input, `queued`/`running` state, terminal
 status, JSON result or bounded error, duration, and timestamps. Workers claim a
 row by atomically moving it from `queued` to `running`.
 Archiving retains all revisions and logs.
+Permanent function deletion is explicit: active executions block it, while
+terminal logs and MCP membership are removed before the function deletion
+cascades to revisions and revision parameters. Direct function IDs are also
+removed from organization API-key allowlists in the same transaction.
 
 When adding a schema file, export it from `src/schema/index.ts`. Drizzle Kit reads `src/schema/*.ts`, while runtime consumers receive the registry through `@mba-demo/db/schema`.
 
@@ -68,6 +72,11 @@ Auth configuration or plugin changes.
 file ID to its durable `@mba-demo/files` storage path. Files configured outside
 this application intentionally have no row; agent export treats those entries
 as missing rather than failing the complete export.
+
+`mba.agent_backups` records organization- and channel-scoped AGTX snapshots.
+The archive bytes live in `@mba-demo/files`; PostgreSQL stores the safe file
+name, unique storage path, byte size, and creation time. The composite channel
+and organization foreign key prevents cross-tenant backup associations.
 
 `mba.message_status_events` preserves the append-only delivery-status history while the provider message ID makes message upserts idempotent. `mba.chat_events` stores non-message activity attached to a chat: billing-window observations, Business Agents ownership handovers and agent events, group changes, calls, call statuses, and user preferences. The model supports incoming `messages`, Business Agents `standby`, history, message echoes, and status-first rows.
 

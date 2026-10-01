@@ -1,0 +1,176 @@
+format: "mba-mcp"
+version: 1
+mcp:
+  name: "dunder_mifflin_mcp"
+  description: "Fictional Dunder Mifflin MCP consolidating sales, quoting, delivery, and customer-account operations into one server. Every function is a deterministic mock that returns fixed JSON."
+  functions:
+    -
+      name: "search_paper_catalog"
+      description: "Searches a fictional paper catalog and returns representative products."
+      currentRevision: 1
+      revisions:
+        -
+          revision: 1
+          code: "() => ({ query: 'premium recycled copy paper', count: 2, products: [{ sku: 'DM-COPY-20', name: 'Dunder Mifflin Multipurpose Copy Paper', size: '8.5 x 11 in', weight: '20 lb', brightness: 92, recycledContentPercent: 30, unit: '10-ream case', availability: 'in_stock' }, { sku: 'DM-PREM-24', name: 'Dunder Mifflin Premium Business Paper', size: '8.5 x 11 in', weight: '24 lb', brightness: 96, recycledContentPercent: 10, unit: '5-ream case', availability: 'limited' }] })"
+          parameters:
+            -
+              name: "query"
+              type: "string"
+              required: true
+              description: "Plain-language product, application, or specification query."
+            -
+              name: "size"
+              type: "string"
+              required: false
+              description: "Requested sheet or roll size when known."
+            -
+              name: "weight"
+              type: "string"
+              required: false
+              description: "Requested basis weight, GSM, or thickness when known."
+            -
+              name: "recycled_content"
+              type: "string"
+              required: false
+              description: "Requested recycled-content level or sustainability requirement."
+            -
+              name: "limit"
+              type: "integer"
+              required: false
+              description: "Maximum number of matching products to return."
+          createdAt: "2026-10-01T15:00:00.000Z"
+    -
+      name: "create_paper_quote"
+      description: "Creates a fictional itemized quote with pricing, availability, tax, and freight."
+      currentRevision: 1
+      revisions:
+        -
+          revision: 1
+          code: "() => ({ quoteNumber: 'DMQ-2026-1042', status: 'draft', currency: 'USD', expiresAt: '2026-10-31', lineItems: [{ sku: 'DM-COPY-20', description: 'Multipurpose Copy Paper, 20 lb, 10-ream case', quantity: 12, unitPrice: 54.5, lineTotal: 654 }, { sku: 'DM-PREM-24', description: 'Premium Business Paper, 24 lb, 5-ream case', quantity: 4, unitPrice: 42.75, lineTotal: 171 }], subtotal: 825, estimatedTax: 49.5, estimatedFreight: 36, total: 910.5, availability: 'All quoted items are available for estimated dispatch within two business days.', assumptions: ['Commercial delivery within the Scranton service area', 'Pricing is illustrative and not a binding offer'] })"
+          parameters:
+            -
+              name: "organization_name"
+              type: "string"
+              required: true
+              description: "Customer organization requesting the quote."
+            -
+              name: "contact_name"
+              type: "string"
+              required: true
+              description: "Customer contact name."
+            -
+              name: "account_number"
+              type: "string"
+              required: false
+              description: "Dunder Mifflin account number when available."
+            -
+              name: "delivery_postal_code"
+              type: "string"
+              required: true
+              description: "Postal code used for availability, tax, and freight estimates."
+            -
+              name: "desired_delivery_date"
+              type: "string"
+              required: false
+              description: "Customer-requested delivery date in YYYY-MM-DD format."
+            -
+              name: "purchase_order_reference"
+              type: "string"
+              required: false
+              description: "Optional customer purchase-order reference."
+            -
+              name: "items"
+              type: "json"
+              required: true
+              description: "Requested catalog items and quantities."
+          createdAt: "2026-10-01T15:01:00.000Z"
+    -
+      name: "check_delivery_status"
+      description: "Returns a fictional current fulfillment and delivery status for one order."
+      currentRevision: 1
+      revisions:
+        -
+          revision: 1
+          code: "() => ({ orderNumber: 'DM-ORD-55081', fulfillmentStatus: 'in_transit', lastEvent: { status: 'departed_distribution_center', location: 'Allentown, PA', occurredAt: '2026-10-01T11:20:00.000Z' }, estimatedDeliveryWindow: { start: '2026-10-02T13:00:00.000Z', end: '2026-10-02T17:00:00.000Z', confirmed: false }, carrier: 'Dunder Mifflin Local Delivery', trackingReference: 'DMLD-884210', shippedQuantities: [{ sku: 'DM-COPY-20', quantity: 12 }], backorderedQuantities: [], exception: null })"
+          parameters:
+            -
+              name: "order_number"
+              type: "string"
+              required: true
+              description: "Customer-visible Dunder Mifflin order number."
+            -
+              name: "delivery_postal_code"
+              type: "string"
+              required: false
+              description: "Delivery postal code used for customer verification when required."
+          createdAt: "2026-10-01T15:02:00.000Z"
+    -
+      name: "create_delivery_issue"
+      description: "Creates a fictional support issue for a shipment exception."
+      currentRevision: 1
+      revisions:
+        -
+          revision: 1
+          code: "() => ({ issueId: 'DM-ISSUE-2048', orderNumber: 'DM-ORD-55081', issueType: 'damaged', status: 'open', priority: 'normal', createdAt: '2026-10-01T15:03:00.000Z', assignedTeam: 'Scranton Delivery Support', nextStep: 'A delivery specialist will review the carton details and contact the customer within one business day.' })"
+          parameters:
+            -
+              name: "order_number"
+              type: "string"
+              required: true
+              description: "Customer-visible order number."
+            -
+              name: "issue_type"
+              type: "string"
+              required: true
+              description: "One of delayed, damaged, shortage, missing, or wrong_location."
+            -
+              name: "affected_items"
+              type: "string"
+              required: false
+              description: "Customer description of affected SKUs, cartons, or quantities."
+            -
+              name: "receiving_notes"
+              type: "string"
+              required: false
+              description: "Relevant dock, office, carrier, packaging, or receiving details."
+            -
+              name: "customer_contact"
+              type: "string"
+              required: true
+              description: "Name or callback reference for the reporting customer."
+          createdAt: "2026-10-01T15:03:00.000Z"
+    -
+      name: "get_customer_account"
+      description: "Returns a fictional customer-safe commercial account summary."
+      currentRevision: 1
+      revisions:
+        -
+          revision: 1
+          code: "() => ({ accountNumber: 'DM-ACCT-1007', organizationName: 'Lackawanna County Office Supply Cooperative', status: 'active', accountRepresentative: { name: 'Jim Halpert', office: 'Scranton' }, paymentTerms: 'Net 30', creditStatus: 'approved', preferredDeliveryDays: ['Tuesday', 'Thursday'], defaultDeliveryAddress: { city: 'Scranton', region: 'PA', postalCode: '18503' }, openOrderCount: 2, pastDueBalance: 0, currency: 'USD' })"
+          parameters:
+            -
+              name: "account_number"
+              type: "string"
+              required: true
+              description: "Customer-provided Dunder Mifflin account number."
+          createdAt: "2026-10-01T15:04:00.000Z"
+    -
+      name: "get_order_for_reorder"
+      description: "Returns fictional reusable line items from a prior order without stale pricing."
+      currentRevision: 1
+      revisions:
+        -
+          revision: 1
+          code: "() => ({ sourceOrderNumber: 'DM-ORD-54119', accountNumber: 'DM-ACCT-1007', orderedAt: '2026-08-14T14:22:00.000Z', reusableItems: [{ sku: 'DM-COPY-20', description: 'Multipurpose Copy Paper, 20 lb, 10-ream case', previousQuantity: 10 }, { sku: 'DM-ENV-10', description: 'No. 10 White Business Envelopes, 500 count', previousQuantity: 6 }], pricingIncluded: false, availabilityIncluded: false, message: 'Use create_paper_quote to obtain current pricing and availability before placing a reorder.' })"
+          parameters:
+            -
+              name: "order_number"
+              type: "string"
+              required: true
+              description: "Customer-visible prior order number."
+            -
+              name: "account_number"
+              type: "string"
+              required: true
+              description: "Account number used to verify access to the prior order."
+          createdAt: "2026-10-01T15:05:00.000Z"

@@ -8,6 +8,7 @@ import {
   Pencil,
   Phone,
   Plus,
+  QrCode,
   RadioTower,
   RefreshCw,
   Trash2,
@@ -22,8 +23,15 @@ import {
   type SubmitEvent,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
+import {
+  emptyChannelQrState,
+  fetchChannelQrState,
+  type ChannelQrState,
+} from '../channel-qr'
+import { ChannelQrCode } from '../components/channel-qr-code'
 import {
   Button,
   cn,
@@ -62,7 +70,22 @@ interface ChannelFormValues {
   webhookForwardUrls: string
 }
 
-type ChannelDialog = 'create' | 'edit' | 'delete' | 'set-webhook' | null
+type ChannelDialog =
+  | 'create'
+  | 'edit'
+  | 'delete'
+  | 'set-webhook'
+  | 'qr-code'
+  | 'register-number'
+  | 'deregister-number'
+  | null
+type RegistrationStatus = 'loading' | 'registered' | 'unregistered' | 'error'
+interface RegistrationState {
+  status: RegistrationStatus
+  providerStatus: string | null
+  displayPhoneNumber: string | null
+  verifiedName: string | null
+}
 type ChannelDeletionPreview = InferResponseType<
   (typeof apiClient.api.channels)[':id']['deletion-impact']['$get'],
   200
@@ -82,6 +105,7 @@ const emptyForm: ChannelFormValues = {
 
 export function ChannelsPage() {
   const { t } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const activeOrganizationQuery = authClient.useActiveOrganization()
   const activeMemberRoleQuery = authClient.useActiveMemberRole()
   const activeOrganization = activeOrganizationQuery.data
@@ -91,6 +115,10 @@ export function ChannelsPage() {
     .some((role) => role === 'owner' || role === 'admin')
 
   const [channels, setChannels] = useState<ChannelSummary[]>([])
+  const [registrationStates, setRegistrationStates] = useState<
+    Record<number, RegistrationState>
+  >({})
+  const [qrStates, setQrStates] = useState<Record<number, ChannelQrState>>({})
   const [dialog, setDialog] = useState<ChannelDialog>(null)
   const [selectedChannel, setSelectedChannel] = useState<ChannelSummary | null>(
     null,
@@ -98,6 +126,8 @@ export function ChannelsPage() {
   const [form, setForm] = useState<ChannelFormValues>(emptyForm)
   const [isLoading, setIsLoading] = useState(true)
   const [isBusy, setIsBusy] = useState(false)
+  const [isRegistrationBusy, setIsRegistrationBusy] = useState(false)
+  const [registrationPin, setRegistrationPin] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [dialogError, setDialogError] = useState<string | null>(null)
@@ -107,6 +137,7 @@ export function ChannelsPage() {
   const [isLoadingDeletionPreview, setIsLoadingDeletionPreview] =
     useState(false)
   const deletionPreviewRequestId = useRef(0)
+  const openedEditChannelId = useRef<number | null>(null)
 
   useEffect(() => {
     document.title = `${t('channels.title')} · ${t('design.brand')}`
@@ -118,6 +149,8 @@ export function ChannelsPage() {
   const refreshChannels = useCallback(async () => {
     if (!activeOrganization?.id) {
       setChannels([])
+      setRegistrationStates({})
+      setQrStates({})
       setIsLoading(false)
       return
     }
@@ -132,6 +165,38 @@ export function ChannelsPage() {
         )
       const data = await response.json()
       setChannels(data.channels)
+      setRegistrationStates(
+        Object.fromEntries(
+          data.channels.map((channel) => [
+            channel.id,
+            emptyRegistrationState('loading'),
+          ]),
+        ),
+      )
+      setQrStates(
+        Object.fromEntries(
+          data.channels.map((channel) => [
+            channel.id,
+            emptyChannelQrState('loading'),
+          ]),
+        ),
+      )
+      await Promise.all(
+        data.channels.map(async (channel) => {
+          const [state, qrState] = await Promise.all([
+            fetchRegistrationState(channel.id),
+            fetchChannelQrState(channel.id),
+          ])
+          setRegistrationStates((current) => ({
+            ...current,
+            [channel.id]: state,
+          }))
+          setQrStates((current) => ({
+            ...current,
+            [channel.id]: qrState,
+          }))
+        }),
+      )
     } catch (reason) {
       setError(getErrorMessage(reason, t('channels.operationFailed')))
     } finally {
@@ -144,14 +209,21 @@ export function ChannelsPage() {
   }, [refreshChannels])
 
   const closeDialog = () => {
-    if (isBusy) return
+    if (isBusy || isRegistrationBusy) return
     deletionPreviewRequestId.current += 1
     setDialog(null)
     setSelectedChannel(null)
     setDialogError(null)
     setDeletionPreview(null)
     setDeleteConfirmation('')
+    setRegistrationPin('')
     setIsLoadingDeletionPreview(false)
+    if (searchParams.has('edit')) {
+      const nextSearchParams = new URLSearchParams(searchParams)
+      nextSearchParams.delete('edit')
+      setSearchParams(nextSearchParams, { replace: true })
+      openedEditChannelId.current = null
+    }
   }
 
   const openCreateDialog = () => {
@@ -161,7 +233,7 @@ export function ChannelsPage() {
     setDialog('create')
   }
 
-  const openEditDialog = (channel: ChannelSummary) => {
+  const openEditDialog = useCallback((channel: ChannelSummary) => {
     setSelectedChannel(channel)
     setForm({
       waPhoneNumber: channel.waPhoneNumber,
@@ -175,8 +247,25 @@ export function ChannelsPage() {
       webhookForwardUrls: channel.webhookForwardUrls.join('\n'),
     })
     setDialogError(null)
+    setRegistrationPin('')
     setDialog('edit')
-  }
+  }, [])
+
+  useEffect(() => {
+    const requestedChannelId = parsePositiveInteger(searchParams.get('edit'))
+    if (
+      !requestedChannelId ||
+      openedEditChannelId.current === requestedChannelId
+    ) {
+      return
+    }
+    const requestedChannel = channels.find(
+      (channel) => channel.id === requestedChannelId,
+    )
+    if (!requestedChannel) return
+    openedEditChannelId.current = requestedChannelId
+    openEditDialog(requestedChannel)
+  }, [channels, openEditDialog, searchParams])
 
   const openDeleteDialog = async (channel: ChannelSummary) => {
     const requestId = ++deletionPreviewRequestId.current
@@ -330,6 +419,65 @@ export function ChannelsPage() {
     }
   }
 
+  const openRegistrationDialog = (
+    channel: ChannelSummary,
+    status: RegistrationStatus,
+  ) => {
+    if (status !== 'registered' && status !== 'unregistered') return
+    setSelectedChannel(channel)
+    setRegistrationPin('')
+    setDialogError(null)
+    setDialog(status === 'registered' ? 'deregister-number' : 'register-number')
+  }
+
+  const updateRegistration = async (
+    action: 'register' | 'deregister',
+    closeAfter: boolean,
+  ) => {
+    if (!selectedChannel) return
+    if (action === 'register' && !/^\d{6}$/.test(registrationPin)) return
+    setIsRegistrationBusy(true)
+    setDialogError(null)
+    setNotice(null)
+    try {
+      const response =
+        action === 'register'
+          ? await apiClient.api.channels[':id'].registration.register.$post({
+              param: { id: String(selectedChannel.id) },
+              json: { pin: registrationPin },
+            })
+          : await apiClient.api.channels[':id'].registration.deregister.$post({
+              param: { id: String(selectedChannel.id) },
+            })
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, t('channels.registration.failed')),
+        )
+      }
+      const state = await fetchRegistrationState(selectedChannel.id)
+      setRegistrationStates((current) => ({
+        ...current,
+        [selectedChannel.id]: state,
+      }))
+      setRegistrationPin('')
+      setNotice(
+        t(
+          action === 'register'
+            ? 'channels.registration.registeredNotice'
+            : 'channels.registration.deregisteredNotice',
+        ),
+      )
+      if (closeAfter) {
+        setDialog(null)
+        setSelectedChannel(null)
+      }
+    } catch (reason) {
+      setDialogError(getErrorMessage(reason, t('channels.registration.failed')))
+    } finally {
+      setIsRegistrationBusy(false)
+    }
+  }
+
   return (
     <div className="grid gap-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -426,6 +574,10 @@ export function ChannelsPage() {
                 key={channel.id}
                 channel={channel}
                 canManage={canManage}
+                registrationState={
+                  registrationStates[channel.id] ??
+                  emptyRegistrationState('loading')
+                }
                 onError={setError}
                 onEdit={() => openEditDialog(channel)}
                 onSetWebhook={() => {
@@ -434,6 +586,16 @@ export function ChannelsPage() {
                   setDialog('set-webhook')
                 }}
                 onDelete={() => void openDeleteDialog(channel)}
+                onShowQrCode={() => {
+                  setSelectedChannel(channel)
+                  setDialog('qr-code')
+                }}
+                onRegistrationAction={() =>
+                  openRegistrationDialog(
+                    channel,
+                    registrationStates[channel.id]?.status ?? 'loading',
+                  )
+                }
               />
             ))}
           </div>
@@ -447,6 +609,12 @@ export function ChannelsPage() {
         setForm={setForm}
         isBusy={isBusy}
         error={dialogError}
+        canManage={canManage}
+        registrationPin={registrationPin}
+        registrationState={emptyRegistrationState('loading')}
+        qrState={emptyChannelQrState('loading')}
+        isRegistrationBusy={isRegistrationBusy}
+        setRegistrationPin={setRegistrationPin}
         onClose={closeDialog}
         onSubmit={(event) => void saveChannel(event)}
       />
@@ -457,21 +625,147 @@ export function ChannelsPage() {
         setForm={setForm}
         isBusy={isBusy}
         error={dialogError}
+        canManage={canManage}
+        registrationPin={registrationPin}
+        registrationState={
+          selectedChannel
+            ? (registrationStates[selectedChannel.id] ??
+              emptyRegistrationState('loading'))
+            : emptyRegistrationState('loading')
+        }
+        qrState={
+          selectedChannel
+            ? (qrStates[selectedChannel.id] ?? emptyChannelQrState('loading'))
+            : emptyChannelQrState('loading')
+        }
+        isRegistrationBusy={isRegistrationBusy}
+        setRegistrationPin={setRegistrationPin}
         onClose={closeDialog}
+        onRegister={() => void updateRegistration('register', false)}
+        onDeregister={() => void updateRegistration('deregister', false)}
         onSubmit={(event) => void saveChannel(event)}
       />
+
+      <Dialog
+        open={dialog === 'qr-code'}
+        onOpenChange={(open) => !open && closeDialog()}
+        title={t('channels.qr.dialogTitle')}
+        description={t('channels.qr.dialogDescription', {
+          phone: selectedChannel?.waPhoneNumber,
+        })}
+        icon={<DialogIcon icon={<QrCode className="size-5" />} />}
+      >
+        <div className="grid w-full gap-4">
+          <ChannelQrCode
+            className="border-0 bg-transparent p-0"
+            phoneNumber={selectedChannel?.waPhoneNumber ?? ''}
+            size="large"
+            state={
+              selectedChannel
+                ? (qrStates[selectedChannel.id] ??
+                  emptyChannelQrState('loading'))
+                : emptyChannelQrState('loading')
+            }
+          />
+          <div className="flex justify-end">
+            <Button variant="ghost" onClick={closeDialog}>
+              {t('channels.qr.close')}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={dialog === 'register-number'}
+        onOpenChange={(open) => !open && closeDialog()}
+        title={t('channels.registration.registerTitle')}
+        description={t('channels.registration.registerDescription', {
+          phone: selectedChannel?.waPhoneNumber,
+        })}
+        icon={<DialogIcon icon={<Phone className="size-5" />} />}
+      >
+        <div className="grid w-full gap-4">
+          <Input
+            autoComplete="off"
+            autoFocus
+            disabled={isRegistrationBusy}
+            error={
+              registrationPin && !/^\d{6}$/.test(registrationPin)
+                ? t('channels.registration.pinError')
+                : undefined
+            }
+            inputMode="numeric"
+            label={t('channels.registration.pin')}
+            maxLength={6}
+            value={registrationPin}
+            onChange={(event) =>
+              setRegistrationPin(event.target.value.replace(/\D/g, ''))
+            }
+          />
+          <DialogError message={dialogError} />
+          <div className="flex justify-end gap-2">
+            <Button
+              disabled={isRegistrationBusy}
+              variant="ghost"
+              onClick={closeDialog}
+            >
+              {t('channels.cancel')}
+            </Button>
+            <Button
+              disabled={!/^\d{6}$/.test(registrationPin)}
+              isLoading={isRegistrationBusy}
+              onClick={() => void updateRegistration('register', true)}
+            >
+              {t('channels.registration.register')}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={dialog === 'deregister-number'}
+        onOpenChange={(open) => !open && closeDialog()}
+        title={t('channels.registration.deregisterTitle')}
+        description={t('channels.registration.deregisterDescription', {
+          phone: selectedChannel?.waPhoneNumber,
+        })}
+        icon={<DialogIcon icon={<AlertTriangle className="size-5" />} danger />}
+      >
+        <div className="grid w-full gap-4">
+          <p className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm leading-6 text-destructive">
+            {t('channels.registration.deregisterWarning')}
+          </p>
+          <DialogError message={dialogError} />
+          <div className="flex justify-end gap-2">
+            <Button
+              disabled={isRegistrationBusy}
+              variant="ghost"
+              onClick={closeDialog}
+            >
+              {t('channels.cancel')}
+            </Button>
+            <Button
+              isLoading={isRegistrationBusy}
+              variant="danger"
+              onClick={() => void updateRegistration('deregister', true)}
+            >
+              {t('channels.registration.deregister')}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
 
       <Dialog
         open={dialog === 'set-webhook'}
         onOpenChange={(open) => !open && closeDialog()}
         title={t('channels.setWebhookTitle')}
         description={t('channels.setWebhookDescription')}
-        icon={<DialogIcon icon={<AlertTriangle className="size-5" />} danger />}
+        icon={<DialogIcon icon={<Webhook className="size-5" />} />}
       >
         <div className="grid w-full gap-4">
           <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm leading-6 text-warning-foreground">
             {t('channels.setWebhookWarning', {
-              wabaId: selectedChannel?.waWabaId,
+              appId: selectedChannel?.waAppId,
             })}
           </div>
           <div className="rounded-lg border bg-muted/30 p-3">
@@ -489,11 +783,7 @@ export function ChannelsPage() {
             <Button variant="ghost" disabled={isBusy} onClick={closeDialog}>
               {t('channels.cancel')}
             </Button>
-            <Button
-              variant="danger"
-              isLoading={isBusy}
-              onClick={() => void setChannelWebhook()}
-            >
+            <Button isLoading={isBusy} onClick={() => void setChannelWebhook()}>
               {t('channels.setWebhook')}
             </Button>
           </div>
@@ -592,17 +882,23 @@ function DeletionImpact({ label, value }: { label: string; value: number }) {
 function ChannelCard({
   channel,
   canManage,
+  registrationState,
   onError,
   onEdit,
   onSetWebhook,
   onDelete,
+  onShowQrCode,
+  onRegistrationAction,
 }: {
   channel: ChannelSummary
   canManage: boolean
+  registrationState: RegistrationState
   onError: (message: string) => void
   onEdit: () => void
   onSetWebhook: () => void
   onDelete: () => void
+  onShowQrCode: () => void
+  onRegistrationAction: () => void
 }) {
   const { t, i18n } = useTranslation()
   const webhookUrl = `${window.location.origin}/api/wa-cloud/webhook/${channel.id}`
@@ -684,32 +980,45 @@ function ChannelCard({
             </div>
           </div>
         </div>
-        {canManage && (
-          <div className="flex gap-1">
-            <Button
-              className="size-8"
-              variant="ghost"
-              size="icon"
-              onClick={onEdit}
-              aria-label={t('channels.editNamed', {
-                channel: channel.waPhoneNumber,
-              })}
-            >
-              <Pencil className="size-4" aria-hidden />
-            </Button>
-            <Button
-              className="size-8 text-destructive"
-              variant="ghost"
-              size="icon"
-              onClick={onDelete}
-              aria-label={t('channels.deleteNamed', {
-                channel: channel.waPhoneNumber,
-              })}
-            >
-              <Trash2 className="size-4" aria-hidden />
-            </Button>
-          </div>
-        )}
+        <div className="flex gap-1">
+          <Button
+            className="size-8"
+            variant="ghost"
+            size="icon"
+            onClick={onShowQrCode}
+            aria-label={t('channels.qr.openNamed', {
+              channel: channel.waPhoneNumber,
+            })}
+          >
+            <QrCode className="size-4" aria-hidden />
+          </Button>
+          {canManage && (
+            <>
+              <Button
+                className="size-8"
+                variant="ghost"
+                size="icon"
+                onClick={onEdit}
+                aria-label={t('channels.editNamed', {
+                  channel: channel.waPhoneNumber,
+                })}
+              >
+                <Pencil className="size-4" aria-hidden />
+              </Button>
+              <Button
+                className="size-8 text-destructive"
+                variant="ghost"
+                size="icon"
+                onClick={onDelete}
+                aria-label={t('channels.deleteNamed', {
+                  channel: channel.waPhoneNumber,
+                })}
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="p-5">
@@ -731,6 +1040,13 @@ function ChannelCard({
             })}
           />
         </dl>
+
+        <RegistrationSummary
+          className="mt-5"
+          canManage={canManage}
+          state={registrationState}
+          onAction={onRegistrationAction}
+        />
 
         <div className="mt-5 grid gap-3 rounded-xl border bg-card p-3.5">
           <ChannelSecretField
@@ -884,6 +1200,64 @@ function ChannelDatum({ label, value }: { label: string; value: string }) {
   )
 }
 
+function RegistrationSummary({
+  state,
+  canManage,
+  className,
+  onAction,
+}: {
+  state: RegistrationState
+  canManage: boolean
+  className?: string
+  onAction: () => void
+}) {
+  const { t } = useTranslation()
+  const canAct =
+    canManage &&
+    (state.status === 'registered' || state.status === 'unregistered')
+  return (
+    <div
+      className={cn(
+        'flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3',
+        registrationStatusClasses(state.status),
+        className,
+      )}
+    >
+      <RadioTower className="size-4 shrink-0" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold">{t('channels.registration.title')}</p>
+        <p className="mt-0.5 text-xs">
+          {t(`channels.registration.status.${state.status}`)}
+          {state.providerStatus ? ` · ${state.providerStatus}` : ''}
+        </p>
+      </div>
+      {canAct && (
+        <Button
+          size="sm"
+          variant={state.status === 'registered' ? 'danger' : 'secondary'}
+          onClick={onAction}
+        >
+          {t(
+            state.status === 'registered'
+              ? 'channels.registration.deregister'
+              : 'channels.registration.register',
+          )}
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function registrationStatusClasses(status: RegistrationStatus): string {
+  if (status === 'registered')
+    return 'border-success/30 bg-success/10 text-success'
+  if (status === 'unregistered')
+    return 'border-warning/30 bg-warning/10 text-warning'
+  if (status === 'error')
+    return 'border-destructive/30 bg-destructive/10 text-destructive'
+  return 'bg-muted/30 text-muted-foreground'
+}
+
 function CredentialPill({
   configured,
   children,
@@ -909,7 +1283,15 @@ function ChannelFormDialog({
   setForm,
   isBusy,
   error,
+  canManage,
+  registrationPin,
+  registrationState,
+  qrState,
+  isRegistrationBusy,
+  setRegistrationPin,
   onClose,
+  onRegister,
+  onDeregister,
   onSubmit,
 }: {
   mode: 'create' | 'edit'
@@ -918,7 +1300,15 @@ function ChannelFormDialog({
   setForm: React.Dispatch<React.SetStateAction<ChannelFormValues>>
   isBusy: boolean
   error: string | null
+  canManage: boolean
+  registrationPin: string
+  registrationState: RegistrationState
+  qrState: ChannelQrState
+  isRegistrationBusy: boolean
+  setRegistrationPin: (pin: string) => void
   onClose: () => void
+  onRegister?: () => void
+  onDeregister?: () => void
   onSubmit: (event: SubmitEvent<HTMLFormElement>) => void
 }) {
   const { t } = useTranslation()
@@ -993,6 +1383,102 @@ function ChannelFormDialog({
             required
           />
         </fieldset>
+
+        {isEditing && (
+          <fieldset
+            className="grid gap-4 rounded-xl border p-4"
+            disabled={isBusy || isRegistrationBusy}
+          >
+            <legend className="px-1 text-sm font-bold">
+              {t('channels.registration.title')}
+            </legend>
+            <RegistrationSummary
+              canManage={false}
+              state={registrationState}
+              onAction={() => undefined}
+            />
+            {(registrationState.verifiedName ||
+              registrationState.displayPhoneNumber) && (
+              <dl className="grid gap-3 sm:grid-cols-2">
+                {registrationState.verifiedName && (
+                  <ChannelDatum
+                    label={t('channels.registration.verifiedName')}
+                    value={registrationState.verifiedName}
+                  />
+                )}
+                {registrationState.displayPhoneNumber && (
+                  <ChannelDatum
+                    label={t('channels.displayPhoneNumber')}
+                    value={registrationState.displayPhoneNumber}
+                  />
+                )}
+              </dl>
+            )}
+            {canManage && registrationState.status === 'unregistered' && (
+              <div className="flex flex-col items-end gap-3 sm:flex-row">
+                <div className="w-full flex-1">
+                  <Input
+                    autoComplete="off"
+                    error={
+                      registrationPin && !/^\d{6}$/.test(registrationPin)
+                        ? t('channels.registration.pinError')
+                        : undefined
+                    }
+                    inputMode="numeric"
+                    label={t('channels.registration.pin')}
+                    maxLength={6}
+                    value={registrationPin}
+                    onChange={(event) =>
+                      setRegistrationPin(event.target.value.replace(/\D/g, ''))
+                    }
+                  />
+                </div>
+                <Button
+                  className="w-full sm:mb-[1.375rem] sm:w-auto"
+                  disabled={!/^\d{6}$/.test(registrationPin)}
+                  isLoading={isRegistrationBusy}
+                  type="button"
+                  onClick={onRegister}
+                >
+                  {t('channels.registration.register')}
+                </Button>
+              </div>
+            )}
+            {canManage && registrationState.status === 'registered' && (
+              <div className="flex justify-end">
+                <Button
+                  isLoading={isRegistrationBusy}
+                  type="button"
+                  variant="danger"
+                  onClick={onDeregister}
+                >
+                  {t('channels.registration.deregister')}
+                </Button>
+              </div>
+            )}
+          </fieldset>
+        )}
+
+        {isEditing && (
+          <section className="grid gap-4 rounded-xl border p-4">
+            <div className="flex items-start gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <QrCode className="size-4" aria-hidden />
+              </span>
+              <div>
+                <h3 className="text-sm font-bold">{t('channels.qr.title')}</h3>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {t('channels.qr.formDescription')}
+                </p>
+              </div>
+            </div>
+            <ChannelQrCode
+              className="border-0 bg-transparent p-0"
+              phoneNumber={form.waPhoneNumber}
+              state={qrState}
+            />
+          </section>
+        )}
 
         <fieldset
           className="grid gap-4 rounded-xl border p-4"
@@ -1086,12 +1572,16 @@ function ChannelFormDialog({
           <Button
             type="button"
             variant="ghost"
-            disabled={isBusy}
+            disabled={isBusy || isRegistrationBusy}
             onClick={onClose}
           >
             {t('channels.cancel')}
           </Button>
-          <Button type="submit" isLoading={isBusy}>
+          <Button
+            type="submit"
+            disabled={isRegistrationBusy}
+            isLoading={isBusy}
+          >
             {isEditing
               ? t('channels.saveChanges')
               : t('channels.createChannel')}
@@ -1100,6 +1590,35 @@ function ChannelFormDialog({
       </form>
     </Dialog>
   )
+}
+
+function emptyRegistrationState(status: RegistrationStatus): RegistrationState {
+  return {
+    status,
+    providerStatus: null,
+    displayPhoneNumber: null,
+    verifiedName: null,
+  }
+}
+
+async function fetchRegistrationState(
+  channelId: number,
+): Promise<RegistrationState> {
+  try {
+    const response = await apiClient.api.channels[':id'].registration.$get({
+      param: { id: String(channelId) },
+    })
+    if (!response.ok) return emptyRegistrationState('error')
+    const registration = await response.json()
+    return {
+      status: registration.status,
+      providerStatus: registration.providerStatus,
+      displayPhoneNumber: registration.displayPhoneNumber,
+      verifiedName: registration.verifiedName,
+    }
+  } catch {
+    return emptyRegistrationState('error')
+  }
 }
 
 function DialogIcon({
@@ -1172,6 +1691,12 @@ function generateVerifyToken(): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(
     '',
   )
+}
+
+function parsePositiveInteger(value: string | null): number | null {
+  if (!value || !/^\d+$/.test(value)) return null
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null
 }
 
 function getErrorMessage(_reason: unknown, fallback: string): string {

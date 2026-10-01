@@ -16,6 +16,7 @@ import {
 } from '../components/api-playground/PlaygroundOperationCard'
 import { MessagingPlayground } from './ApiPlaygroundMessaging'
 import { MediaPlayground } from './ApiPlaygroundMedia'
+import { QrPlayground } from './ApiPlaygroundQr'
 import { Button, Checkbox, cn, Input, Select, Tabs } from '../components/ui'
 
 type ChannelsResponse = InferResponseType<
@@ -30,7 +31,7 @@ type OperationKey =
   | 'register'
   | 'twoStepPin'
   | 'deregister'
-type PackageTab = 'registration' | 'messaging' | 'media'
+type PackageTab = 'registration' | 'messaging' | 'media' | 'qr'
 
 const initialOperationStates: Record<OperationKey, OperationState> = {
   phoneNumber: { status: 'idle' },
@@ -360,6 +361,10 @@ export function ApiPlaygroundPage() {
             value: 'media',
             label: t('apiPlayground.media.tab'),
           },
+          {
+            value: 'qr',
+            label: t('apiPlayground.qr.tab'),
+          },
         ]}
         value={activeTab}
         onValueChange={setActiveTab}
@@ -662,8 +667,14 @@ export function ApiPlaygroundPage() {
           channelId={selectedChannelId}
           disabled={mutationDisabled}
         />
-      ) : (
+      ) : activeTab === 'media' ? (
         <MediaPlayground
+          key={selectedChannelId}
+          channelId={selectedChannelId}
+          mutationDisabled={mutationDisabled}
+        />
+      ) : (
+        <QrPlayground
           key={selectedChannelId}
           channelId={selectedChannelId}
           mutationDisabled={mutationDisabled}

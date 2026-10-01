@@ -8,96 +8,108 @@ composition chained in `src/app.ts`.
 
 ## HTTP surface
 
-| Method                   | Path                                                            | Description                                                              |
-| ------------------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `GET`                    | `/api/health`                                                   | Returns `{ status: "ok", runtime: "node" }`                              |
-| `GET`, `POST`            | `/api/auth/*`                                                   | Delegates requests to Better Auth                                        |
-| `GET`                    | `/api/auth/sso-availability`                                    | Reports whether any verified SSO provider is ready                       |
-| `POST`                   | `/api/events`                                                   | Publishes `{ message, key? }` to `demo.events.v1` and returns `202`      |
-| `GET`, `PUT`             | `/api/files/signed`                                             | Filesystem download/upload authorized by an expiring HMAC URL            |
-| `GET`                    | `/api/admin/organizations`                                      | Lists organizations for an application administrator                     |
-| `GET`                    | `/api/admin/organizations/:id`                                  | Returns administrator-visible organization detail                        |
-| `POST`                   | `/api/admin/organizations/:id/members/self`                     | Adds the application administrator as an organization admin              |
-| `DELETE`                 | `/api/admin/organizations/:id`                                  | Deletes an organization that has no dependent channel data               |
-| `GET`, `POST`            | `/api/channels`                                                 | Lists or creates channels in the active organization                     |
-| `GET`, `PATCH`           | `/api/channels/:id/agent-settings`                              | Reads or updates rollout, audience, handoff, and response constraints    |
-| `GET`                    | `/api/channels/:id/agent-export`                                | Streams export progress and a portable ZIP-based `.agtx` package         |
-| `POST`                   | `/api/channels/:id/agent-import/inspect`                        | Validates AGTX and reports required files and connector secrets          |
-| `POST`                   | `/api/channels/:id/agent-import`                                | Reconciles an agent from AGTX while streaming import progress            |
-| `GET`                    | `/api/channels/:id/agent-eligibility`                           | Checks Meta agent eligibility for an owned channel                       |
-| `GET`, `POST`            | `/api/channels/:id/agent-allowlist`                             | Lists or adds phone numbers allowed to use the agent                     |
-| `DELETE`                 | `/api/channels/:id/agent-allowlist/:entryId`                    | Removes a phone number from the agent allowlist                          |
-| `GET`, `PUT`             | `/api/channels/:id/agent-business-info`                         | Reads or replaces the agent's business information                       |
-| `GET`, `POST`            | `/api/channels/:id/agent-skills`                                | Lists or creates agent skills; titles must use kebab-case                |
-| `PUT`, `DELETE`          | `/api/channels/:id/agent-skills/:skillId`                       | Updates or removes an agent skill                                        |
-| `GET`, `POST`            | `/api/channels/:id/agent-connectors`                            | Lists or creates snake_case-named agent connectors                       |
-| `GET`, `PUT`, `DELETE`   | `/api/channels/:id/agent-connectors/:connectorId`               | Reads, updates, or removes an agent connector                            |
-| `GET`                    | `/api/channels/:id/agent-connectors/:connectorId/logs`          | Lists recent connector activity and aggregate statistics                 |
-| `GET`, `POST`            | `/api/channels/:id/agent-connectors/:connectorId/tools`         | Lists or creates snake_case-named connector tools                        |
-| `PUT`, `DELETE`          | `/api/channels/:id/agent-connectors/:connectorId/tools/:toolId` | Updates or removes a connector tool                                      |
-| `GET`                    | `/api/channels/:id/agent-evals`                                 | Lists the evaluation cases available for the agent                       |
-| `POST`                   | `/api/channels/:id/agent-evals/runs`                            | Starts an asynchronous evaluation run                                    |
-| `GET`                    | `/api/channels/:id/agent-evals/runs/:jobId`                     | Reads evaluation progress and results                                    |
-| `GET`                    | `/api/channels/:id/agent-evals/details`                         | Reads evaluation details by comma-separated `ids`                        |
-| `GET`                    | `/api/channels/:id/agent-evals/summaries`                       | Reads evaluation summaries by comma-separated `ids`                      |
-| `GET`, `POST`            | `/api/channels/:id/agent-knowledge/faqs`                        | Lists or creates agent FAQ entries                                       |
-| `PUT`, `DELETE`          | `/api/channels/:id/agent-knowledge/faqs/:faqId`                 | Updates or removes an agent FAQ entry                                    |
-| `GET`, `POST`            | `/api/channels/:id/agent-knowledge/websites`                    | Lists or creates agent knowledge websites                                |
-| `PUT`, `DELETE`          | `/api/channels/:id/agent-knowledge/websites/:websiteId`         | Updates or removes an agent knowledge website                            |
-| `GET`, `POST`            | `/api/channels/:id/agent-knowledge/files`                       | Lists files or proxies a file upload directly to Meta                    |
-| `DELETE`                 | `/api/channels/:id/agent-knowledge/files/:fileId`               | Removes an agent knowledge file                                          |
-| `POST`, `DELETE`         | `/api/channels/:id/agent`                                       | Onboards or removes a Meta Business Agent for an owned channel           |
-| `GET`                    | `/api/channels/:id/verify-token`                                | Returns a channel's webhook verification token to an owner/admin         |
-| `POST`                   | `/api/channels/:id/set-webhook`                                 | Configures Meta's webhook override through `@mba-demo/wa-subscriptions`  |
-| `GET`                    | `/api/channels/:id/deletion-impact`                             | Counts local contacts, groups, and messages before channel deletion      |
-| `PATCH`                  | `/api/channels/:id`                                             | Updates an active-organization channel                                   |
-| `DELETE`                 | `/api/channels/:id`                                             | Confirms and manually deletes a channel's local dependency graph         |
-| `GET`                    | `/api/playground/registration/:channelId/phone-number`          | Reads registration data for an active-organization channel               |
-| `POST`                   | `/api/playground/registration/:channelId/request-code`          | Requests a phone ownership code for an owner/admin                       |
-| `POST`                   | `/api/playground/registration/:channelId/verify-code`           | Verifies a phone ownership code for an owner/admin                       |
-| `POST`                   | `/api/playground/registration/:channelId/register`              | Registers a channel phone number for an owner/admin                      |
-| `POST`                   | `/api/playground/registration/:channelId/two-step-pin`          | Changes a channel phone-number PIN for an owner/admin                    |
-| `POST`                   | `/api/playground/registration/:channelId/deregister`            | Deregisters a channel phone number for an owner/admin                    |
-| `POST`                   | `/api/playground/messaging/:channelId/send`                     | Sends a typed WhatsApp message for an owner/admin                        |
-| `POST`                   | `/api/playground/messaging/:channelId/mark-read`                | Marks an incoming WhatsApp message as read                               |
-| `POST`                   | `/api/playground/messaging/:channelId/typing-indicator`         | Marks a message read and displays a typing indicator                     |
-| `POST`                   | `/api/playground/messaging/:channelId/media-upload`             | Creates scoped upload and download URLs for playground media             |
-| `POST`                   | `/api/playground/media/:channelId/upload`                       | Uploads validated media to Meta for an owner/admin                       |
-| `GET`                    | `/api/playground/media/:channelId/:mediaId`                     | Retrieves metadata and a temporary media URL                             |
-| `GET`                    | `/api/playground/media/:channelId/:mediaId/download`            | Proxies an authenticated media download                                  |
-| `DELETE`                 | `/api/playground/media/:channelId/:mediaId`                     | Deletes channel-owned media for an owner/admin                           |
-| `GET`                    | `/api/wa-cloud/webhook/:id`                                     | Completes Meta's challenge using the channel verification token          |
-| `POST`                   | `/api/wa-cloud/webhook/:id`                                     | Verifies and publishes a typed webhook to `wa-cloud.webhook.v1`          |
-| `GET`                    | `/api/chats`                                                    | Lists active-organization chats with cursor pagination                   |
-| `GET`                    | `/api/chats/events`                                             | Streams active-organization inbox invalidations over SSE                 |
-| `GET`                    | `/api/chats/:id`                                                | Returns one active-organization chat independently of pagination         |
-| `GET`                    | `/api/chats/:id/timeline`                                       | Lists interleaved messages and chat events with cursor pagination        |
-| `GET`                    | `/api/chats/:id/events`                                         | Streams organization-authorized chat invalidations over SSE              |
-| `GET`                    | `/api/chats/:id/templates`                                      | Lists approved chat-WABA templates with opaque cursor pagination         |
-| `POST`                   | `/api/chats/:id/media-upload`                                   | Creates a chat-scoped presigned media staging upload                     |
-| `POST`                   | `/api/chats/:id/media`                                          | Uploads staged composer media to WhatsApp                                |
-| `POST`                   | `/api/chats/:id/messages`                                       | Sends and persists a non-interactive human-owned chat message            |
-| `PATCH`                  | `/api/chats/:id/read`                                           | Marks the latest inbound message at Meta, then advances the local cursor |
-| `PATCH`                  | `/api/chats/:id/handoff`                                        | Transfers thread control between a human operator and the Business AI    |
-| `GET`                    | `/api/contacts`                                                 | Lists active-organization contacts with search and cursor pagination     |
-| `GET`                    | `/api/contacts/:id`                                             | Returns read-only contact details for the active organization            |
-| `GET`                    | `/api/groups`                                                   | Lists active-organization groups with search and cursor pagination       |
-| `GET`                    | `/api/groups/:id`                                               | Returns read-only group details for the active organization              |
-| `POST`                   | `/api/runner/functions`                                         | Creates an organization-scoped versioned JavaScript function             |
-| `GET`                    | `/api/runner/functions`                                         | Lists active functions in the active organization                        |
-| `GET`                    | `/api/runner/functions/:id`                                     | Returns function detail and immutable revision history                   |
-| `GET`                    | `/api/runner/functions/:id/executions`                          | Lists the function's 20 most recent organization-scoped executions       |
-| `PATCH`                  | `/api/runner/functions/:id`                                     | Creates a new immutable function revision                                |
-| `POST`                   | `/api/runner/functions/:id/archive`                             | Archives a function while retaining revisions and logs                   |
-| `POST`                   | `/api/runner/functions/:id/revisions/:revision/restore`         | Copies a selected revision into a new latest revision                    |
-| `GET`, `POST`            | `/api/runner/mcps`                                              | Lists or creates organization-scoped MCP function packs                  |
-| `GET`, `PATCH`, `DELETE` | `/api/runner/mcps/:id`                                          | Reads, updates, or deletes an MCP pack                                   |
-| `POST`                   | `/api/mcp/:mcpId`                                               | Serves one stateless Streamable HTTP MCP server                          |
-| `GET`                    | `/api/runner/api-keys`                                          | Lists safe key metadata for the active organization                      |
-| `POST`                   | `/api/runner/api-keys`                                          | Creates an expiring organization API key                                 |
-| `DELETE`                 | `/api/runner/api-keys/:keyId`                                   | Revokes an organization API key                                          |
-| `POST`                   | `/api/runner/functions/:id/execute-ui`                          | Executes through the active organization's managed `UI` key              |
-| `POST`                   | `/api/runner/functions/:id/execute`                             | Executes a revision using a valid organization API key                   |
+| Method                   | Path                                                                | Description                                                              |
+| ------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `GET`                    | `/api/health`                                                       | Returns `{ status: "ok", runtime: "node" }`                              |
+| `GET`, `POST`            | `/api/auth/*`                                                       | Delegates requests to Better Auth                                        |
+| `GET`                    | `/api/auth/sso-availability`                                        | Reports whether any verified SSO provider is ready                       |
+| `GET`, `PUT`             | `/api/files/signed`                                                 | Filesystem download/upload authorized by an expiring HMAC URL            |
+| `GET`                    | `/api/admin/organizations`                                          | Lists organizations for an application administrator                     |
+| `GET`                    | `/api/admin/organizations/:id`                                      | Returns administrator-visible organization detail                        |
+| `POST`                   | `/api/admin/organizations/:id/members/self`                         | Adds the application administrator as an organization admin              |
+| `DELETE`                 | `/api/admin/organizations/:id`                                      | Deletes an organization that has no dependent channel data               |
+| `GET`, `POST`            | `/api/channels`                                                     | Lists or creates channels in the active organization                     |
+| `GET`                    | `/api/channels/:id/registration`                                    | Reads the channel phone-number registration state from Meta              |
+| `GET`                    | `/api/channels/:id/qr-code`                                         | Reads the first configured message QR code and SVG image from Meta       |
+| `GET`                    | `/api/channels/:id/qr-code/image`                                   | Proxies the owned channel QR image as a same-origin PNG or SVG           |
+| `POST`                   | `/api/channels/:id/registration/register`                           | Registers the phone number with a six-digit PIN for an owner/admin       |
+| `POST`                   | `/api/channels/:id/registration/deregister`                         | Deregisters the phone number for an organization owner/admin             |
+| `GET`, `PATCH`           | `/api/channels/:id/agent-settings`                                  | Reads or updates rollout, audience, handoff, and response constraints    |
+| `GET`                    | `/api/channels/:id/agent-export`                                    | Streams export progress and a portable ZIP-based `.agtx` package         |
+| `GET`                    | `/api/channels/:id/agent-backups`                                   | Lists organization- and channel-scoped AGTX backups                      |
+| `POST`                   | `/api/channels/:id/agent-backups`                                   | Creates and stores an AGTX backup while streaming progress               |
+| `GET`                    | `/api/channels/:id/agent-backups/:backupId/archive`                 | Loads an owned backup into the reviewed AGTX restore/import workflow     |
+| `POST`                   | `/api/channels/:id/agent-import/inspect`                            | Validates AGTX and reports required files and connector secrets          |
+| `POST`                   | `/api/channels/:id/agent-import`                                    | Reconciles an agent from AGTX while streaming import progress            |
+| `GET`                    | `/api/channels/:id/agent-eligibility`                               | Checks Meta agent eligibility for an owned channel                       |
+| `GET`, `POST`            | `/api/channels/:id/agent-allowlist`                                 | Lists or adds phone numbers allowed to use the agent                     |
+| `DELETE`                 | `/api/channels/:id/agent-allowlist/:entryId`                        | Removes a phone number from the agent allowlist                          |
+| `GET`, `PUT`             | `/api/channels/:id/agent-business-info`                             | Reads or replaces the agent's business information                       |
+| `GET`, `POST`            | `/api/channels/:id/agent-skills`                                    | Lists or creates agent skills; titles must use kebab-case                |
+| `PUT`, `DELETE`          | `/api/channels/:id/agent-skills/:skillId`                           | Updates or removes an agent skill                                        |
+| `GET`, `POST`            | `/api/channels/:id/agent-connectors`                                | Lists or creates snake_case-named agent connectors                       |
+| `GET`, `PUT`, `DELETE`   | `/api/channels/:id/agent-connectors/:connectorId`                   | Reads, updates, or removes an agent connector                            |
+| `POST`                   | `/api/channels/:id/agent-connectors/:connectorId/refresh-mcp-tools` | Refreshes provider-managed tools for an MCP connector                    |
+| `GET`                    | `/api/channels/:id/agent-connectors/:connectorId/logs`              | Lists recent connector activity and aggregate statistics                 |
+| `GET`, `POST`            | `/api/channels/:id/agent-connectors/:connectorId/tools`             | Lists or creates snake_case-named connector tools                        |
+| `PUT`, `DELETE`          | `/api/channels/:id/agent-connectors/:connectorId/tools/:toolId`     | Updates or removes a connector tool                                      |
+| `GET`                    | `/api/channels/:id/agent-evals`                                     | Lists the evaluation cases available for the agent                       |
+| `POST`                   | `/api/channels/:id/agent-evals/runs`                                | Starts an asynchronous evaluation run                                    |
+| `GET`                    | `/api/channels/:id/agent-evals/runs/:jobId`                         | Reads evaluation progress and results                                    |
+| `GET`                    | `/api/channels/:id/agent-evals/details`                             | Reads evaluation details by comma-separated `ids`                        |
+| `GET`                    | `/api/channels/:id/agent-evals/summaries`                           | Reads evaluation summaries by comma-separated `ids`                      |
+| `GET`, `POST`            | `/api/channels/:id/agent-knowledge/faqs`                            | Lists or creates agent FAQ entries                                       |
+| `PUT`, `DELETE`          | `/api/channels/:id/agent-knowledge/faqs/:faqId`                     | Updates or removes an agent FAQ entry                                    |
+| `GET`, `POST`            | `/api/channels/:id/agent-knowledge/websites`                        | Lists or creates agent knowledge websites                                |
+| `PUT`, `DELETE`          | `/api/channels/:id/agent-knowledge/websites/:websiteId`             | Updates or removes an agent knowledge website                            |
+| `GET`, `POST`            | `/api/channels/:id/agent-knowledge/files`                           | Lists files or proxies a file upload directly to Meta                    |
+| `DELETE`                 | `/api/channels/:id/agent-knowledge/files/:fileId`                   | Removes an agent knowledge file                                          |
+| `POST`, `DELETE`         | `/api/channels/:id/agent`                                           | Onboards or removes a Meta Business Agent for an owned channel           |
+| `GET`                    | `/api/channels/:id/verify-token`                                    | Returns a channel's webhook verification token to an owner/admin         |
+| `POST`                   | `/api/channels/:id/set-webhook`                                     | Registers the app webhook, then subscribes it to the channel WABA        |
+| `GET`                    | `/api/channels/:id/deletion-impact`                                 | Counts local contacts, groups, and messages before channel deletion      |
+| `PATCH`                  | `/api/channels/:id`                                                 | Updates an active-organization channel                                   |
+| `DELETE`                 | `/api/channels/:id`                                                 | Confirms and manually deletes a channel's local dependency graph         |
+| `GET`                    | `/api/playground/registration/:channelId/phone-number`              | Reads registration data for an active-organization channel               |
+| `POST`                   | `/api/playground/registration/:channelId/request-code`              | Requests a phone ownership code for an owner/admin                       |
+| `POST`                   | `/api/playground/registration/:channelId/verify-code`               | Verifies a phone ownership code for an owner/admin                       |
+| `POST`                   | `/api/playground/registration/:channelId/register`                  | Registers a channel phone number for an owner/admin                      |
+| `POST`                   | `/api/playground/registration/:channelId/two-step-pin`              | Changes a channel phone-number PIN for an owner/admin                    |
+| `POST`                   | `/api/playground/registration/:channelId/deregister`                | Deregisters a channel phone number for an owner/admin                    |
+| `POST`                   | `/api/playground/messaging/:channelId/send`                         | Sends a typed WhatsApp message for an owner/admin                        |
+| `POST`                   | `/api/playground/messaging/:channelId/mark-read`                    | Marks an incoming WhatsApp message as read                               |
+| `POST`                   | `/api/playground/messaging/:channelId/typing-indicator`             | Marks a message read and displays a typing indicator                     |
+| `POST`                   | `/api/playground/messaging/:channelId/media-upload`                 | Creates scoped upload and download URLs for playground media             |
+| `POST`                   | `/api/playground/media/:channelId/upload`                           | Uploads validated media to Meta for an owner/admin                       |
+| `GET`                    | `/api/playground/media/:channelId/:mediaId`                         | Retrieves metadata and a temporary media URL                             |
+| `GET`                    | `/api/playground/media/:channelId/:mediaId/download`                | Proxies an authenticated media download                                  |
+| `DELETE`                 | `/api/playground/media/:channelId/:mediaId`                         | Deletes channel-owned media for an owner/admin                           |
+| `GET`                    | `/api/wa-cloud/webhook/:id`                                         | Completes Meta's challenge using the channel verification token          |
+| `POST`                   | `/api/wa-cloud/webhook/:id`                                         | Verifies and publishes a typed webhook to `wa-cloud.webhook.v1`          |
+| `GET`                    | `/api/chats`                                                        | Lists active-organization chats with cursor pagination                   |
+| `GET`                    | `/api/chats/events`                                                 | Streams active-organization inbox invalidations over SSE                 |
+| `GET`                    | `/api/chats/:id`                                                    | Returns one active-organization chat independently of pagination         |
+| `GET`                    | `/api/chats/:id/timeline`                                           | Lists interleaved messages and chat events with cursor pagination        |
+| `GET`                    | `/api/chats/:id/events`                                             | Streams organization-authorized chat invalidations over SSE              |
+| `GET`                    | `/api/chats/:id/templates`                                          | Lists approved chat-WABA templates with opaque cursor pagination         |
+| `POST`                   | `/api/chats/:id/media-upload`                                       | Creates a chat-scoped presigned media staging upload                     |
+| `POST`                   | `/api/chats/:id/media`                                              | Uploads staged composer media to WhatsApp                                |
+| `POST`                   | `/api/chats/:id/messages`                                           | Sends and persists a non-interactive human-owned chat message            |
+| `PATCH`                  | `/api/chats/:id/read`                                               | Marks the latest inbound message at Meta, then advances the local cursor |
+| `PATCH`                  | `/api/chats/:id/handoff`                                            | Transfers thread control between a human operator and the Business AI    |
+| `GET`                    | `/api/contacts`                                                     | Lists active-organization contacts with search and cursor pagination     |
+| `GET`                    | `/api/contacts/:id`                                                 | Returns read-only contact details for the active organization            |
+| `GET`                    | `/api/groups`                                                       | Lists active-organization groups with search and cursor pagination       |
+| `GET`                    | `/api/groups/:id`                                                   | Returns read-only group details for the active organization              |
+| `POST`                   | `/api/runner/functions`                                             | Creates an organization-scoped versioned JavaScript function             |
+| `GET`                    | `/api/runner/functions`                                             | Lists active functions in the active organization                        |
+| `GET`                    | `/api/runner/functions/:id`                                         | Returns function detail and immutable revision history                   |
+| `DELETE`                 | `/api/runner/functions/:id`                                         | Permanently deletes a function and its dependent local data              |
+| `GET`                    | `/api/runner/functions/:id/executions`                              | Lists the function's 20 most recent organization-scoped executions       |
+| `PATCH`                  | `/api/runner/functions/:id`                                         | Creates a new immutable function revision                                |
+| `POST`                   | `/api/runner/functions/:id/archive`                                 | Archives a function while retaining revisions and logs                   |
+| `POST`                   | `/api/runner/functions/:id/revisions/:revision/restore`             | Copies a selected revision into a new latest revision                    |
+| `GET`, `POST`            | `/api/runner/mcps`                                                  | Lists or creates organization-scoped MCP function packs                  |
+| `GET`, `PATCH`, `DELETE` | `/api/runner/mcps/:id`                                              | Reads, updates, or deletes an MCP pack                                   |
+| `GET`                    | `/api/runner/mcps/:id/export`                                       | Downloads a versioned MCPX package with every function revision          |
+| `POST`                   | `/api/runner/mcps/import/inspect`                                   | Validates YAML and previews names, replacements, and blockers            |
+| `POST`                   | `/api/runner/mcps/import`                                           | Atomically creates or explicitly replaces an MCP package                 |
+| `POST`                   | `/api/mcp/:mcpId`                                                   | Serves one stateless Streamable HTTP MCP server                          |
+| `GET`                    | `/api/runner/api-keys`                                              | Lists safe key metadata for the active organization                      |
+| `POST`                   | `/api/runner/api-keys`                                              | Creates an expiring organization API key                                 |
+| `DELETE`                 | `/api/runner/api-keys/:keyId`                                       | Revokes an organization API key                                          |
+| `POST`                   | `/api/runner/functions/:id/execute-ui`                              | Executes through the active organization's managed `UI` key              |
+| `POST`                   | `/api/runner/functions/:id/execute`                                 | Executes a revision using a valid organization API key                   |
 
 Protected endpoints enforce server-side authorization; browser guards are not
 a security boundary. JSON input is validated with Zod. Credentialed CORS
@@ -115,6 +127,12 @@ only when created. Browser test execution uses session authorization and
 rotates one short-lived organization key named `UI` instead of creating and
 deleting a key for each run.
 
+Function deletion also requires an organization owner or admin. It rejects
+functions with queued or running executions, then transactionally removes
+terminal execution history and MCP membership, removes the function ID from
+direct API-key allowlists, and deletes the function with its cascading
+revisions and parameter declarations.
+
 Every configured MCP is available at `/api/mcp/:mcpId` through the official
 MCP Streamable HTTP transport. The route requires
 `Authorization: Bearer <runner-key>` on every request, advertises only active
@@ -125,6 +143,16 @@ fallback, and delegates authorization and worker dispatch to
 `@mba-demo/runner`.
 `MCP_ALLOWED_HOSTS` supplies the comma-separated public hostnames accepted by
 the official Hono adapter and is required in production.
+
+MCPX export includes the pack metadata, ordered functions, and every
+immutable revision with its parameter contract and timestamp. Import uses the
+`.mcpx` extension and the same safe YAML subset as AGTX, a 10 MiB limit, and strict versioned schema
+validation. Inspection computes each final function name, affected execution
+history and direct API-key scopes, removals, and blockers before approval. New
+function names receive the `<mcp_name>__` prefix unless it is already present.
+Replacement preserves the MCP row and MCP-scoped API keys but transactionally
+replaces its functions and their imported revision histories. It refuses
+active executions, name collisions, and functions shared with another MCP.
 
 All direct, UI, and MCP runner calls preserve their existing request/response
 contracts while executing in the event worker. The API persists a queued
@@ -150,6 +178,12 @@ defined by `@mba-demo/wa-media`. Active organization members can retrieve media
 metadata or download bytes; uploads and deletes require an owner or
 administrator. Downloads are authenticated server-side and are returned with
 private, no-store caching.
+
+The QR-code playground exposes every `@mba-demo/wa-qr` operation. Active
+organization members can retrieve and list QR codes and their SVG or PNG image
+URLs; create, update, and delete operations require an organization owner or
+administrator. Channel credentials remain server-side and provider calls time
+out after 15 seconds.
 
 The file route is authentication-by-signature and applies only to filesystem
 storage. It rejects expired, tampered, method-mismatched, and signed
@@ -177,14 +211,17 @@ Meta-side credentials unless replacements are explicitly submitted.
 
 Channel deletion is deliberately local-only. Its preview reports persisted
 contact, group, and message counts. The confirmed mutation explicitly deletes
-message status history, chat events, messages, chats, contacts, groups, and the
-channel in one database transaction. It does not invoke any Meta, WhatsApp
+message status history, chat events, messages, chats, contacts, groups, backup
+metadata, and the channel in one database transaction. Stored backup objects
+are removed after commit. It does not invoke any Meta, WhatsApp
 Cloud API, or MBA deletion endpoint and does not rely on new cascading foreign
 keys.
 Agent exports are ZIP-based `.agtx` packages containing a versioned
 `agent.yaml` manifest plus a `files/` directory. The manifest contains settings,
 allowlists, business information, skills, FAQs, websites, safe connector
-configuration and tools, and every Meta knowledge-file reference. Locally
+configuration, explicit HTTP connector tools, and every Meta knowledge-file
+reference. MCP connector tools are omitted because the MCP server owns that
+catalog. Locally
 archived knowledge files are included under `files/`; files
 configured outside this application remain in the manifest with a null path so
 import can request them. The one-shot SSE response reports each collection
@@ -192,13 +229,23 @@ phase and streams the package as ordered base64 chunks before its completion
 event. API keys, OAuth secrets, and certificates remain import-time
 requirements.
 
+Agent backups reuse the complete AGTX export builder. Archive bytes are stored
+under unique `agent-backups/<organization-hash>/<channel-id>/...` keys through
+`@mba-demo/files`, while `mba.agent_backups` retains tenant ownership, channel
+ownership, file name, byte size, and creation time. Backup creation requires an
+organization owner or admin; active organization members can list backups.
+Deleting a channel transactionally removes its backup rows and then removes
+their object-store files.
+
 Agent import first inspects the untrusted package without changing provider
 state. ZIP entry paths, sizes, checksums, the safe YAML subset, manifest schema,
 and referenced files are validated before missing file and connector-secret
 requirements are returned. The import request supplies those requirements as
 multipart fields and receives SSE progress while settings, allowlist, business
 information, skills, FAQs, websites, knowledge files, connectors, tools, and
-connector certificates are reconciled. Provider request starts are paced at a
+connector certificates are reconciled. MCP imports ignore legacy packaged tool
+definitions and trigger Meta's MCP tool refresh after the connector is ready.
+Provider request starts are paced at a
 maximum of two per second for each import; local archive operations are not
 delayed. Failed reads and mutations use five retries with delays of 500 ms, 1
 second, 2 seconds, 5 seconds, and 10 seconds. Before retrying a mutation, the
@@ -221,6 +268,9 @@ logs never include supplied connector credentials or certificate contents.
 Import `progress` SSE events also include `resource`, `completed`, and
 `resourceTotal` while a resource collection is being reconciled, allowing the
 browser to show item-level progress such as `FAQs: 3/6 completed`.
+When `createBackupBeforeImport` is selected, the API completes and persists a
+full backup before the first import mutation. A backup failure stops the import
+without reporting partial provider changes.
 
 Group reads use the same organization boundary and cursor contract, ordered by most recently updated groups. Search covers group subjects, descriptions, provider IDs, invitation links, and event types; full raw group events are returned only by the detail endpoint.
 
@@ -265,14 +315,16 @@ API and worker processes; memory mode only serves in-process development.
 | `src/worker-config.ts`               | Parses worker-related environment variables               |
 | `src/subscribers.ts`                 | Declares the topic-to-handler registry                    |
 | `src/chat-realtime.ts`               | Defines chat PubSub channels and versioned event payloads |
+| `src/agent-backups.ts`               | Stores AGTX backups and database metadata                 |
 | `src/mcp-server.ts`                  | Maps authorized runner functions to MCP tools             |
+| `src/runner-mcp-package.ts`          | Parses and serializes safe versioned MCPX packages        |
 | `src/whatsapp-media.ts`              | Archives webhook media and returns message-to-file keys   |
 | `src/routes/admin-organizations.ts`  | Application-admin organization operations                 |
 | `src/routes/api-playground.ts`       | Organization-scoped WhatsApp API playground               |
 | `src/routes/messaging-playground.ts` | Messaging playground and signed media upload URLs         |
 | `src/routes/media-playground.ts`     | WhatsApp media upload, lookup, download, and deletion     |
+| `src/routes/qr-playground.ts`        | WhatsApp message QR-code lifecycle playground             |
 | `src/routes/channels.ts`             | Organization-scoped channel administration                |
-| `src/routes/events.ts`               | Validated demo event publisher                            |
 | `src/routes/files.ts`                | Signed filesystem upload and download transport           |
 | `src/routes/chats.ts`                | Chat reads, handoff, composer sends, media, and SSE       |
 | `src/routes/contacts.ts`             | Organization-scoped contact listing and detail queries    |
@@ -286,8 +338,9 @@ API and worker processes; memory mode only serves in-process development.
 ## Application construction
 
 `createApp()` accepts optional `corsOrigin`, `eventBus`, `fileStore`,
-`waCloudWebhook`, `apiPlayground`, `messagingPlayground`, `chats`, `contacts`,
-`groups`, `mcp`, `runner`, `hasSsoProviders`, and `webRoot` values. This keeps route
+`waCloudWebhook`, `apiPlayground`, `messagingPlayground`, `mediaPlayground`,
+`qrPlayground`, `chats`, `contacts`, `groups`, `mcp`, `runner`,
+`hasSsoProviders`, and `webRoot` values. This keeps route
 tests independent from external infrastructure and allows production to supply
 its static build directory.
 The SSO availability dependency returns only a boolean and is injected in
@@ -325,7 +378,7 @@ The Docker `worker` role runs this file.
 `SUBSCRIBE_TO_TOPICS` defaults to `all`. Otherwise it accepts a comma-separated list such as:
 
 ```env
-SUBSCRIBE_TO_TOPICS=demo.events.v1,another.topic.v1
+SUBSCRIBE_TO_TOPICS=runner.execution.requested.v1,wa-cloud.webhook.v1
 ```
 
 Values are trimmed and deduplicated. Startup fails when a requested topic is absent from the registry, preventing a silently misconfigured worker.

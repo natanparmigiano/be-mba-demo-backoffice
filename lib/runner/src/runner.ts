@@ -7,6 +7,11 @@ import {
 import { PostgresRunnerRepository } from './repository.js'
 import type { RunnerExecutionPublisher } from './events.js'
 import {
+  runnerMcpPackageSchema,
+  type RunnerMcpImportPreview,
+  type RunnerMcpPackage,
+} from './mcp-package.js'
+import {
   createRunnerApiKeySchema,
   createRunnerFunctionSchema,
   createRunnerMcpSchema,
@@ -31,6 +36,7 @@ import type {
   RunnerFunctionDetails,
   RunnerFunctionSummary,
   RunnerMcpDefinition,
+  RunnerMcpImportResult,
   RunnerMcpRuntimeDefinition,
   RunnerMcpSummary,
   RunnerApiKeyMetadata,
@@ -60,6 +66,13 @@ export class RunnerFunctionArchivedError extends Error {
   constructor() {
     super('Runner function is archived')
     this.name = 'RunnerFunctionArchivedError'
+  }
+}
+
+export class RunnerFunctionExecutionInProgressError extends Error {
+  constructor() {
+    super('Wait for queued or running executions before deleting this function')
+    this.name = 'RunnerFunctionExecutionInProgressError'
   }
 }
 
@@ -231,6 +244,22 @@ export class Runner {
     return result.definition
   }
 
+  async deleteFunction(
+    organizationId: string,
+    functionId: number,
+  ): Promise<void> {
+    assertOrganizationId(organizationId)
+    assertFunctionId(functionId)
+    const result = await this.#repository.deleteFunction(
+      organizationId,
+      functionId,
+    )
+    if (result.status === 'not_found') throw new RunnerFunctionNotFoundError()
+    if (result.status === 'execution_in_progress') {
+      throw new RunnerFunctionExecutionInProgressError()
+    }
+  }
+
   async restoreRevision(
     organizationId: string,
     functionId: number,
@@ -313,6 +342,39 @@ export class Runner {
     if (!(await this.#repository.deleteMcp(organizationId, mcpId))) {
       throw new RunnerMcpNotFoundError()
     }
+  }
+
+  async exportMcpPackage(
+    organizationId: string,
+    mcpId: number,
+  ): Promise<RunnerMcpPackage> {
+    assertOrganizationId(organizationId)
+    assertFunctionId(mcpId)
+    const exported = await this.#repository.exportMcpPackage(
+      organizationId,
+      mcpId,
+    )
+    if (!exported) throw new RunnerMcpNotFoundError()
+    return runnerMcpPackageSchema.parse(exported)
+  }
+
+  async inspectMcpImport(
+    organizationId: string,
+    imported: RunnerMcpPackage,
+  ): Promise<RunnerMcpImportPreview> {
+    assertOrganizationId(organizationId)
+    const parsed = validateMcpPackage(imported)
+    return this.#repository.inspectMcpImport(organizationId, parsed)
+  }
+
+  async importMcpPackage(
+    organizationId: string,
+    imported: RunnerMcpPackage,
+    overwrite: boolean,
+  ): Promise<RunnerMcpImportResult> {
+    assertOrganizationId(organizationId)
+    const parsed = validateMcpPackage(imported)
+    return this.#repository.importMcpPackage(organizationId, parsed, overwrite)
   }
 
   async getMcpRuntime(
@@ -708,4 +770,14 @@ function getErrorMessage(error: unknown): string {
 
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
+
+function validateMcpPackage(imported: RunnerMcpPackage): RunnerMcpPackage {
+  const parsed = runnerMcpPackageSchema.parse(imported)
+  for (const fn of parsed.mcp.functions) {
+    for (const revision of fn.revisions) {
+      validateRunnerFunctionCode(revision.code)
+    }
+  }
+  return parsed
 }

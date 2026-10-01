@@ -9,7 +9,14 @@ import {
   runnerMcps,
   runnerRevisionParameters,
 } from '@mba-demo/db'
-import { and, asc, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, inArray, isNull, ne, sql } from 'drizzle-orm'
+import {
+  getRunnerMcpImportTargetName,
+  isRunnerMcpImportTargetNameValid,
+  type RunnerMcpImportBlocker,
+  type RunnerMcpImportPreview,
+  type RunnerMcpPackage,
+} from './mcp-package.js'
 import type {
   CreateRunnerApiKeyInput,
   CreateRunnerFunctionInput,
@@ -23,6 +30,7 @@ import type {
   RunnerApiKeyMetadata,
   RunnerCreateApiKeyResult,
   RunnerClaimedExecution,
+  RunnerDeleteFunctionResult,
   RunnerExecutionLogOutcome,
   RunnerExecutionHistoryEntry,
   RunnerExecutionResultState,
@@ -38,6 +46,7 @@ import type {
   RunnerListExecutionsResult,
   RunnerListMcpsResult,
   RunnerMcpDefinition,
+  RunnerMcpImportResult,
   RunnerMcpMutationResult,
   RunnerMcpRuntimeFunction,
   RunnerMcpSummary,
@@ -268,6 +277,81 @@ export class PostgresRunnerRepository implements RunnerRepository {
     })
   }
 
+  async deleteFunction(
+    organizationId: string,
+    functionId: number,
+  ): Promise<RunnerDeleteFunctionResult> {
+    return db.transaction(async (transaction) => {
+      const [existing] = await transaction
+        .select({ id: runnerFunctions.id })
+        .from(runnerFunctions)
+        .where(
+          and(
+            eq(runnerFunctions.id, functionId),
+            eq(runnerFunctions.organizationId, organizationId),
+          ),
+        )
+        .limit(1)
+        .for('update')
+      if (!existing) return { status: 'not_found' }
+
+      const [pendingExecution] = await transaction
+        .select({ id: runnerExecutionLogs.id })
+        .from(runnerExecutionLogs)
+        .where(
+          and(
+            eq(runnerExecutionLogs.organizationId, organizationId),
+            eq(runnerExecutionLogs.functionId, functionId),
+            inArray(runnerExecutionLogs.status, ['queued', 'running']),
+          ),
+        )
+        .limit(1)
+      if (pendingExecution) return { status: 'execution_in_progress' }
+
+      await transaction
+        .delete(runnerExecutionLogs)
+        .where(
+          and(
+            eq(runnerExecutionLogs.organizationId, organizationId),
+            eq(runnerExecutionLogs.functionId, functionId),
+          ),
+        )
+      await transaction
+        .delete(runnerMcpFunctions)
+        .where(
+          and(
+            eq(runnerMcpFunctions.organizationId, organizationId),
+            eq(runnerMcpFunctions.functionId, functionId),
+          ),
+        )
+      await transaction
+        .update(runnerFunctionApiKeys)
+        .set({
+          allowedFunctionIds: sql`array_remove(${runnerFunctionApiKeys.allowedFunctionIds}, ${functionId})`,
+        })
+        .where(
+          and(
+            eq(runnerFunctionApiKeys.organizationId, organizationId),
+            sql`${functionId} = any(${runnerFunctionApiKeys.allowedFunctionIds})`,
+          ),
+        )
+
+      const deleted = await transaction
+        .delete(runnerFunctions)
+        .where(
+          and(
+            eq(runnerFunctions.id, functionId),
+            eq(runnerFunctions.organizationId, organizationId),
+          ),
+        )
+        .returning({ id: runnerFunctions.id })
+      if (deleted.length === 0) {
+        throw new Error('Runner function disappeared during deletion')
+      }
+      return { status: 'deleted' }
+    })
+  }
+
   async restoreRevision(
     organizationId: string,
     functionId: number,
@@ -480,6 +564,235 @@ export class PostgresRunnerRepository implements RunnerRepository {
         )
         .returning({ id: runnerMcps.id })
       return deleted.length > 0
+    })
+  }
+
+  async exportMcpPackage(
+    organizationId: string,
+    mcpId: number,
+  ): Promise<RunnerMcpPackage | undefined> {
+    const [storedMcp] = await db
+      .select()
+      .from(runnerMcps)
+      .where(
+        and(
+          eq(runnerMcps.id, mcpId),
+          eq(runnerMcps.organizationId, organizationId),
+        ),
+      )
+      .limit(1)
+    if (!storedMcp) return undefined
+
+    const functions = await db
+      .select({
+        id: runnerFunctions.id,
+        name: runnerFunctions.name,
+        description: runnerFunctions.description,
+        currentRevision: runnerFunctions.currentRevision,
+      })
+      .from(runnerMcpFunctions)
+      .innerJoin(
+        runnerFunctions,
+        eq(runnerFunctions.id, runnerMcpFunctions.functionId),
+      )
+      .where(eq(runnerMcpFunctions.mcpId, mcpId))
+      .orderBy(asc(runnerMcpFunctions.position))
+
+    return {
+      format: 'mba-mcp',
+      version: 1,
+      mcp: {
+        name: storedMcp.name,
+        description: storedMcp.description,
+        functions: await Promise.all(
+          functions.map(async (fn) => {
+            const revisions = await db
+              .select()
+              .from(runnerFunctionRevisions)
+              .where(eq(runnerFunctionRevisions.functionId, fn.id))
+              .orderBy(asc(runnerFunctionRevisions.revision))
+            return {
+              name: fn.name,
+              description: fn.description,
+              currentRevision: fn.currentRevision,
+              revisions: await Promise.all(
+                revisions.map(async (revision) => ({
+                  revision: revision.revision,
+                  code: revision.code,
+                  parameters: await loadParameters(db, revision.id),
+                  createdAt: revision.createdAt.toISOString(),
+                })),
+              ),
+            }
+          }),
+        ),
+      },
+    }
+  }
+
+  async inspectMcpImport(
+    organizationId: string,
+    imported: RunnerMcpPackage,
+  ): Promise<RunnerMcpImportPreview> {
+    return (await inspectMcpImportState(db, organizationId, imported)).preview
+  }
+
+  async importMcpPackage(
+    organizationId: string,
+    imported: RunnerMcpPackage,
+    overwrite: boolean,
+  ): Promise<RunnerMcpImportResult> {
+    return db.transaction(async (transaction) => {
+      const inspection = await inspectMcpImportState(
+        transaction,
+        organizationId,
+        imported,
+      )
+      if (!inspection.preview.canImport) {
+        return { status: 'blocked', preview: inspection.preview }
+      }
+      if (inspection.existingMcp && !overwrite) {
+        return { status: 'overwrite_required', preview: inspection.preview }
+      }
+
+      const now = new Date()
+      let storedMcp: typeof runnerMcps.$inferSelect
+      if (inspection.existingMcp) {
+        const currentFunctionIds = inspection.currentFunctions.map(
+          ({ id }) => id,
+        )
+        if (currentFunctionIds.length > 0) {
+          await transaction
+            .delete(runnerExecutionLogs)
+            .where(
+              and(
+                eq(runnerExecutionLogs.organizationId, organizationId),
+                inArray(runnerExecutionLogs.functionId, currentFunctionIds),
+              ),
+            )
+          await transaction
+            .delete(runnerMcpFunctions)
+            .where(eq(runnerMcpFunctions.mcpId, inspection.existingMcp.id))
+
+          const scopedKeys = await transaction
+            .select({
+              id: runnerFunctionApiKeys.id,
+              allowedFunctionIds: runnerFunctionApiKeys.allowedFunctionIds,
+            })
+            .from(runnerFunctionApiKeys)
+            .where(eq(runnerFunctionApiKeys.organizationId, organizationId))
+          const removedIds = new Set(currentFunctionIds)
+          for (const key of scopedKeys) {
+            if (key.allowedFunctionIds === null) continue
+            const nextIds = key.allowedFunctionIds.filter(
+              (id) => !removedIds.has(id),
+            )
+            if (nextIds.length === key.allowedFunctionIds.length) continue
+            await transaction
+              .update(runnerFunctionApiKeys)
+              .set({ allowedFunctionIds: nextIds })
+              .where(eq(runnerFunctionApiKeys.id, key.id))
+          }
+          await transaction
+            .delete(runnerFunctions)
+            .where(
+              and(
+                eq(runnerFunctions.organizationId, organizationId),
+                inArray(runnerFunctions.id, currentFunctionIds),
+              ),
+            )
+        }
+
+        const [updatedMcp] = await transaction
+          .update(runnerMcps)
+          .set({
+            description: imported.mcp.description,
+            updatedAt: now,
+          })
+          .where(eq(runnerMcps.id, inspection.existingMcp.id))
+          .returning()
+        if (!updatedMcp) throw new Error('Runner MCP was not updated')
+        storedMcp = updatedMcp
+      } else {
+        const [createdMcp] = await transaction
+          .insert(runnerMcps)
+          .values({
+            organizationId,
+            name: imported.mcp.name,
+            description: imported.mcp.description,
+          })
+          .returning()
+        if (!createdMcp) throw new Error('Runner MCP was not imported')
+        storedMcp = createdMcp
+      }
+
+      const importedFunctionIds: number[] = []
+      for (const [
+        position,
+        importedFunction,
+      ] of imported.mcp.functions.entries()) {
+        const targetName = inspection.preview.functions[position]?.targetName
+        if (!targetName) throw new Error('Imported function mapping was lost')
+        const firstRevision = importedFunction.revisions[0]!
+        const currentRevision = importedFunction.revisions.at(-1)!
+        const [storedFunction] = await transaction
+          .insert(runnerFunctions)
+          .values({
+            organizationId,
+            name: targetName,
+            description: importedFunction.description,
+            currentRevision: importedFunction.currentRevision,
+            createdAt: new Date(firstRevision.createdAt),
+            updatedAt: new Date(currentRevision.createdAt),
+          })
+          .returning({ id: runnerFunctions.id })
+        if (!storedFunction) throw new Error('Runner function was not imported')
+
+        const revisions = await transaction
+          .insert(runnerFunctionRevisions)
+          .values(
+            importedFunction.revisions.map((revision) => ({
+              functionId: storedFunction.id,
+              revision: revision.revision,
+              code: revision.code,
+              createdAt: new Date(revision.createdAt),
+            })),
+          )
+          .returning({
+            id: runnerFunctionRevisions.id,
+            revision: runnerFunctionRevisions.revision,
+          })
+        const revisionIds = new Map(
+          revisions.map((revision) => [revision.revision, revision.id]),
+        )
+        const parameters = importedFunction.revisions.flatMap((revision) => {
+          const revisionId = revisionIds.get(revision.revision)
+          if (!revisionId) throw new Error('Imported revision was not created')
+          return revision.parameters.map((parameter, parameterPosition) => ({
+            revisionId,
+            name: parameter.name,
+            type: parameter.type,
+            required: parameter.required,
+            position: parameterPosition,
+            description: parameter.description ?? null,
+          }))
+        })
+        if (parameters.length > 0) {
+          await transaction.insert(runnerRevisionParameters).values(parameters)
+        }
+        importedFunctionIds.push(storedFunction.id)
+      }
+
+      await insertMcpFunctions(
+        transaction,
+        storedMcp.id,
+        organizationId,
+        importedFunctionIds,
+      )
+      return {
+        status: 'imported',
+        mcp: await mapMcpDefinition(transaction, storedMcp),
+      }
     })
   }
 
@@ -1165,6 +1478,180 @@ export class PostgresRunnerRepository implements RunnerRepository {
 type QueryDatabase = Pick<typeof db, 'select'>
 
 type McpDatabase = Pick<typeof db, 'select' | 'insert'>
+
+interface McpImportInspectionState {
+  preview: RunnerMcpImportPreview
+  existingMcp: typeof runnerMcps.$inferSelect | undefined
+  currentFunctions: Array<{ id: number; name: string }>
+}
+
+async function inspectMcpImportState(
+  database: QueryDatabase,
+  organizationId: string,
+  imported: RunnerMcpPackage,
+): Promise<McpImportInspectionState> {
+  const [existingMcp] = await database
+    .select()
+    .from(runnerMcps)
+    .where(
+      and(
+        eq(runnerMcps.organizationId, organizationId),
+        eq(runnerMcps.name, imported.mcp.name),
+      ),
+    )
+    .limit(1)
+  const currentFunctions = existingMcp
+    ? await database
+        .select({ id: runnerFunctions.id, name: runnerFunctions.name })
+        .from(runnerMcpFunctions)
+        .innerJoin(
+          runnerFunctions,
+          eq(runnerFunctions.id, runnerMcpFunctions.functionId),
+        )
+        .where(eq(runnerMcpFunctions.mcpId, existingMcp.id))
+        .orderBy(asc(runnerMcpFunctions.position))
+    : []
+  const currentFunctionIds = currentFunctions.map(({ id }) => id)
+  const currentIds = new Set(currentFunctionIds)
+  const currentNames = new Map(currentFunctions.map((fn) => [fn.id, fn.name]))
+  const previewFunctions = imported.mcp.functions.map((fn) => ({
+    sourceName: fn.name,
+    targetName: getRunnerMcpImportTargetName(imported.mcp.name, fn.name),
+    currentRevision: fn.currentRevision,
+    revisionCount: fn.revisions.length,
+  }))
+  const targetNames = previewFunctions.map(({ targetName }) => targetName)
+  const targetNameSet = new Set(targetNames)
+  const blockers: RunnerMcpImportBlocker[] = []
+
+  const duplicateTargetNames = [
+    ...new Set(
+      targetNames.filter((name, index) => targetNames.indexOf(name) !== index),
+    ),
+  ]
+  if (duplicateTargetNames.length > 0) {
+    blockers.push({
+      code: 'duplicate_target_names',
+      functionNames: duplicateTargetNames,
+    })
+  }
+  const tooLongNames = targetNames.filter(
+    (name) => !isRunnerMcpImportTargetNameValid(name),
+  )
+  if (tooLongNames.length > 0) {
+    blockers.push({
+      code: 'target_names_too_long',
+      functionNames: tooLongNames,
+    })
+  }
+
+  const collisions =
+    targetNames.length === 0
+      ? []
+      : await database
+          .select({ id: runnerFunctions.id, name: runnerFunctions.name })
+          .from(runnerFunctions)
+          .where(
+            and(
+              eq(runnerFunctions.organizationId, organizationId),
+              inArray(runnerFunctions.name, targetNames),
+            ),
+          )
+  const conflictingNames = collisions
+    .filter(({ id }) => !currentIds.has(id))
+    .map(({ name }) => name)
+  if (conflictingNames.length > 0) {
+    blockers.push({
+      code: 'target_name_conflicts',
+      functionNames: conflictingNames,
+    })
+  }
+
+  let affectedExecutionCount = 0
+  let affectedApiKeyCount = 0
+  if (currentFunctionIds.length > 0 && existingMcp) {
+    const [sharedMemberships, activeExecutions, executionCount, scopedKeys] =
+      await Promise.all([
+        database
+          .select({ functionId: runnerMcpFunctions.functionId })
+          .from(runnerMcpFunctions)
+          .where(
+            and(
+              eq(runnerMcpFunctions.organizationId, organizationId),
+              inArray(runnerMcpFunctions.functionId, currentFunctionIds),
+              ne(runnerMcpFunctions.mcpId, existingMcp.id),
+            ),
+          ),
+        database
+          .select({ functionId: runnerExecutionLogs.functionId })
+          .from(runnerExecutionLogs)
+          .where(
+            and(
+              eq(runnerExecutionLogs.organizationId, organizationId),
+              inArray(runnerExecutionLogs.functionId, currentFunctionIds),
+              inArray(runnerExecutionLogs.status, ['queued', 'running']),
+            ),
+          ),
+        database
+          .select({ count: sql<number>`count(*)::int` })
+          .from(runnerExecutionLogs)
+          .where(
+            and(
+              eq(runnerExecutionLogs.organizationId, organizationId),
+              inArray(runnerExecutionLogs.functionId, currentFunctionIds),
+            ),
+          ),
+        database
+          .select({
+            allowedFunctionIds: runnerFunctionApiKeys.allowedFunctionIds,
+          })
+          .from(runnerFunctionApiKeys)
+          .where(eq(runnerFunctionApiKeys.organizationId, organizationId)),
+      ])
+    const sharedNames = [
+      ...new Set(
+        sharedMemberships.flatMap(({ functionId }) => {
+          const name = currentNames.get(functionId)
+          return name ? [name] : []
+        }),
+      ),
+    ]
+    if (sharedNames.length > 0) {
+      blockers.push({ code: 'shared_functions', functionNames: sharedNames })
+    }
+    const activeNames = [
+      ...new Set(
+        activeExecutions.flatMap(({ functionId }) => {
+          const name = currentNames.get(functionId)
+          return name ? [name] : []
+        }),
+      ),
+    ]
+    if (activeNames.length > 0) {
+      blockers.push({ code: 'active_executions', functionNames: activeNames })
+    }
+    affectedExecutionCount = executionCount[0]?.count ?? 0
+    affectedApiKeyCount = scopedKeys.filter((key) =>
+      key.allowedFunctionIds?.some((id) => currentIds.has(id)),
+    ).length
+  }
+
+  const preview: RunnerMcpImportPreview = {
+    mode: existingMcp ? 'overwrite' : 'create',
+    existingMcpId: existingMcp?.id ?? null,
+    mcpName: imported.mcp.name,
+    description: imported.mcp.description,
+    functions: previewFunctions,
+    removedFunctionNames: currentFunctions
+      .map(({ name }) => name)
+      .filter((name) => !targetNameSet.has(name)),
+    affectedApiKeyCount,
+    affectedExecutionCount,
+    blockers,
+    canImport: blockers.length === 0,
+  }
+  return { preview, existingMcp, currentFunctions }
+}
 
 async function findInvalidMcpFunctionIds(
   database: Pick<typeof db, 'select'>,

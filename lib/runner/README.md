@@ -64,9 +64,10 @@ tests independent from Kafka.
 views. `getFunction` includes the complete immutable revision history.
 `listMcps`, `getMcp`, `createMcp`, `updateMcp`, and `deleteMcp` manage named
 packs of existing active functions.
-Function and MCP names must use `snake_case`; the management UI normalizes names
-as they are entered, and the shared schemas enforce the same contract at the API
-boundary.
+Function and MCP names have a 512-character limit and use `snake_case`;
+functions additionally allow a double underscore as an import namespace
+separator. The management UI normalizes names as they are entered, and the
+shared schemas enforce the same contract at the API boundary.
 `getMcpRuntime` authenticates a runner key and returns the active MCP tools
 covered by its effective function and MCP scopes. `executeMcpFunction` binds a
 tool call to both the requested MCP and function, then rechecks the key,
@@ -78,6 +79,23 @@ organization key metadata only and never exposes stored key material. Browser
 test execution rotates and reuses one short-lived organization key named `UI`.
 `listExecutions` returns the 20 most recent organization-scoped execution logs
 for a function.
+
+`deleteFunction` is organization-scoped and permanent. It refuses deletion
+while an execution is queued or running. Otherwise one transaction deletes the
+function's terminal execution logs and MCP memberships, removes its ID from
+direct API-key allowlists, and deletes the function; revision and parameter
+rows then follow their database cascades.
+
+`exportMcpPackage`, `inspectMcpImport`, and `importMcpPackage` implement the
+versioned `mba-mcp` MCPX lifecycle. An `.mcpx` file is a directly readable YAML
+document carrying MCP metadata and every
+revision, parameter declaration, and revision timestamp for each ordered
+function. New imports store functions as `<mcp_name>__<function_name>`;
+already-prefixed reimports keep the name unchanged. Replacement keeps the MCP
+ID but removes its old functions, history, terminal executions, and direct
+function scopes before recreating the exported history in the same database
+transaction. Preview blocks shared functions, active executions, collisions,
+duplicate resolved names, and names beyond 512 characters.
 
 Archiving preserves revisions and logs, marks the function inactive, and
 renames it to `<name>#Archived<ISO timestamp>`. This frees the original

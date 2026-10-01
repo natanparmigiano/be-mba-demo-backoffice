@@ -30,19 +30,24 @@ switcher. Each page then owns one route-level workflow:
 - `HomePage`: landing content.
 - `ChatPage`: organization-scoped inbox and message/event timeline.
 - `OrganizationPage`: organizations, members, and invitations.
-- `AgentsPage`: read-only channel grid with Meta Business Agent configuration
-  state for the upcoming setup workflow.
-- `ChannelsPage`: WhatsApp connections, including impact-previewed,
+- `AgentsPage`: channel grid with Meta Business Agent and Cloud API phone
+  registration state plus the first configured WhatsApp message QR code.
+- `AgentPage`: treats Cloud API phone-number registration as a prerequisite;
+  unregistered channels expose only the registration card and do not load or
+  render agent management, backup, import, or export workflows.
+- `ChannelsPage`: WhatsApp connections, including provider-backed phone-number
+  registration controls, message QR previews, and impact-previewed,
   typed-confirmation deletion of local channel data.
 - `ContactsPage` and `GroupsPage`: searchable, cursor-paginated browsing and
   read-only detail.
 - `FunctionsPage`: organization-scoped function editing, revision restore,
   typed parameters, and isolated test execution.
-- `McpsPage`: organization-scoped MCP pack creation and function membership.
+- `McpsPage`: organization-scoped MCP pack creation, function membership, and
+  reviewed MCPX export/import with explicit overwrite approval.
 - `ApiKeysPage`: organization-scoped API key creation, function/MCP
   allow-lists, and revocation.
-- `ApiPlaygroundPage`: channel-scoped request forms for WhatsApp registration
-  and messaging, including direct presigned media uploads.
+- `ApiPlaygroundPage`: channel-scoped request forms for WhatsApp registration,
+  messaging, media, and message QR codes, including direct presigned uploads.
 - `AdminPage`: global user administration for Better Auth `admin` users.
 
 - `/organization` is available to authenticated users; Better Auth enforces owner/admin permissions for mutations.
@@ -88,14 +93,18 @@ switcher. Each page then owns one route-level workflow:
 - `/mcps` lists and edits organization-scoped packages of existing active
   functions. MCP names are normalized to `snake_case` while typing. MCP
   details show the stable `/api/mcp/:id` Streamable HTTP endpoint and its
-  Bearer-authentication instructions.
+  Bearer-authentication instructions. Managers can export complete revision
+  history or preview imported names, removals, affected history, key scopes,
+  and blockers before approving a transactional YAML import.
 - `/api-keys` provides organization API-key management to owners and
   administrators. Restricted keys authorize the union of selected individual
   functions and the live membership of selected MCP packs.
-- `/api-playground` lets members inspect registration and media state and lets
-  organization owners/admins run registration, messaging, and media mutations
-  using server-side channel credentials. Messaging attachments use short-lived
-  file-store URLs; the media package tab uploads directly through the API.
+- `/api-playground` lets members inspect registration, media, and message QR
+  code state and lets organization owners/admins run registration, messaging,
+  media, and QR-code mutations using server-side channel credentials. Messaging
+  attachments use short-lived file-store URLs; the media package tab uploads
+  directly through the API. The QR tab covers create, get, image URL, list,
+  update, and delete operations from `@mba-demo/wa-qr`.
 - `/admin` is guarded in the client and every admin endpoint independently enforces permissions on the server.
 - Application admin roles and organization member roles are separate concepts.
 

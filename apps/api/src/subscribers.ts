@@ -13,7 +13,6 @@ import {
 } from '@mba-demo/runner'
 import { whatsappWebhookSchema } from '@mba-demo/wa-webhooks'
 import { z } from 'zod'
-import { DEMO_EVENT_TOPIC } from './routes/events.js'
 import {
   WA_CLOUD_WEBHOOK_FORWARD_TOPIC,
   WA_CLOUD_WEBHOOK_TOPIC,
@@ -39,18 +38,6 @@ export interface RunnerExecutionWorker {
 export type SubscriberRegistry = Readonly<
   Record<string, readonly EventHandler[]>
 >
-
-const logDemoEvent: EventHandler = (event) => {
-  console.log(
-    'Received event',
-    JSON.stringify({
-      topic: event.topic,
-      key: event.key,
-      value: event.value,
-      timestamp: event.timestamp,
-    }),
-  )
-}
 
 export function createRunnerExecutionHandler(
   runner: RunnerExecutionWorker = defaultRunner,
@@ -324,7 +311,6 @@ function isHttpUrl(value: string): boolean {
 }
 
 export const subscriberRegistry: SubscriberRegistry = {
-  [DEMO_EVENT_TOPIC]: [logDemoEvent],
   [RUNNER_EXECUTION_REQUESTED_TOPIC]: [executeRunnerFunction],
   [WA_CLOUD_WEBHOOK_TOPIC]: [persistWhatsAppWebhook],
   [WA_CLOUD_WEBHOOK_DEAD_LETTER_TOPIC]: [logWhatsAppDeadLetter],

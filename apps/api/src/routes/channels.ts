@@ -1,5 +1,6 @@
 import { auth } from '@mba-demo/auth'
 import {
+  agentBackups,
   channels,
   chatEvents,
   chats,
@@ -45,9 +46,26 @@ import {
 } from '@mba-demo/wa-mba'
 import {
   createWhatsAppSubscriptionsClient,
+  createWhatsAppWebhookRegistrationClient,
+  WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS,
   WhatsAppSubscriptionsApiError,
   WhatsAppSubscriptionsResponseError,
+  WhatsAppWebhookRegistrationApiError,
+  WhatsAppWebhookRegistrationResponseError,
 } from '@mba-demo/wa-subscriptions'
+import {
+  createWhatsAppRegistrationClient,
+  WhatsAppRegistrationApiError,
+  WhatsAppRegistrationResponseError,
+  type PhoneNumberInfo,
+  type SuccessResponse as RegistrationSuccessResponse,
+} from '@mba-demo/wa-registration'
+import {
+  createWhatsAppQrClient,
+  WhatsAppQrApiError,
+  WhatsAppQrResponseError,
+  type MessageQrCode,
+} from '@mba-demo/wa-qr'
 import { zValidator } from '@hono/zod-validator'
 import { and, count, eq, inArray, sql } from 'drizzle-orm'
 import { Hono } from 'hono'
@@ -63,6 +81,10 @@ import {
 } from '../agent-knowledge-archive.js'
 import { parseAgentArchive } from '../agent-import.js'
 import { stringifyYaml } from '../yaml.js'
+import {
+  createAgentBackupService,
+  type AgentBackupService,
+} from '../agent-backups.js'
 
 const requiredText = z.string().trim().min(1).max(500)
 const secretText = z.string().trim().min(1).max(10_000)
@@ -75,6 +97,9 @@ const webhookForwardUrls = z
   .refine((urls) => new Set(urls).size === urls.length, {
     message: 'Forward URLs must be unique',
   })
+const registerPhoneNumberSchema = z.object({
+  pin: z.string().regex(/^\d{6}$/),
+})
 
 const createChannelSchema = z.object({
   waPhoneNumber: requiredText,
@@ -437,7 +462,11 @@ const agentImportConnectorSchema = connectorSchema
     userAuthInjectionConfig:
       connectorSchema.shape.userAuthInjectionConfig.nullable(),
     mcpToolSync: z.unknown().nullable(),
-    tools: z.array(agentImportConnectorToolSchema).max(500),
+    tools: z
+      .array(agentImportConnectorToolSchema)
+      .max(500)
+      .optional()
+      .default([]),
   })
 
 const agentImportManifestSchema = z.object({
@@ -513,6 +542,7 @@ const agentImportManifestSchema = z.object({
 })
 
 const agentImportOptionsSchema = z.object({
+  createBackupBeforeImport: z.boolean().default(false),
   connectorCredentials: z.record(
     z.string(),
     z.object({
@@ -530,6 +560,7 @@ const agentImportOptionsSchema = z.object({
 
 type AgentImportManifest = z.infer<typeof agentImportManifestSchema>
 type AgentImportProgressStep =
+  | 'backup'
   | 'settings'
   | 'businessData'
   | 'skills'
@@ -587,6 +618,8 @@ interface OrganizationAccess {
 }
 
 export interface ChannelWebhookConfiguration {
+  waAppId: string
+  waAppSecret: string
   waWabaId: string
   waWebhookVerifyToken: string
   waSystemUserAccessToken: string
@@ -608,7 +641,11 @@ export interface ChannelDeletionPreview extends ChannelDeletionImpact {
 }
 
 export type ChannelDeletionResult =
-  | { status: 'deleted'; impact: ChannelDeletionImpact }
+  | {
+      status: 'deleted'
+      impact: ChannelDeletionImpact
+      backupStoragePaths?: string[]
+    }
   | { status: 'confirmation_mismatch' }
   | { status: 'not_found' }
 
@@ -649,7 +686,7 @@ export interface ChannelManagementRepository {
 export interface ChannelManagementRouteOptions {
   getAccess?: (headers: Headers) => Promise<OrganizationAccess | undefined>
   repository?: ChannelManagementRepository
-  setWebhookOverride?: (
+  registerWebhook?: (
     configuration: ChannelWebhookConfiguration,
     callbackUrl: string,
   ) => Promise<void>
@@ -659,6 +696,23 @@ export interface ChannelManagementRouteOptions {
   getAgentEligibility?: (
     configuration: ChannelAgentConfiguration,
   ) => Promise<AgentEligibilityResponse>
+  getPhoneNumberRegistration?: (
+    configuration: ChannelAgentConfiguration,
+  ) => Promise<PhoneNumberInfo>
+  getQrCode?: (
+    configuration: ChannelAgentConfiguration,
+  ) => Promise<MessageQrCode | undefined>
+  downloadQrImage?: (imageUrl: string) => Promise<{
+    body: ArrayBuffer
+    contentType: 'image/png' | 'image/svg+xml'
+  }>
+  registerPhoneNumber?: (
+    configuration: ChannelAgentConfiguration,
+    pin: string,
+  ) => Promise<RegistrationSuccessResponse>
+  deregisterPhoneNumber?: (
+    configuration: ChannelAgentConfiguration,
+  ) => Promise<RegistrationSuccessResponse>
   updateAgentSettings?: (
     configuration: ChannelAgentConfiguration,
     input: AgentSettingsInput,
@@ -686,6 +740,7 @@ export interface ChannelManagementRouteOptions {
   agentEvaluations?: AgentEvaluationsService
   agentKnowledge?: AgentKnowledgeService
   knowledgeArchive?: AgentKnowledgeArchive
+  agentBackups?: AgentBackupService
   agentImportRequestIntervalMs?: number
   agentImportRetryBackoffMs?: readonly number[]
   reportImportLog?: AgentImportLog
@@ -749,6 +804,10 @@ export interface AgentConnectorsService {
     configuration: ChannelAgentConfiguration,
     connectorId: string,
     toolId: string,
+  ) => Promise<void>
+  refreshMcpTools?: (
+    configuration: ChannelAgentConfiguration,
+    connectorId: string,
   ) => Promise<void>
   upsertCertificate?: (
     configuration: ChannelAgentConfiguration,
@@ -881,6 +940,8 @@ const databaseRepository: ChannelManagementRepository = {
   getWebhookConfiguration: async (organizationId, channelId) => {
     const [row] = await db
       .select({
+        waAppId: channels.waAppId,
+        waAppSecret: channels.waAppSecret,
         waWabaId: channels.waWabaId,
         waWebhookVerifyToken: channels.waWebhookVerifyToken,
         waSystemUserAccessToken: channels.waSystemUserAccessToken,
@@ -1037,6 +1098,15 @@ const databaseRepository: ChannelManagementRepository = {
         .delete(contacts)
         .where(eq(contacts.channelId, channelId))
       await transaction.delete(groups).where(eq(groups.channelId, channelId))
+      const deletedBackups = await transaction
+        .delete(agentBackups)
+        .where(
+          and(
+            eq(agentBackups.organizationId, organizationId),
+            eq(agentBackups.channelId, channelId),
+          ),
+        )
+        .returning({ storagePath: agentBackups.storagePath })
       await transaction
         .delete(channels)
         .where(
@@ -1046,7 +1116,13 @@ const databaseRepository: ChannelManagementRepository = {
           ),
         )
 
-      return { status: 'deleted' as const, impact }
+      return {
+        status: 'deleted' as const,
+        impact,
+        backupStoragePaths: deletedBackups.map(
+          ({ storagePath }) => storagePath,
+        ),
+      }
     })
   },
 }
@@ -1054,9 +1130,14 @@ const databaseRepository: ChannelManagementRepository = {
 export const createChannelManagementRoute = ({
   getAccess = getOrganizationAccess,
   repository = databaseRepository,
-  setWebhookOverride = overrideMetaWebhook,
+  registerWebhook = registerMetaWebhook,
   getAgentSettings = getMetaAgentSettings,
   getAgentEligibility = getMetaAgentEligibility,
+  getPhoneNumberRegistration = getMetaPhoneNumberRegistration,
+  getQrCode = getMetaChannelQrCode,
+  downloadQrImage = downloadMetaChannelQrImage,
+  registerPhoneNumber = registerMetaPhoneNumber,
+  deregisterPhoneNumber = deregisterMetaPhoneNumber,
   updateAgentSettings = updateMetaAgentSettings,
   listAgentAllowlist = listMetaAgentAllowlist,
   addAgentAllowlistEntry = addMetaAgentAllowlistEntry,
@@ -1068,6 +1149,7 @@ export const createChannelManagementRoute = ({
   agentEvaluations = metaAgentEvaluationsService,
   agentKnowledge = metaAgentKnowledgeService,
   knowledgeArchive = createAgentKnowledgeArchive(),
+  agentBackups = createAgentBackupService(),
   agentImportRequestIntervalMs = 500,
   agentImportRetryBackoffMs = defaultAgentImportRetryBackoffMs,
   reportImportLog = (event, details, error) => {
@@ -1140,6 +1222,261 @@ export const createChannelManagementRoute = ({
         throw error
       }
     })
+    .get('/:id/registration', async (c) => {
+      const channelId = parseChannelId(c.req.param('id'))
+      if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      const configuration = await repository.getAgentConfiguration(
+        access.organizationId,
+        channelId,
+      )
+      if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+      try {
+        const phoneNumber = await getPhoneNumberRegistration(configuration)
+        return c.json({
+          status: getPhoneNumberRegistrationStatus(phoneNumber),
+          providerStatus: phoneNumber.status ?? null,
+          displayPhoneNumber: phoneNumber.display_phone_number ?? null,
+          verifiedName: phoneNumber.verified_name ?? null,
+        })
+      } catch (error) {
+        if (error instanceof MetaPhoneNumberRegistrationError) {
+          return c.json({ message: error.message }, error.status)
+        }
+        throw error
+      }
+    })
+    .get('/:id/qr-code', async (c) => {
+      const channelId = parseChannelId(c.req.param('id'))
+      if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      const configuration = await repository.getAgentConfiguration(
+        access.organizationId,
+        channelId,
+      )
+      if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+      try {
+        const qrCode = await getQrCode(configuration)
+        return c.json({
+          qrCode: qrCode
+            ? {
+                code: qrCode.code,
+                imageUrl: qrCode.qr_image_url
+                  ? `/api/channels/${channelId}/qr-code/image`
+                  : null,
+                deepLinkUrl: qrCode.deep_link_url ?? null,
+                prefilledMessage: qrCode.prefilled_message ?? null,
+              }
+            : null,
+        })
+      } catch (error) {
+        if (error instanceof MetaChannelQrCodeError) {
+          return c.json({ message: error.message }, error.status)
+        }
+        throw error
+      }
+    })
+    .get('/:id/qr-code/image', async (c) => {
+      const channelId = parseChannelId(c.req.param('id'))
+      if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      const configuration = await repository.getAgentConfiguration(
+        access.organizationId,
+        channelId,
+      )
+      if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+      try {
+        const qrCode = await getQrCode(configuration)
+        if (!qrCode?.qr_image_url) {
+          return c.json({ message: 'QR code image not found' }, 404)
+        }
+        const image = await downloadQrImage(qrCode.qr_image_url)
+        return c.body(image.body, 200, {
+          'cache-control': 'private, max-age=300',
+          'content-type': image.contentType,
+          'x-content-type-options': 'nosniff',
+        })
+      } catch (error) {
+        if (error instanceof MetaChannelQrCodeError) {
+          return c.json({ message: error.message }, error.status)
+        }
+        throw error
+      }
+    })
+    .post(
+      '/:id/registration/register',
+      zValidator('json', registerPhoneNumberSchema),
+      async (c) => {
+        const channelId = parseChannelId(c.req.param('id'))
+        if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+        const access = await getAccess(c.req.raw.headers)
+        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        if (!canManageChannels(access.role)) {
+          return c.json(
+            { message: 'Organization owner or admin required' },
+            403,
+          )
+        }
+        const configuration = await repository.getAgentConfiguration(
+          access.organizationId,
+          channelId,
+        )
+        if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+        try {
+          const result = await registerPhoneNumber(
+            configuration,
+            c.req.valid('json').pin,
+          )
+          return c.json({ result })
+        } catch (error) {
+          if (error instanceof MetaPhoneNumberRegistrationError) {
+            return c.json({ message: error.message }, error.status)
+          }
+          throw error
+        }
+      },
+    )
+    .post('/:id/registration/deregister', async (c) => {
+      const channelId = parseChannelId(c.req.param('id'))
+      if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      if (!canManageChannels(access.role)) {
+        return c.json({ message: 'Organization owner or admin required' }, 403)
+      }
+      const configuration = await repository.getAgentConfiguration(
+        access.organizationId,
+        channelId,
+      )
+      if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+      try {
+        const result = await deregisterPhoneNumber(configuration)
+        return c.json({ result })
+      } catch (error) {
+        if (error instanceof MetaPhoneNumberRegistrationError) {
+          return c.json({ message: error.message }, error.status)
+        }
+        throw error
+      }
+    })
+    .get('/:id/agent-backups', async (c) => {
+      const channelId = parseChannelId(c.req.param('id'))
+      if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      const configuration = await repository.getAgentConfiguration(
+        access.organizationId,
+        channelId,
+      )
+      if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+
+      return c.json({
+        backups: await agentBackups.list(access.organizationId, channelId),
+      })
+    })
+    .post('/:id/agent-backups', async (c) => {
+      const channelId = parseChannelId(c.req.param('id'))
+      if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      if (!canManageChannels(access.role)) {
+        return c.json({ message: 'Organization owner or admin required' }, 403)
+      }
+      const configuration = await repository.getAgentConfiguration(
+        access.organizationId,
+        channelId,
+      )
+      if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+
+      c.header('Cache-Control', 'no-cache, no-store, no-transform')
+      c.header('X-Accel-Buffering', 'no')
+      return streamSSE(c, async (stream) => {
+        const progress = async (
+          step: AgentExportProgressStep,
+          position: number,
+        ) =>
+          stream.writeSSE({
+            event: 'progress',
+            data: JSON.stringify({
+              step,
+              position,
+              total: agentExportProgressSteps.length,
+            }),
+          })
+
+        try {
+          const { archive, fileName } = await buildAgentExport({
+            organizationId: access.organizationId,
+            channelId,
+            configuration,
+            repository,
+            getAgentSettings,
+            listAgentAllowlist,
+            getAgentBusinessInfo,
+            agentSkills,
+            agentConnectors,
+            agentKnowledge,
+            knowledgeArchive,
+            progress,
+          })
+          const backup = await agentBackups.create(
+            access.organizationId,
+            channelId,
+            fileName,
+            archive,
+          )
+          await stream.writeSSE({
+            event: 'complete',
+            data: JSON.stringify({ backup }),
+          })
+        } catch (error) {
+          console.error('Agent backup failed', {
+            organizationId: access.organizationId,
+            channelId,
+            error,
+          })
+          await stream.writeSSE({
+            event: 'backup-error',
+            data: JSON.stringify({ message: 'Could not create agent backup' }),
+          })
+        }
+      })
+    })
+    .get('/:id/agent-backups/:backupId/archive', async (c) => {
+      const channelId = parseChannelId(c.req.param('id'))
+      const backupId = parseChannelId(c.req.param('backupId'))
+      if (!channelId || !backupId) {
+        return c.json({ message: 'Invalid channel or backup ID' }, 400)
+      }
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      if (!canManageChannels(access.role)) {
+        return c.json({ message: 'Organization owner or admin required' }, 403)
+      }
+      const configuration = await repository.getAgentConfiguration(
+        access.organizationId,
+        channelId,
+      )
+      if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+
+      const stored = await agentBackups.getArchive(
+        access.organizationId,
+        channelId,
+        backupId,
+      )
+      if (!stored) return c.json({ message: 'Agent backup not found' }, 404)
+
+      const archive = new Uint8Array(stored.archive).buffer
+      return c.body(archive, 200, {
+        'Cache-Control': 'no-store',
+        'Content-Disposition': `attachment; filename="agent-backup.agtx"; filename*=UTF-8''${encodeURIComponent(stored.backup.fileName)}`,
+        'Content-Length': String(stored.archive.byteLength),
+        'Content-Type': 'application/vnd.mba.agent+zip',
+      })
+    })
     .get('/:id/agent-export', async (c) => {
       const channelId = parseChannelId(c.req.param('id'))
       if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
@@ -1163,145 +1500,20 @@ export const createChannelManagementRoute = ({
           })
 
         try {
-          await progress('settings', 1)
-          const providerSettings = (await getAgentSettings(configuration))[0]
-          if (!providerSettings) {
-            await stream.writeSSE({
-              event: 'export-error',
-              data: JSON.stringify({ message: 'Agent is not configured' }),
-            })
-            return
-          }
-
-          await progress('businessData', 2)
-          const [channel, allowlistEntries, businessInfo] = await Promise.all([
-            repository
-              .list(access.organizationId)
-              .then((items) => items.find((item) => item.id === channelId)),
-            listAgentAllowlist(configuration),
-            getAgentBusinessInfo(configuration),
-          ])
-          if (!channel) {
-            await stream.writeSSE({
-              event: 'export-error',
-              data: JSON.stringify({ message: 'Channel not found' }),
-            })
-            return
-          }
-
-          await progress('skills', 3)
-          const skills = await agentSkills.list(configuration)
-
-          await progress('knowledge', 4)
-          const [faqs, websites] = await Promise.all([
-            agentKnowledge.listFaqs(configuration),
-            agentKnowledge.listWebsites(configuration),
-          ])
-
-          await progress('files', 5)
-          const providerFiles = await agentKnowledge.listFiles(configuration)
-          const archivedFiles = await knowledgeArchive.getMany(
-            access.organizationId,
-            providerFiles.map((file) => file.id),
-          )
-          const archivedByProviderId = new Map(
-            archivedFiles.map((file) => [file.providerFileId, file]),
-          )
-          const knowledgeFiles = providerFiles.map((file, position) => {
-            const archived = archivedByProviderId.get(file.id)
-            const included = archived?.body !== null && archived !== undefined
-            return {
-              providerFileId: file.id,
-              fileName: file.file_name,
-              path: included
-                ? knowledgeFileArchivePath(position, file.file_name)
-                : null,
-              included,
-              body: archived?.body ?? null,
-            }
+          const { archive, fileName } = await buildAgentExport({
+            organizationId: access.organizationId,
+            channelId,
+            configuration,
+            repository,
+            getAgentSettings,
+            listAgentAllowlist,
+            getAgentBusinessInfo,
+            agentSkills,
+            agentConnectors,
+            agentKnowledge,
+            knowledgeArchive,
+            progress,
           })
-
-          await progress('connectors', 6)
-          const connectors = await agentConnectors.list(configuration)
-          const connectorsWithTools = await Promise.all(
-            connectors.map(async (connector) => ({
-              ...toAgentConnector(connector),
-              tools: (
-                await agentConnectors.listTools(configuration, connector.id)
-              ).map(toAgentConnectorTool),
-            })),
-          )
-
-          await progress('packaging', 7)
-          const exportedAt = new Date()
-          const includedFileCount = knowledgeFiles.filter(
-            (file) => file.included,
-          ).length
-          const missingFileCount = knowledgeFiles.length - includedFileCount
-          const document = stringifyYaml({
-            format: 'agtx',
-            version: 1,
-            exportedAt: exportedAt.toISOString(),
-            source: {
-              channel: {
-                type: channel.type,
-                phoneNumber: channel.waPhoneNumber,
-                phoneNumberId: channel.waPhoneNumberId,
-                wabaId: channel.waWabaId,
-                businessId: channel.waBusinessId,
-                appId: channel.waAppId,
-              },
-            },
-            security: {
-              connectorCredentialsIncluded: false,
-              connectorCertificatesIncluded: false,
-              knowledgeFiles: {
-                total: knowledgeFiles.length,
-                included: includedFileCount,
-                missing: missingFileCount,
-              },
-            },
-            importRequirements: {
-              requestConnectorCredentials: connectors.some(
-                (connector) => connector.auth_type !== 'NONE',
-              ),
-              requestConnectorCertificates: connectors.some((connector) =>
-                Boolean(connector.mtls_config),
-              ),
-              requestMissingKnowledgeFiles: missingFileCount > 0,
-            },
-            agent: {
-              settings: toAgentSettingsSummary(providerSettings),
-              allowlist: allowlistEntries.map(toAgentAllowlistEntry),
-              businessInfo: toAgentBusinessInfo(businessInfo),
-              skills: skills.map(toAgentSkill),
-              knowledge: {
-                faqs: faqs.map(toFaq),
-                websites: websites.map(toKnowledgeWebsite),
-                files: knowledgeFiles.map((file) => ({
-                  providerFileId: file.providerFileId,
-                  fileName: file.fileName,
-                  path: file.path,
-                  included: file.included,
-                })),
-              },
-              connectors: connectorsWithTools,
-            },
-          })
-          const archive = createAgentExportArchive(
-            [
-              {
-                path: 'agent.yaml',
-                body: new TextEncoder().encode(document),
-              },
-              ...knowledgeFiles.flatMap((file) =>
-                file.path && file.body
-                  ? [{ path: file.path, body: file.body }]
-                  : [],
-              ),
-            ],
-            exportedAt,
-          )
           const chunkSize = 384 * 1024
           const chunkCount = Math.ceil(archive.byteLength / chunkSize)
           for (let index = 0; index < chunkCount; index += 1) {
@@ -1319,11 +1531,10 @@ export const createChannelManagementRoute = ({
               }),
             })
           }
-          const phone = channel.waPhoneNumber.replace(/\D/g, '')
           await stream.writeSSE({
             event: 'complete',
             data: JSON.stringify({
-              fileName: `agent-${phone || channelId}.agtx`,
+              fileName,
               chunkCount,
               byteSize: archive.byteLength,
             }),
@@ -1400,9 +1611,13 @@ export const createChannelManagementRoute = ({
       c.header('Cache-Control', 'no-cache, no-store, no-transform')
       c.header('X-Accel-Buffering', 'no')
       return streamSSE(c, async (stream) => {
-        const total = 7
+        const includeBackup = prepared.options.createBackupBeforeImport
+        const positionOffset = includeBackup ? 1 : 0
+        const total = 7 + positionOffset
         const startedAt = Date.now()
-        let currentStep: AgentImportProgressStep = 'settings'
+        let currentStep: AgentImportProgressStep = includeBackup
+          ? 'backup'
+          : 'settings'
         let currentPosition = 1
         const progress = async (
           step: AgentImportProgressStep,
@@ -1459,6 +1674,7 @@ export const createChannelManagementRoute = ({
             })
           }
           importLog('started', {
+            createBackupBeforeImport: includeBackup,
             resources: {
               allowlist: manifest.agent.allowlist.length,
               skills: manifest.agent.skills.length,
@@ -1467,19 +1683,59 @@ export const createChannelManagementRoute = ({
               files: files.length,
               connectors: manifest.agent.connectors.length,
               tools: manifest.agent.connectors.reduce(
-                (total, connector) => total + connector.tools.length,
+                (total, connector) =>
+                  total +
+                  (connector.connectorProtocol === 'MCP'
+                    ? 0
+                    : connector.tools.length),
                 0,
               ),
             },
             requestIntervalMs: agentImportRequestIntervalMs,
             retryBackoffMs: agentImportRetryBackoffMs,
           })
+          if (includeBackup) {
+            await progress('backup', 1)
+            const { archive, fileName } = await buildAgentExport({
+              organizationId: access.organizationId,
+              channelId,
+              configuration,
+              repository,
+              getAgentSettings,
+              listAgentAllowlist,
+              getAgentBusinessInfo,
+              agentSkills,
+              agentConnectors,
+              agentKnowledge,
+              knowledgeArchive,
+              progress: async (backupStep, position) => {
+                await stream.writeSSE({
+                  event: 'backup-progress',
+                  data: JSON.stringify({
+                    step: backupStep,
+                    position,
+                    total: agentExportProgressSteps.length,
+                  }),
+                })
+              },
+            })
+            const backup = await agentBackups.create(
+              access.organizationId,
+              channelId,
+              fileName,
+              archive,
+            )
+            importLog('pre_import_backup_created', {
+              backupId: backup.id,
+              byteSize: backup.byteSize,
+            })
+          }
           const runProviderRequest = createAgentImportProviderRequest(
             agentImportRequestIntervalMs,
             agentImportRetryBackoffMs,
             importLog,
           )
-          await progress('settings', 1)
+          await progress('settings', 1 + positionOffset)
           await resourceProgress('settings', 0, 1)
           const importedSettings = manifest.agent.settings
           const disabledSettingsInput: AgentSettingsInput = {
@@ -1509,7 +1765,7 @@ export const createChannelManagementRoute = ({
           )
           await resourceProgress('settings', 1, 1)
 
-          await progress('businessData', 2)
+          await progress('businessData', 2 + positionOffset)
           await resourceProgress('businessInfo', 0, 1)
           const desiredBusinessInfo = toMetaBusinessInfo(
             manifest.agent.businessInfo,
@@ -1536,7 +1792,7 @@ export const createChannelManagementRoute = ({
             resourceProgress,
           )
 
-          await progress('skills', 3)
+          await progress('skills', 3 + positionOffset)
           await reconcileSkills(
             configuration,
             manifest.agent.skills,
@@ -1545,7 +1801,7 @@ export const createChannelManagementRoute = ({
             resourceProgress,
           )
 
-          await progress('knowledge', 4)
+          await progress('knowledge', 4 + positionOffset)
           await reconcileKnowledge(
             configuration,
             manifest.agent.knowledge,
@@ -1554,7 +1810,7 @@ export const createChannelManagementRoute = ({
             resourceProgress,
           )
 
-          await progress('files', 5)
+          await progress('files', 5 + positionOffset)
           const currentFiles = await runAgentImportRead(
             'Knowledge file listing',
             runProviderRequest,
@@ -1649,7 +1905,7 @@ export const createChannelManagementRoute = ({
             }
           }
 
-          await progress('connectors', 6)
+          await progress('connectors', 6 + positionOffset)
           await reconcileConnectors(
             configuration,
             manifest.agent.connectors,
@@ -1659,7 +1915,7 @@ export const createChannelManagementRoute = ({
             resourceProgress,
           )
 
-          await progress('finalizing', 7)
+          await progress('finalizing', 7 + positionOffset)
           await resourceProgress('finalizing', 0, 1)
           const finalSettingsInput: AgentSettingsInput = {
             rollout: { enabled: false },
@@ -1704,7 +1960,7 @@ export const createChannelManagementRoute = ({
             data: JSON.stringify({
               step: currentStep,
               message,
-              partial: true,
+              partial: currentStep !== 'backup',
             }),
           })
         }
@@ -2164,6 +2420,46 @@ export const createChannelManagementRoute = ({
       try {
         await agentConnectors.delete(configuration, connectorId)
         return c.json({ success: true })
+      } catch (error) {
+        if (error instanceof MetaAgentConnectorsError) {
+          return c.json({ message: error.message }, error.status)
+        }
+        throw error
+      }
+    })
+    .post('/:id/agent-connectors/:connectorId/refresh-mcp-tools', async (c) => {
+      const channelId = parseChannelId(c.req.param('id'))
+      const connectorId = c.req.param('connectorId').trim()
+      if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+      if (!connectorId) return c.json({ message: 'Invalid connector ID' }, 400)
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      if (!canManageChannels(access.role)) {
+        return c.json({ message: 'Organization owner or admin required' }, 403)
+      }
+      const configuration = await repository.getAgentConfiguration(
+        access.organizationId,
+        channelId,
+      )
+      if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+      try {
+        const connector = await agentConnectors.get(configuration, connectorId)
+        if ((connector.connector_protocol ?? 'HTTP') !== 'MCP') {
+          return c.json(
+            { message: 'Tool refresh is available only for MCP connectors' },
+            400,
+          )
+        }
+        if (!agentConnectors.refreshMcpTools) {
+          return c.json({ message: 'MCP tool refresh is unavailable' }, 501)
+        }
+        await agentConnectors.refreshMcpTools(configuration, connectorId)
+        return c.json({
+          success: true as const,
+          connector: toAgentConnector(
+            await agentConnectors.get(configuration, connectorId),
+          ),
+        })
       } catch (error) {
         if (error instanceof MetaAgentConnectorsError) {
           return c.json({ message: error.message }, error.status)
@@ -2908,14 +3204,14 @@ export const createChannelManagementRoute = ({
         }
 
         try {
-          await setWebhookOverride(configuration, callbackUrl)
+          await registerWebhook(configuration, callbackUrl)
           return c.json({
             success: true as const,
-            message: 'Meta webhook override updated successfully',
+            message: 'Meta webhook registered and app subscribed successfully',
             callbackUrl,
           })
         } catch (error) {
-          if (error instanceof MetaWebhookOverrideError) {
+          if (error instanceof MetaWebhookRegistrationError) {
             return c.json({ message: error.message }, 422)
           }
           throw error
@@ -3002,6 +3298,15 @@ export const createChannelManagementRoute = ({
               400,
             )
           }
+          await agentBackups
+            .deleteStoredFiles(result.backupStoragePaths ?? [])
+            .catch((error: unknown) => {
+              console.error('Could not delete agent backup files', {
+                organizationId: access.organizationId,
+                channelId,
+                error,
+              })
+            })
           return c.json({
             deleted: true as const,
             channelId,
@@ -3100,40 +3405,239 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-export async function overrideMetaWebhook(
+export async function registerMetaWebhook(
   configuration: ChannelWebhookConfiguration,
   callbackUrl: string,
   request: typeof fetch = fetch,
 ): Promise<void> {
   try {
+    const registration = createWhatsAppWebhookRegistrationClient({
+      appId: configuration.waAppId,
+      appSecret: configuration.waAppSecret,
+      fetch: request,
+    })
+    await registration.register({
+      callbackUrl,
+      verifyToken: configuration.waWebhookVerifyToken,
+      fields: WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS,
+    })
+
     const subscriptions = createWhatsAppSubscriptionsClient({
       accessToken: configuration.waSystemUserAccessToken,
       wabaId: configuration.waWabaId,
       fetch: request,
     })
-    await subscriptions.overrideCallback(
-      {
-        override_callback_uri: callbackUrl,
-        verify_token: configuration.waWebhookVerifyToken,
-      },
-      { signal: AbortSignal.timeout(15_000) },
-    )
+    await subscriptions.subscribe()
   } catch (error) {
+    if (error instanceof WhatsAppWebhookRegistrationApiError) {
+      throw new MetaWebhookRegistrationError(
+        `Meta rejected the webhook registration: ${error.message}`,
+        { cause: error },
+      )
+    }
+    if (error instanceof WhatsAppWebhookRegistrationResponseError) {
+      throw new MetaWebhookRegistrationError(
+        'Meta returned an unexpected webhook registration response',
+        { cause: error },
+      )
+    }
     if (error instanceof WhatsAppSubscriptionsApiError) {
-      throw new MetaWebhookOverrideError(
-        `Meta rejected the webhook: ${error.message}`,
+      throw new MetaWebhookRegistrationError(
+        `Meta rejected the WABA app subscription: ${error.message}`,
+        { cause: error },
       )
     }
     if (error instanceof WhatsAppSubscriptionsResponseError) {
-      throw new MetaWebhookOverrideError(
-        'Meta returned an unexpected webhook subscription response',
+      throw new MetaWebhookRegistrationError(
+        'Meta returned an unexpected WABA app subscription response',
+        { cause: error },
       )
     }
-    throw new MetaWebhookOverrideError('Could not reach the Meta Graph API')
+    throw new MetaWebhookRegistrationError(
+      'Could not register the Meta webhook and subscribe the app',
+      { cause: error },
+    )
   }
 }
 
-class MetaWebhookOverrideError extends Error {}
+class MetaWebhookRegistrationError extends Error {}
+
+export async function getMetaChannelQrCode(
+  configuration: ChannelAgentConfiguration,
+  request: typeof fetch = fetch,
+): Promise<MessageQrCode | undefined> {
+  try {
+    const page = await createWhatsAppQrClient({
+      accessToken: configuration.waSystemUserAccessToken,
+      phoneNumberId: configuration.waPhoneNumberId,
+      fetch: request,
+    }).list({
+      fields: ['prefilled_message', 'deep_link_url'],
+      imageFormat: 'SVG',
+      limit: 1,
+    })
+    return page.data[0]
+  } catch (error) {
+    if (error instanceof WhatsAppQrApiError) {
+      throw new MetaChannelQrCodeError(
+        `Meta rejected the QR code request: ${error.message}`,
+        { cause: error },
+      )
+    }
+    if (error instanceof WhatsAppQrResponseError) {
+      throw new MetaChannelQrCodeError(
+        'Meta returned an unexpected QR code response',
+        { cause: error },
+      )
+    }
+    throw new MetaChannelQrCodeError(
+      'Could not reach the WhatsApp QR code API',
+      { cause: error },
+    )
+  }
+}
+
+const MAX_QR_IMAGE_BYTES = 2 * 1_024 * 1_024
+
+export async function downloadMetaChannelQrImage(
+  imageUrl: string,
+  request: typeof fetch = fetch,
+): Promise<{
+  body: ArrayBuffer
+  contentType: 'image/png' | 'image/svg+xml'
+}> {
+  try {
+    const url = new URL(imageUrl)
+    if (url.protocol !== 'https:') {
+      throw new Error('QR code image URL must use HTTPS')
+    }
+    const response = await request(url)
+    if (!response.ok) {
+      throw new Error(`QR code image returned HTTP ${response.status}`)
+    }
+    const contentType = response.headers
+      .get('content-type')
+      ?.split(';', 1)[0]
+      ?.trim()
+      .toLowerCase()
+    if (contentType !== 'image/png' && contentType !== 'image/svg+xml') {
+      throw new Error('QR code image has an unsupported content type')
+    }
+    const contentLength = Number(response.headers.get('content-length'))
+    if (Number.isFinite(contentLength) && contentLength > MAX_QR_IMAGE_BYTES) {
+      throw new Error('QR code image exceeds the size limit')
+    }
+    const body = await response.arrayBuffer()
+    if (body.byteLength > MAX_QR_IMAGE_BYTES) {
+      throw new Error('QR code image exceeds the size limit')
+    }
+    return { body, contentType }
+  } catch (error) {
+    if (error instanceof MetaChannelQrCodeError) throw error
+    throw new MetaChannelQrCodeError(
+      'Could not download the WhatsApp QR code image',
+      { cause: error },
+    )
+  }
+}
+
+class MetaChannelQrCodeError extends Error {
+  constructor(
+    message: string,
+    options?: ErrorOptions,
+    readonly status = 502 as const,
+  ) {
+    super(message, options)
+  }
+}
+
+export async function getMetaPhoneNumberRegistration(
+  configuration: ChannelAgentConfiguration,
+  request: typeof fetch = fetch,
+): Promise<PhoneNumberInfo> {
+  try {
+    return await createWhatsAppRegistrationClient({
+      accessToken: configuration.waSystemUserAccessToken,
+      phoneNumberId: configuration.waPhoneNumberId,
+      fetch: request,
+    }).getPhoneNumber({
+      fields: ['status', 'display_phone_number', 'verified_name'],
+    })
+  } catch (error) {
+    throw mapMetaPhoneNumberRegistrationError(error, 'status lookup')
+  }
+}
+
+export async function registerMetaPhoneNumber(
+  configuration: ChannelAgentConfiguration,
+  pin: string,
+  request: typeof fetch = fetch,
+): Promise<RegistrationSuccessResponse> {
+  try {
+    return await createWhatsAppRegistrationClient({
+      accessToken: configuration.waSystemUserAccessToken,
+      phoneNumberId: configuration.waPhoneNumberId,
+      fetch: request,
+    }).register({ pin })
+  } catch (error) {
+    throw mapMetaPhoneNumberRegistrationError(error, 'registration')
+  }
+}
+
+export async function deregisterMetaPhoneNumber(
+  configuration: ChannelAgentConfiguration,
+  request: typeof fetch = fetch,
+): Promise<RegistrationSuccessResponse> {
+  try {
+    return await createWhatsAppRegistrationClient({
+      accessToken: configuration.waSystemUserAccessToken,
+      phoneNumberId: configuration.waPhoneNumberId,
+      fetch: request,
+    }).deregister()
+  } catch (error) {
+    throw mapMetaPhoneNumberRegistrationError(error, 'deregistration')
+  }
+}
+
+function getPhoneNumberRegistrationStatus(
+  phoneNumber: PhoneNumberInfo,
+): 'registered' | 'unregistered' {
+  return phoneNumber.status?.toUpperCase() === 'CONNECTED'
+    ? 'registered'
+    : 'unregistered'
+}
+
+function mapMetaPhoneNumberRegistrationError(
+  error: unknown,
+  operation: string,
+): MetaPhoneNumberRegistrationError {
+  if (error instanceof WhatsAppRegistrationApiError) {
+    return new MetaPhoneNumberRegistrationError(
+      `Meta rejected the phone-number ${operation}: ${error.message}`,
+      { cause: error },
+    )
+  }
+  if (error instanceof WhatsAppRegistrationResponseError) {
+    return new MetaPhoneNumberRegistrationError(
+      `Meta returned an unexpected phone-number ${operation} response`,
+      { cause: error },
+    )
+  }
+  return new MetaPhoneNumberRegistrationError(
+    'Could not reach the WhatsApp phone-number registration API',
+    { cause: error },
+  )
+}
+
+class MetaPhoneNumberRegistrationError extends Error {
+  constructor(
+    message: string,
+    options?: ErrorOptions,
+    readonly status = 502 as const,
+  ) {
+    super(message, options)
+  }
+}
 
 export async function getMetaAgentEligibility(
   configuration: ChannelAgentConfiguration,
@@ -3438,6 +3942,10 @@ const metaAgentConnectorsService: AgentConnectorsService = {
     executeMetaConnectors(configuration, (client) =>
       client.deleteConnectorTool(connectorId, toolId),
     ),
+  refreshMcpTools: (configuration, connectorId) =>
+    executeMetaConnectors(configuration, async (client) => {
+      await client.refreshMcpTools(connectorId)
+    }),
   upsertCertificate: (configuration, connectorId, input) =>
     executeMetaConnectors(configuration, async (client) => {
       await client.upsertConnectorCertificate(connectorId, input)
@@ -4106,6 +4614,194 @@ function toKnowledgeFile(file: KnowledgeFile) {
 function fileExtension(fileName: string): string {
   const dot = fileName.lastIndexOf('.')
   return dot < 0 ? '' : fileName.slice(dot).toLowerCase()
+}
+
+const agentExportProgressSteps = [
+  'settings',
+  'businessData',
+  'skills',
+  'knowledge',
+  'files',
+  'connectors',
+  'packaging',
+] as const
+type AgentExportProgressStep = (typeof agentExportProgressSteps)[number]
+
+interface BuildAgentExportOptions {
+  organizationId: string
+  channelId: number
+  configuration: ChannelAgentConfiguration
+  repository: ChannelManagementRepository
+  getAgentSettings: NonNullable<
+    ChannelManagementRouteOptions['getAgentSettings']
+  >
+  listAgentAllowlist: NonNullable<
+    ChannelManagementRouteOptions['listAgentAllowlist']
+  >
+  getAgentBusinessInfo: NonNullable<
+    ChannelManagementRouteOptions['getAgentBusinessInfo']
+  >
+  agentSkills: AgentSkillsService
+  agentConnectors: AgentConnectorsService
+  agentKnowledge: AgentKnowledgeService
+  knowledgeArchive: AgentKnowledgeArchive
+  progress: (step: AgentExportProgressStep, position: number) => Promise<void>
+}
+
+interface BuiltAgentExport {
+  archive: Uint8Array
+  fileName: string
+}
+
+async function buildAgentExport({
+  organizationId,
+  channelId,
+  configuration,
+  repository,
+  getAgentSettings,
+  listAgentAllowlist,
+  getAgentBusinessInfo,
+  agentSkills,
+  agentConnectors,
+  agentKnowledge,
+  knowledgeArchive,
+  progress,
+}: BuildAgentExportOptions): Promise<BuiltAgentExport> {
+  await progress('settings', 1)
+  const providerSettings = (await getAgentSettings(configuration))[0]
+  if (!providerSettings) throw new Error('Agent is not configured')
+
+  await progress('businessData', 2)
+  const [channel, allowlistEntries, businessInfo] = await Promise.all([
+    repository
+      .list(organizationId)
+      .then((items) => items.find((item) => item.id === channelId)),
+    listAgentAllowlist(configuration),
+    getAgentBusinessInfo(configuration),
+  ])
+  if (!channel) throw new Error('Channel not found')
+
+  await progress('skills', 3)
+  const skills = await agentSkills.list(configuration)
+
+  await progress('knowledge', 4)
+  const [faqs, websites] = await Promise.all([
+    agentKnowledge.listFaqs(configuration),
+    agentKnowledge.listWebsites(configuration),
+  ])
+
+  await progress('files', 5)
+  const providerFiles = await agentKnowledge.listFiles(configuration)
+  const archivedFiles = await knowledgeArchive.getMany(
+    organizationId,
+    providerFiles.map((file) => file.id),
+  )
+  const archivedByProviderId = new Map(
+    archivedFiles.map((file) => [file.providerFileId, file]),
+  )
+  const knowledgeFiles = providerFiles.map((file, position) => {
+    const archived = archivedByProviderId.get(file.id)
+    const included = archived?.body !== null && archived !== undefined
+    return {
+      providerFileId: file.id,
+      fileName: file.file_name,
+      path: included
+        ? knowledgeFileArchivePath(position, file.file_name)
+        : null,
+      included,
+      body: archived?.body ?? null,
+    }
+  })
+
+  await progress('connectors', 6)
+  const connectors = await agentConnectors.list(configuration)
+  const connectorsWithTools = await Promise.all(
+    connectors.map(async (connector) => {
+      const exportedConnector = toAgentConnector(connector)
+      return exportedConnector.connectorProtocol === 'MCP'
+        ? exportedConnector
+        : {
+            ...exportedConnector,
+            tools: (
+              await agentConnectors.listTools(configuration, connector.id)
+            ).map(toAgentConnectorTool),
+          }
+    }),
+  )
+
+  await progress('packaging', 7)
+  const exportedAt = new Date()
+  const includedFileCount = knowledgeFiles.filter(
+    (file) => file.included,
+  ).length
+  const missingFileCount = knowledgeFiles.length - includedFileCount
+  const document = stringifyYaml({
+    format: 'agtx',
+    version: 1,
+    exportedAt: exportedAt.toISOString(),
+    source: {
+      channel: {
+        type: channel.type,
+        phoneNumber: channel.waPhoneNumber,
+        phoneNumberId: channel.waPhoneNumberId,
+        wabaId: channel.waWabaId,
+        businessId: channel.waBusinessId,
+        appId: channel.waAppId,
+      },
+    },
+    security: {
+      connectorCredentialsIncluded: false,
+      connectorCertificatesIncluded: false,
+      knowledgeFiles: {
+        total: knowledgeFiles.length,
+        included: includedFileCount,
+        missing: missingFileCount,
+      },
+    },
+    importRequirements: {
+      requestConnectorCredentials: connectors.some(
+        (connector) => connector.auth_type !== 'NONE',
+      ),
+      requestConnectorCertificates: connectors.some((connector) =>
+        Boolean(connector.mtls_config),
+      ),
+      requestMissingKnowledgeFiles: missingFileCount > 0,
+    },
+    agent: {
+      settings: toAgentSettingsSummary(providerSettings),
+      allowlist: allowlistEntries.map(toAgentAllowlistEntry),
+      businessInfo: toAgentBusinessInfo(businessInfo),
+      skills: skills.map(toAgentSkill),
+      knowledge: {
+        faqs: faqs.map(toFaq),
+        websites: websites.map(toKnowledgeWebsite),
+        files: knowledgeFiles.map((file) => ({
+          providerFileId: file.providerFileId,
+          fileName: file.fileName,
+          path: file.path,
+          included: file.included,
+        })),
+      },
+      connectors: connectorsWithTools,
+    },
+  })
+  const archive = createAgentExportArchive(
+    [
+      {
+        path: 'agent.yaml',
+        body: new TextEncoder().encode(document),
+      },
+      ...knowledgeFiles.flatMap((file) =>
+        file.path && file.body ? [{ path: file.path, body: file.body }] : [],
+      ),
+    ],
+    exportedAt,
+  )
+  const phone = channel.waPhoneNumber.replace(/\D/g, '')
+  return {
+    archive,
+    fileName: `agent-${phone || channelId}.agtx`,
+  }
 }
 
 interface ParsedAgentImportPackage {
@@ -4895,73 +5591,75 @@ async function reconcileConnectors(
           },
         )
 
-    const currentTools = await runAgentImportRead(
-      `Connector tool listing (${connector.name})`,
-      runProviderRequest,
-      () => service.listTools(configuration, imported.id),
-    )
-    const currentToolByName = new Map(
-      currentTools.map((tool) => [tool.name, tool]),
-    )
-    const desiredToolNames = new Set(connector.tools.map((tool) => tool.name))
-    for (const tool of connector.tools) {
-      const input = toMetaConnectorToolInput({
-        ...tool,
-        userAuthActionConfig: tool.userAuthActionConfig ?? undefined,
-      })
-      const currentTool = currentToolByName.get(tool.name)
-      if (currentTool) {
-        await runAgentImportMutation(
-          `Connector tool update (${connector.name}.${tool.name})`,
-          runProviderRequest,
-          () =>
-            service.updateTool(
-              configuration,
-              imported.id,
-              currentTool.id,
-              input,
-            ),
-          async () => {
-            const matching = (
-              await service.listTools(configuration, imported.id)
-            ).find((candidate) => candidate.name === tool.name)
-            return matching && connectorToolMatches(matching, input)
-              ? agentImportMatches(matching)
-              : agentImportDoesNotMatch<ConnectorTool>()
-          },
-        )
-      } else {
-        await runAgentImportMutation(
-          `Connector tool creation (${connector.name}.${tool.name})`,
-          runProviderRequest,
-          () => service.createTool(configuration, imported.id, input),
-          async () => {
-            const matching = (
-              await service.listTools(configuration, imported.id)
-            ).find((candidate) => candidate.name === tool.name)
-            return matching && connectorToolMatches(matching, input)
-              ? agentImportMatches(matching)
-              : agentImportDoesNotMatch<ConnectorTool>()
-          },
-        )
+    if (connector.connectorProtocol === 'HTTP') {
+      const currentTools = await runAgentImportRead(
+        `Connector tool listing (${connector.name})`,
+        runProviderRequest,
+        () => service.listTools(configuration, imported.id),
+      )
+      const currentToolByName = new Map(
+        currentTools.map((tool) => [tool.name, tool]),
+      )
+      const desiredToolNames = new Set(connector.tools.map((tool) => tool.name))
+      for (const tool of connector.tools) {
+        const input = toMetaConnectorToolInput({
+          ...tool,
+          userAuthActionConfig: tool.userAuthActionConfig ?? undefined,
+        })
+        const currentTool = currentToolByName.get(tool.name)
+        if (currentTool) {
+          await runAgentImportMutation(
+            `Connector tool update (${connector.name}.${tool.name})`,
+            runProviderRequest,
+            () =>
+              service.updateTool(
+                configuration,
+                imported.id,
+                currentTool.id,
+                input,
+              ),
+            async () => {
+              const matching = (
+                await service.listTools(configuration, imported.id)
+              ).find((candidate) => candidate.name === tool.name)
+              return matching && connectorToolMatches(matching, input)
+                ? agentImportMatches(matching)
+                : agentImportDoesNotMatch<ConnectorTool>()
+            },
+          )
+        } else {
+          await runAgentImportMutation(
+            `Connector tool creation (${connector.name}.${tool.name})`,
+            runProviderRequest,
+            () => service.createTool(configuration, imported.id, input),
+            async () => {
+              const matching = (
+                await service.listTools(configuration, imported.id)
+              ).find((candidate) => candidate.name === tool.name)
+              return matching && connectorToolMatches(matching, input)
+                ? agentImportMatches(matching)
+                : agentImportDoesNotMatch<ConnectorTool>()
+            },
+          )
+        }
       }
-    }
-    for (const tool of currentTools) {
-      if (!desiredToolNames.has(tool.name)) {
-        await runAgentImportMutation(
-          `Connector tool deletion (${connector.name}.${tool.name})`,
-          runProviderRequest,
-          () => service.deleteTool(configuration, imported.id, tool.id),
-          async () => {
-            const afterDeletion = await service.listTools(
-              configuration,
-              imported.id,
-            )
-            return afterDeletion.some((candidate) => candidate.id === tool.id)
-              ? agentImportDoesNotMatch<void>()
-              : agentImportMatches(undefined)
-          },
-        )
+      for (const tool of currentTools) {
+        if (!desiredToolNames.has(tool.name)) {
+          await runAgentImportMutation(
+            `Connector tool deletion (${connector.name}.${tool.name})`,
+            runProviderRequest,
+            () => service.deleteTool(configuration, imported.id, tool.id),
+            async () => {
+              const afterDeletion = await service.listTools(
+                configuration,
+                imported.id,
+              )
+              return afterDeletion.some((candidate) => candidate.id === tool.id)
+                ? agentImportDoesNotMatch<void>()
+                : agentImportMatches(undefined)
+            },
+          )
+        }
       }
     }
 
@@ -4983,6 +5681,24 @@ async function reconcileConnectors(
         async () => {
           const currentConnector = await service.get(configuration, imported.id)
           return currentConnector.mtls_config?.has_certificate
+            ? agentImportMatches(undefined)
+            : agentImportDoesNotMatch<void>()
+        },
+      )
+    }
+    if (connector.connectorProtocol === 'MCP') {
+      if (!service.refreshMcpTools) {
+        throw new Error('MCP connector refresh is unavailable')
+      }
+      const refreshMcpTools = service.refreshMcpTools
+      await runAgentImportMutation(
+        `MCP connector tool refresh (${connector.name})`,
+        runProviderRequest,
+        () => refreshMcpTools(configuration, imported.id),
+        async () => {
+          const currentConnector = await service.get(configuration, imported.id)
+          const status = currentConnector.mcp_tool_sync?.status
+          return status === 'PENDING' || status === 'READY'
             ? agentImportMatches(undefined)
             : agentImportDoesNotMatch<void>()
         },

@@ -1,10 +1,16 @@
 import type { InferResponseType } from 'hono/client'
-import { Bot, Phone, RefreshCw } from 'lucide-react'
+import { Bot, Phone, RadioTower, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
+import {
+  emptyChannelQrState,
+  fetchChannelQrState,
+  type ChannelQrState,
+} from '../channel-qr'
+import { ChannelQrCode } from '../components/channel-qr-code'
 import { Button, cn, EmptyState, Pill } from '../components/ui'
 
 type ChannelsResponse = InferResponseType<
@@ -14,6 +20,11 @@ type ChannelsResponse = InferResponseType<
 type ChannelSummary = ChannelsResponse['channels'][number]
 type AgentStatus =
   'loading' | 'not_configured' | 'enabled' | 'disabled' | 'error'
+type RegistrationStatus = 'loading' | 'registered' | 'unregistered' | 'error'
+interface RegistrationState {
+  status: RegistrationStatus
+  providerStatus: string | null
+}
 
 export function AgentsPage() {
   const { t, i18n } = useTranslation()
@@ -23,6 +34,10 @@ export function AgentsPage() {
   const [agentStatuses, setAgentStatuses] = useState<
     Record<number, AgentStatus>
   >({})
+  const [registrationStates, setRegistrationStates] = useState<
+    Record<number, RegistrationState>
+  >({})
+  const [qrStates, setQrStates] = useState<Record<number, ChannelQrState>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const requestId = useRef(0)
@@ -39,6 +54,8 @@ export function AgentsPage() {
     if (!activeOrganization?.id) {
       setChannels([])
       setAgentStatuses({})
+      setRegistrationStates({})
+      setQrStates({})
       setIsLoading(false)
       return
     }
@@ -55,25 +72,42 @@ export function AgentsPage() {
           nextChannels.map((channel) => [channel.id, 'loading']),
         ),
       )
+      setRegistrationStates(
+        Object.fromEntries(
+          nextChannels.map((channel) => [
+            channel.id,
+            { status: 'loading', providerStatus: null },
+          ]),
+        ),
+      )
+      setQrStates(
+        Object.fromEntries(
+          nextChannels.map((channel) => [
+            channel.id,
+            emptyChannelQrState('loading'),
+          ]),
+        ),
+      )
       await Promise.all(
         nextChannels.map(async (channel) => {
-          let status: AgentStatus = 'error'
-          try {
-            const settingsResponse = await apiClient.api.channels[':id'][
-              'agent-settings'
-            ].$get({ param: { id: String(channel.id) } })
-            if (settingsResponse.ok) {
-              status = (await settingsResponse.json()).status
-            }
-          } catch {
-            status = 'error'
-          } finally {
-            if (requestId.current === currentRequestId) {
-              setAgentStatuses((current) => ({
-                ...current,
-                [channel.id]: status,
-              }))
-            }
+          const [status, registration, qrState] = await Promise.all([
+            fetchAgentStatus(channel.id),
+            fetchRegistrationState(channel.id),
+            fetchChannelQrState(channel.id),
+          ])
+          if (requestId.current === currentRequestId) {
+            setAgentStatuses((current) => ({
+              ...current,
+              [channel.id]: status,
+            }))
+            setRegistrationStates((current) => ({
+              ...current,
+              [channel.id]: registration,
+            }))
+            setQrStates((current) => ({
+              ...current,
+              [channel.id]: qrState,
+            }))
           }
         }),
       )
@@ -161,6 +195,13 @@ export function AgentsPage() {
                 key={channel.id}
                 channel={channel}
                 locale={i18n.language}
+                registration={
+                  registrationStates[channel.id] ?? {
+                    status: 'loading',
+                    providerStatus: null,
+                  }
+                }
+                qrState={qrStates[channel.id] ?? emptyChannelQrState('loading')}
                 status={agentStatuses[channel.id] ?? 'loading'}
               />
             ))}
@@ -174,10 +215,14 @@ export function AgentsPage() {
 function ChannelAgentCard({
   channel,
   locale,
+  registration,
+  qrState,
   status,
 }: {
   channel: ChannelSummary
   locale: string
+  registration: RegistrationState
+  qrState: ChannelQrState
   status: AgentStatus
 }) {
   const { t } = useTranslation()
@@ -219,14 +264,36 @@ function ChannelAgentCard({
           <ChannelDatum label={t('agents.wabaId')} value={channel.waWabaId} />
           <ChannelDatum label={t('agents.appId')} value={channel.waAppId} />
         </dl>
-        <div
-          className={cn(
-            'flex items-center justify-center gap-2 border-t px-5 py-4 text-sm font-semibold',
-            agentStatusClasses(status),
-          )}
-        >
-          <Bot className="size-4" aria-hidden />
-          <span>{t(`agents.status.${status}`)}</span>
+        <ChannelQrCode
+          className="mx-5 mb-5"
+          phoneNumber={channel.waPhoneNumber}
+          size="small"
+          state={qrState}
+        />
+        <div className="grid border-t sm:grid-cols-2">
+          <div
+            className={cn(
+              'flex items-center justify-center gap-2 px-5 py-4 text-center text-sm font-semibold',
+              agentStatusClasses(status),
+            )}
+          >
+            <Bot className="size-4 shrink-0" aria-hidden />
+            <span>{t(`agents.status.${status}`)}</span>
+          </div>
+          <div
+            className={cn(
+              'flex items-center justify-center gap-2 border-t px-5 py-4 text-center text-sm font-semibold sm:border-t-0 sm:border-l',
+              registrationStatusClasses(registration.status),
+            )}
+          >
+            <RadioTower className="size-4 shrink-0" aria-hidden />
+            <span>
+              {t(`channels.registration.status.${registration.status}`)}
+              {registration.providerStatus
+                ? ` · ${registration.providerStatus}`
+                : ''}
+            </span>
+          </div>
         </div>
       </article>
     </Link>
@@ -239,6 +306,42 @@ function agentStatusClasses(status: AgentStatus): string {
   if (status === 'not_configured') return 'bg-muted text-muted-foreground'
   if (status === 'error') return 'bg-destructive/10 text-destructive'
   return 'bg-muted/30 text-muted-foreground'
+}
+
+function registrationStatusClasses(status: RegistrationStatus): string {
+  if (status === 'registered') return 'bg-success/12 text-success'
+  if (status === 'unregistered') return 'bg-warning/12 text-warning'
+  if (status === 'error') return 'bg-destructive/10 text-destructive'
+  return 'bg-muted/30 text-muted-foreground'
+}
+
+async function fetchAgentStatus(channelId: number): Promise<AgentStatus> {
+  try {
+    const response = await apiClient.api.channels[':id']['agent-settings'].$get(
+      { param: { id: String(channelId) } },
+    )
+    return response.ok ? (await response.json()).status : 'error'
+  } catch {
+    return 'error'
+  }
+}
+
+async function fetchRegistrationState(
+  channelId: number,
+): Promise<RegistrationState> {
+  try {
+    const response = await apiClient.api.channels[':id'].registration.$get({
+      param: { id: String(channelId) },
+    })
+    if (!response.ok) return { status: 'error', providerStatus: null }
+    const registration = await response.json()
+    return {
+      status: registration.status,
+      providerStatus: registration.providerStatus,
+    }
+  } catch {
+    return { status: 'error', providerStatus: null }
+  }
 }
 
 function ChannelDatum({ label, value }: { label: string; value: string }) {

@@ -1,12 +1,21 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { RunnerFunctionNameConflictError } from '@mba-demo/runner'
+import {
+  RunnerFunctionExecutionInProgressError,
+  RunnerFunctionNameConflictError,
+} from '@mba-demo/runner'
 import type {
   CreatedRunnerApiKey,
   RunnerExecutionResult,
   RunnerFunctionDefinition,
+  RunnerMcpImportPreview,
+  RunnerMcpPackage,
 } from '@mba-demo/runner'
 import { createRunnerRoute, type RunnerManagementApi } from './runner.js'
+import {
+  parseRunnerMcpPackageYaml,
+  stringifyRunnerMcpPackageYaml,
+} from '../runner-mcp-package.js'
 
 const now = new Date('2026-09-30T12:00:00.000Z')
 const definition: RunnerFunctionDefinition = {
@@ -44,6 +53,48 @@ const mcp = {
       currentRevision: definition.currentRevision,
     },
   ],
+}
+const mcpPackage: RunnerMcpPackage = {
+  format: 'mba-mcp',
+  version: 1,
+  mcp: {
+    name: mcp.name,
+    description: mcp.description,
+    functions: [
+      {
+        name: definition.name,
+        description: definition.description,
+        currentRevision: 1,
+        revisions: [
+          {
+            revision: 1,
+            code: definition.revision.code,
+            parameters: definition.revision.parameters,
+            createdAt: now.toISOString(),
+          },
+        ],
+      },
+    ],
+  },
+}
+const mcpImportPreview: RunnerMcpImportPreview = {
+  mode: 'create',
+  existingMcpId: null,
+  mcpName: mcp.name,
+  description: mcp.description,
+  functions: [
+    {
+      sourceName: definition.name,
+      targetName: `${mcp.name}__${definition.name}`,
+      currentRevision: 1,
+      revisionCount: 1,
+    },
+  ],
+  removedFunctionNames: [],
+  affectedApiKeyCount: 0,
+  affectedExecutionCount: 0,
+  blockers: [],
+  canImport: true,
 }
 
 describe('runner route', () => {
@@ -194,6 +245,54 @@ describe('runner route', () => {
     })
   })
 
+  it('deletes an organization function for managers and rejects active executions', async () => {
+    const calls: string[] = []
+    const route = createRunnerRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
+      runner: createRunner({
+        deleteFunction: async (organizationId, functionId) => {
+          calls.push(`${organizationId}:${functionId}`)
+        },
+      }),
+    })
+    const response = await route.request('/functions/7', { method: 'DELETE' })
+
+    assert.equal(response.status, 200)
+    assert.deepEqual(await response.json(), { deleted: true, functionId: 7 })
+    assert.deepEqual(calls, ['org-one:7'])
+
+    const memberRoute = createRunnerRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      runner: createRunner({
+        deleteFunction: async () => {
+          throw new Error('must not delete')
+        },
+      }),
+    })
+    assert.equal(
+      (await memberRoute.request('/functions/7', { method: 'DELETE' })).status,
+      403,
+    )
+
+    const busyRoute = createRunnerRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      runner: createRunner({
+        deleteFunction: async () => {
+          throw new RunnerFunctionExecutionInProgressError()
+        },
+      }),
+    })
+    const busyResponse = await busyRoute.request('/functions/7', {
+      method: 'DELETE',
+    })
+    assert.equal(busyResponse.status, 409)
+    assert.deepEqual(await busyResponse.json(), {
+      code: 'FUNCTION_EXECUTION_IN_PROGRESS',
+      message:
+        'Wait for queued or running executions before deleting this function',
+    })
+  })
+
   it('manages organization-scoped MCP packs without exposing an execution route', async () => {
     const calls: string[] = []
     const route = createRunnerRoute({
@@ -257,6 +356,65 @@ describe('runner route', () => {
       'create:org-one:7',
       'update:org-one:3:customer_operations',
       'delete:org-one:3',
+    ])
+  })
+
+  it('exports, inspects, and transactionally imports complete MCP packages', async () => {
+    const calls: string[] = []
+    const route = createRunnerRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
+      runner: createRunner({
+        exportMcpPackage: async (organizationId, mcpId) => {
+          calls.push(`export:${organizationId}:${mcpId}`)
+          return mcpPackage
+        },
+        inspectMcpImport: async (organizationId, imported) => {
+          calls.push(`inspect:${organizationId}:${imported.mcp.name}`)
+          return mcpImportPreview
+        },
+        importMcpPackage: async (organizationId, imported, overwrite) => {
+          calls.push(
+            `import:${organizationId}:${imported.mcp.name}:${overwrite}`,
+          )
+          return { status: 'imported', mcp }
+        },
+      }),
+    })
+    const yaml = stringifyRunnerMcpPackageYaml(mcpPackage)
+
+    const exported = await route.request('/mcps/3/export')
+    assert.equal(exported.status, 200)
+    assert.match(
+      exported.headers.get('content-type') ?? '',
+      /^application\/yaml/,
+    )
+    assert.equal(
+      exported.headers.get('content-disposition'),
+      'attachment; filename="customer_tools.mcpx"',
+    )
+    assert.deepEqual(
+      parseRunnerMcpPackageYaml(await exported.text()),
+      mcpPackage,
+    )
+
+    const inspected = await route.request('/mcps/import/inspect', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ yaml }),
+    })
+    assert.equal(inspected.status, 200)
+    assert.deepEqual(await inspected.json(), { preview: mcpImportPreview })
+
+    const imported = await route.request('/mcps/import', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ yaml, overwrite: true }),
+    })
+    assert.equal(imported.status, 200)
+    assert.deepEqual(calls, [
+      'export:org-one:3',
+      'inspect:org-one:customer_tools',
+      'import:org-one:customer_tools:true',
     ])
   })
 
@@ -407,6 +565,7 @@ function createRunner(
       status: 'archived',
       archivedAt: now,
     }),
+    deleteFunction: async () => undefined,
     restoreRevision: async () => definition,
     listMcps: async () => [],
     getMcp: async () => {
@@ -419,6 +578,9 @@ function createRunner(
       throw new Error('Unexpected updateMcp call')
     },
     deleteMcp: async () => undefined,
+    exportMcpPackage: async () => mcpPackage,
+    inspectMcpImport: async () => mcpImportPreview,
+    importMcpPackage: async () => ({ status: 'imported', mcp }),
     listExecutions: async () => [],
     listApiKeys: async () => [],
     createApiKey: async () => {

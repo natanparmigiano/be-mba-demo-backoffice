@@ -6,8 +6,11 @@ import {
   organization,
   runnerExecutionLogs,
   runnerFunctionApiKeys,
+  runnerFunctionRevisions,
   runnerFunctions,
+  runnerMcpFunctions,
   runnerMcps,
+  runnerRevisionParameters,
 } from '@mba-demo/db'
 import { and, eq } from 'drizzle-orm'
 import { MemoryEventBus } from '@mba-demo/events'
@@ -111,6 +114,172 @@ async function main(): Promise<void> {
       ['smoke_primary'],
     )
 
+    const portableFunction = await createFunction('portable_lookup')
+    await requestJson<FunctionResponse>(
+      `/functions/${portableFunction.id}`,
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          code: `({ value }) => 'portable ' + value.toUpperCase()`,
+          parameters: [{ name: 'value', type: 'string', required: true }],
+        }),
+      },
+      200,
+    )
+    const portableMcp = await createMcp([portableFunction.id], 'portable_tools')
+    const exportedResponse = await route.request(
+      `/mcps/${portableMcp.id}/export`,
+    )
+    assert.equal(exportedResponse.status, 200)
+    const exportedYaml = await exportedResponse.text()
+    assert.match(exportedYaml, /format: "mba-mcp"/)
+    await requestJson(`/mcps/${portableMcp.id}`, { method: 'DELETE' }, 200)
+    const createPreview = await requestJson<McpImportPreviewResponse>(
+      '/mcps/import/inspect',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ yaml: exportedYaml }),
+      },
+      200,
+    )
+    assert.equal(createPreview.preview.mode, 'create')
+    assert.equal(
+      createPreview.preview.functions[0]?.targetName,
+      'portable_tools__portable_lookup',
+    )
+    const importedPortable = await requestJson<McpResponse>(
+      '/mcps/import',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ yaml: exportedYaml, overwrite: false }),
+      },
+      200,
+    )
+    const importedFunction = importedPortable.mcp.functions[0]!
+    assert.equal(importedFunction.name, 'portable_tools__portable_lookup')
+    const importedDetails = await requestJson<FunctionDetailsResponse>(
+      `/functions/${importedFunction.id}`,
+      { method: 'GET' },
+      200,
+    )
+    assert.deepEqual(
+      importedDetails.revisions.map(({ revision }) => revision),
+      [2, 1],
+    )
+
+    const reexportedResponse = await route.request(
+      `/mcps/${importedPortable.mcp.id}/export`,
+    )
+    assert.equal(reexportedResponse.status, 200)
+    const reexportedYaml = await reexportedResponse.text()
+    const overwritePreview = await requestJson<McpImportPreviewResponse>(
+      '/mcps/import/inspect',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ yaml: reexportedYaml }),
+      },
+      200,
+    )
+    assert.equal(overwritePreview.preview.mode, 'overwrite')
+    assert.equal(
+      overwritePreview.preview.functions[0]?.targetName,
+      'portable_tools__portable_lookup',
+    )
+    const portableKey = await createApiKey(
+      [importedFunction.id],
+      'portable-overwrite',
+    )
+    await requestJson<ExecutionResponse>(
+      `/functions/${importedFunction.id}/execute`,
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${portableKey.apiKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ arguments: { value: 'history' } }),
+      },
+      200,
+    )
+    await requestJson<FunctionResponse>(
+      `/functions/${importedFunction.id}`,
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          code: `({ value }) => 'unexported ' + value`,
+          parameters: [{ name: 'value', type: 'string', required: true }],
+        }),
+      },
+      200,
+    )
+    const overwrittenPortable = await requestJson<McpResponse>(
+      '/mcps/import',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ yaml: reexportedYaml, overwrite: true }),
+      },
+      200,
+    )
+    const overwrittenFunction = overwrittenPortable.mcp.functions[0]!
+    assert.equal(overwrittenPortable.mcp.id, importedPortable.mcp.id)
+    assert.notEqual(overwrittenFunction.id, importedFunction.id)
+    assert.equal(overwrittenFunction.name, 'portable_tools__portable_lookup')
+    const overwrittenDetails = await requestJson<FunctionDetailsResponse>(
+      `/functions/${overwrittenFunction.id}`,
+      { method: 'GET' },
+      200,
+    )
+    assert.deepEqual(
+      overwrittenDetails.revisions.map(({ revision }) => revision),
+      [2, 1],
+    )
+    assert.equal(
+      (
+        await db
+          .select({ id: runnerExecutionLogs.id })
+          .from(runnerExecutionLogs)
+          .where(eq(runnerExecutionLogs.functionId, importedFunction.id))
+      ).length,
+      0,
+    )
+    assert.deepEqual(
+      (
+        await db
+          .select({
+            allowedFunctionIds: runnerFunctionApiKeys.allowedFunctionIds,
+          })
+          .from(runnerFunctionApiKeys)
+          .where(eq(runnerFunctionApiKeys.id, portableKey.id))
+      )[0]?.allowedFunctionIds,
+      [],
+    )
+
+    const sharedMcp = await createMcp([secondFunction.id], 'shared_smoke_tools')
+    const sharedExportResponse = await route.request(`/mcps/${mcp.id}/export`)
+    assert.equal(sharedExportResponse.status, 200)
+    const sharedPreview = await requestJson<McpImportPreviewResponse>(
+      '/mcps/import/inspect',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ yaml: await sharedExportResponse.text() }),
+      },
+      200,
+    )
+    assert.deepEqual(
+      sharedPreview.preview.blockers.find(
+        ({ code }) => code === 'shared_functions',
+      )?.functionNames,
+      ['smoke_secondary'],
+    )
+    await requestJson(`/mcps/${sharedMcp.id}`, { method: 'DELETE' }, 200)
+
     const listed = await requestJson<FunctionsResponse>(
       '/functions',
       { method: 'GET' },
@@ -118,7 +287,12 @@ async function main(): Promise<void> {
     )
     assert.deepEqual(
       listed.functions.map(({ id }) => id).sort((left, right) => left - right),
-      [firstFunction.id, secondFunction.id].sort((left, right) => left - right),
+      [
+        firstFunction.id,
+        secondFunction.id,
+        portableFunction.id,
+        overwrittenFunction.id,
+      ].sort((left, right) => left - right),
     )
     const initialDetails = await requestJson<FunctionDetailsResponse>(
       `/functions/${firstFunction.id}`,
@@ -134,7 +308,7 @@ async function main(): Promise<void> {
       { method: 'GET' },
       200,
     )
-    assert.equal(initialKeys.apiKeys.length, 2)
+    assert.equal(initialKeys.apiKeys.length, 3)
     assert.equal('apiKey' in initialKeys.apiKeys[0]!, false)
 
     const firstExecution = await requestJson<ExecutionResponse>(
@@ -260,6 +434,101 @@ async function main(): Promise<void> {
     )
     assert.equal(archivedResponse.status, 409)
 
+    const deleteTarget = await createFunction('smoke_delete_target')
+    const deleteMcp = await createMcp([deleteTarget.id], 'smoke_delete_tools')
+    const deleteKey = await createApiKey([deleteTarget.id], 'delete-check')
+    await requestJson<ExecutionResponse>(
+      `/functions/${deleteTarget.id}/execute`,
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${deleteKey.apiKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ arguments: { value: 'delete' } }),
+      },
+      200,
+    )
+    const deleteResponse = await requestJson<{
+      deleted: true
+      functionId: number
+    }>(`/functions/${deleteTarget.id}`, { method: 'DELETE' }, 200)
+    assert.equal(deleteResponse.functionId, deleteTarget.id)
+    const [deletedFunctions, deletedRevisions, deletedParameters] =
+      await Promise.all([
+        db
+          .select({ id: runnerFunctions.id })
+          .from(runnerFunctions)
+          .where(eq(runnerFunctions.id, deleteTarget.id)),
+        db
+          .select({ id: runnerFunctionRevisions.id })
+          .from(runnerFunctionRevisions)
+          .where(eq(runnerFunctionRevisions.functionId, deleteTarget.id)),
+        db
+          .select({ id: runnerRevisionParameters.id })
+          .from(runnerRevisionParameters)
+          .where(
+            eq(runnerRevisionParameters.revisionId, deleteTarget.revision.id),
+          ),
+      ])
+    assert.equal(deletedFunctions.length, 0)
+    assert.equal(deletedRevisions.length, 0)
+    assert.equal(deletedParameters.length, 0)
+    assert.equal(
+      (
+        await db
+          .select({ functionId: runnerMcpFunctions.functionId })
+          .from(runnerMcpFunctions)
+          .where(eq(runnerMcpFunctions.mcpId, deleteMcp.id))
+      ).length,
+      0,
+    )
+    assert.equal(
+      (
+        await db
+          .select({ id: runnerExecutionLogs.id })
+          .from(runnerExecutionLogs)
+          .where(eq(runnerExecutionLogs.functionId, deleteTarget.id))
+      ).length,
+      0,
+    )
+    assert.deepEqual(
+      (
+        await db
+          .select({
+            allowedFunctionIds: runnerFunctionApiKeys.allowedFunctionIds,
+          })
+          .from(runnerFunctionApiKeys)
+          .where(eq(runnerFunctionApiKeys.id, deleteKey.id))
+      )[0]?.allowedFunctionIds,
+      [],
+    )
+
+    const busyDeleteTarget = await createFunction('smoke_busy_delete')
+    const [queuedExecution] = await db
+      .insert(runnerExecutionLogs)
+      .values({
+        organizationId,
+        functionId: busyDeleteTarget.id,
+        revisionId: busyDeleteTarget.revision.id,
+        arguments: { value: 'queued' },
+      })
+      .returning({ id: runnerExecutionLogs.id })
+    assert(queuedExecution)
+    const busyDeleteResponse = await route.request(
+      `/functions/${busyDeleteTarget.id}`,
+      { method: 'DELETE' },
+    )
+    assert.equal(busyDeleteResponse.status, 409)
+    await db
+      .delete(runnerExecutionLogs)
+      .where(eq(runnerExecutionLogs.id, queuedExecution.id))
+    await requestJson(
+      `/functions/${busyDeleteTarget.id}`,
+      { method: 'DELETE' },
+      200,
+    )
+
     const logs = await db
       .select({
         apiKeyId: runnerExecutionLogs.apiKeyId,
@@ -288,6 +557,11 @@ async function main(): Promise<void> {
         expiredKeyRejected: true,
         archivedFunctionRejected: true,
         mcpToolExecuted: true,
+        functionDeleteCascade: true,
+        activeExecutionDeleteRejected: true,
+        mcpPackageRoundTrip: true,
+        mcpPackageOverwrite: true,
+        sharedMcpImportBlocked: true,
       }),
     )
   } finally {
@@ -331,14 +605,14 @@ async function createFunction(name: string) {
   return body.function
 }
 
-async function createMcp(functionIds: number[]) {
+async function createMcp(functionIds: number[], name = 'smoke_tools') {
   const body = await requestJson<McpResponse>(
     '/mcps',
     {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        name: 'smoke_tools',
+        name,
         description: 'Runner smoke-test tools',
         functionIds,
       }),
@@ -422,7 +696,12 @@ async function requestJson<Result>(
 }
 
 interface FunctionResponse {
-  function: { id: number; name: string; currentRevision: number }
+  function: {
+    id: number
+    name: string
+    currentRevision: number
+    revision: { id: number }
+  }
 }
 
 interface FunctionsResponse {
@@ -442,7 +721,19 @@ interface ApiKeyResponse {
 }
 
 interface McpResponse {
-  mcp: { id: number }
+  mcp: {
+    id: number
+    name: string
+    functions: Array<{ id: number; name: string }>
+  }
+}
+
+interface McpImportPreviewResponse {
+  preview: {
+    mode: 'create' | 'overwrite'
+    functions: Array<{ targetName: string }>
+    blockers: Array<{ code: string; functionNames: string[] }>
+  }
 }
 
 interface ExecutionResponse {

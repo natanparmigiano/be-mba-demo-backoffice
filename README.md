@@ -187,7 +187,9 @@ Redis Pub/Sub when `REDIS_URL` is configured and an in-process `EventEmitter`
 otherwise. Pub/Sub messages are not durable or replayable; use
 `@mba-demo/events` when delivery requires Kafka persistence or consumer groups.
 
-Import `events` from `@mba-demo/events`. It uses Kafka only when both `KAFKA_CLIENT_ID` and `KAFKA_BROKERS` are configured; otherwise it uses an in-process event bus. Publish a demo event with `POST /api/events` and a JSON body such as `{ "message": "hello" }`; the registered subscriber writes it to stdout.
+Import `events` from `@mba-demo/events`. It uses Kafka only when both
+`KAFKA_CLIENT_ID` and `KAFKA_BROKERS` are configured; otherwise it uses an
+in-process event bus.
 
 Import `files` from `@mba-demo/files`. Both adapters expose `get`, `put`,
 `delete`, and signed upload/download URLs. Filesystem mode stores durable bytes
@@ -225,6 +227,10 @@ UUID-sharded keys, which are retained on the corresponding message row.
 Import user blocklist operations from `@mba-demo/wa-moderation`. It lists,
 blocks, and unblocks WhatsApp users for a configured business phone number and
 preserves partial per-user failures from bulk operations.
+
+Import message QR code operations from `@mba-demo/wa-qr`. It creates, reads,
+lists, updates, and deletes click-to-chat QR codes for a configured business
+phone number, including provider-managed SVG and PNG image URLs.
 
 Import the phone-number lifecycle client from `@mba-demo/wa-registration`. It
 handles ownership verification codes, registration with two-step verification

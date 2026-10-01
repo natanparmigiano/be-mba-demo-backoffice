@@ -1,6 +1,7 @@
 import type { InferResponseType } from 'hono/client'
 import {
   AlertTriangle,
+  Archive,
   Bot,
   BookOpen,
   Building2,
@@ -15,6 +16,8 @@ import {
   Phone,
   Plug,
   Plus,
+  RadioTower,
+  RotateCcw,
   ShieldCheck,
   Sparkles,
   Trash2,
@@ -39,7 +42,14 @@ import {
 } from '../agent-import-preview'
 import { authClient } from '../auth/auth-client'
 import {
+  emptyChannelQrState,
+  fetchChannelQrState,
+  type ChannelQrState,
+} from '../channel-qr'
+import { ChannelQrCode } from '../components/channel-qr-code'
+import {
   Button,
+  Checkbox,
   cn,
   Dialog,
   Input,
@@ -57,6 +67,7 @@ type ChannelsResponse = InferResponseType<
 >
 type ChannelSummary = ChannelsResponse['channels'][number]
 type AgentStatus = 'not_configured' | 'enabled' | 'disabled' | 'error'
+type RegistrationStatus = 'registered' | 'unregistered' | 'error'
 type AgentAudience = 'EVERYONE' | 'ALLOWLISTED_ONLY'
 type AgentSettingsResponse = InferResponseType<
   (typeof apiClient.api.channels)[':id']['agent-settings']['$get'],
@@ -100,6 +111,11 @@ type ConnectorListResponse = InferResponseType<
   200
 >
 type AgentConnector = ConnectorListResponse['connectors'][number]
+type AgentBackupsResponse = InferResponseType<
+  (typeof apiClient.api.channels)[':id']['agent-backups']['$get'],
+  200
+>
+type AgentBackup = AgentBackupsResponse['backups'][number]
 type EvaluationListResponse = InferResponseType<
   (typeof apiClient.api.channels)[':id']['agent-evals']['$get'],
   200
@@ -112,6 +128,7 @@ const agentTabValues = [
   'knowledgeBase',
   'connectors',
   'evals',
+  'backups',
   'export',
   'import',
 ] as const
@@ -128,6 +145,7 @@ const agentExportSteps = [
 ] as const
 type AgentExportStep = (typeof agentExportSteps)[number]
 const agentImportSteps = [
+  'backup',
   'settings',
   'businessData',
   'skills',
@@ -224,6 +242,14 @@ export function AgentPage() {
 
   const [channel, setChannel] = useState<ChannelSummary | null>(null)
   const [status, setStatus] = useState<AgentStatus | null>(null)
+  const [registrationStatus, setRegistrationStatus] =
+    useState<RegistrationStatus | null>(null)
+  const [registrationProviderStatus, setRegistrationProviderStatus] = useState<
+    string | null
+  >(null)
+  const [qrState, setQrState] = useState<ChannelQrState>(() =>
+    emptyChannelQrState('loading'),
+  )
   const [settings, setSettings] = useState<AgentSettingsSummary | null>(null)
   const [activeTab, setActiveTab] = useState<AgentTab>('overview')
   const [selectedAudience, setSelectedAudience] =
@@ -241,6 +267,17 @@ export function AgentPage() {
   const [exportStep, setExportStep] = useState<AgentExportStep | null>(null)
   const [exportComplete, setExportComplete] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [backups, setBackups] = useState<AgentBackup[]>([])
+  const [isLoadingBackups, setIsLoadingBackups] = useState(false)
+  const [backupsError, setBackupsError] = useState<string | null>(null)
+  const [isBackupDialogOpen, setIsBackupDialogOpen] = useState(false)
+  const [isCreatingBackup, setIsCreatingBackup] = useState(false)
+  const [backupStep, setBackupStep] = useState<AgentExportStep | null>(null)
+  const [backupComplete, setBackupComplete] = useState(false)
+  const [backupError, setBackupError] = useState<string | null>(null)
+  const [restoringBackupId, setRestoringBackupId] = useState<number | null>(
+    null,
+  )
   const [importPackage, setImportPackage] = useState<File | null>(null)
   const [importPreview, setImportPreview] = useState<AgentImportPreview | null>(
     null,
@@ -261,6 +298,7 @@ export function AgentPage() {
   const [importError, setImportError] = useState<string | null>(null)
   const [importFailureMayBePartial, setImportFailureMayBePartial] =
     useState(false)
+  const [createBackupBeforeImport, setCreateBackupBeforeImport] = useState(true)
   const [isSavingRollout, setIsSavingRollout] = useState(false)
   const [isSavingAudience, setIsSavingAudience] = useState(false)
   const [isSavingBehavior, setIsSavingBehavior] = useState(false)
@@ -352,6 +390,9 @@ export function AgentPage() {
     if (!activeOrganizationId || !channelId) {
       setChannel(null)
       setStatus(null)
+      setRegistrationStatus(null)
+      setRegistrationProviderStatus(null)
+      setQrState(emptyChannelQrState('loading'))
       setSettings(null)
       setAllowlist([])
       setHandoffEnabled(false)
@@ -364,6 +405,9 @@ export function AgentPage() {
     }
 
     setIsLoading(true)
+    setStatus(null)
+    setRegistrationStatus(null)
+    setRegistrationProviderStatus(null)
     setSettings(null)
     setBusinessInfo(emptyBusinessInfo())
     setSavedBusinessInfo(emptyBusinessInfo())
@@ -381,6 +425,32 @@ export function AgentPage() {
       )
       if (!selectedChannel) throw new Error(t('agent.channelNotFound'))
       setChannel(selectedChannel)
+      setQrState(emptyChannelQrState('loading'))
+      void fetchChannelQrState(channelId).then(setQrState)
+
+      let isNumberRegistered = false
+      try {
+        const registrationResponse = await apiClient.api.channels[
+          ':id'
+        ].registration.$get({ param: { id: String(channelId) } })
+        if (registrationResponse.ok) {
+          const registration = await registrationResponse.json()
+          setRegistrationStatus(registration.status)
+          setRegistrationProviderStatus(registration.providerStatus)
+          isNumberRegistered = registration.status === 'registered'
+        } else {
+          setRegistrationStatus('error')
+          setRegistrationProviderStatus(null)
+        }
+      } catch {
+        setRegistrationStatus('error')
+        setRegistrationProviderStatus(null)
+      }
+
+      if (!isNumberRegistered) {
+        setActiveTab('overview')
+        return
+      }
 
       const settingsResponse = await apiClient.api.channels[':id'][
         'agent-settings'
@@ -647,6 +717,110 @@ export function AgentPage() {
     }
   }
 
+  const loadBackups = useCallback(async () => {
+    if (!channelId) return
+    setIsLoadingBackups(true)
+    setBackupsError(null)
+    try {
+      const response = await apiClient.api.channels[':id'][
+        'agent-backups'
+      ].$get({ param: { id: String(channelId) } })
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, t('agent.backups.loadFailed')),
+        )
+      }
+      setBackups((await response.json()).backups)
+    } catch (reason) {
+      setBackupsError(getErrorMessage(reason, t('agent.backups.loadFailed')))
+    } finally {
+      setIsLoadingBackups(false)
+    }
+  }, [channelId, t])
+
+  useEffect(() => {
+    if (activeTab === 'backups' && settings) void loadBackups()
+  }, [activeTab, loadBackups, settings])
+
+  const openBackupDialog = () => {
+    setBackupStep(null)
+    setBackupComplete(false)
+    setBackupError(null)
+    setIsBackupDialogOpen(true)
+  }
+
+  const createBackup = async () => {
+    if (!channelId || isCreatingBackup) return
+    setIsCreatingBackup(true)
+    setBackupStep(null)
+    setBackupComplete(false)
+    setBackupError(null)
+    try {
+      const response = await fetch(`/api/channels/${channelId}/agent-backups`, {
+        method: 'POST',
+      })
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, t('agent.backups.createFailed')),
+        )
+      }
+      let completed = false
+      await readSseResponse(response, (event, data) => {
+        const payload = parseAgentExportEvent(data)
+        if (
+          event === 'progress' &&
+          typeof payload?.step === 'string' &&
+          isAgentExportStep(payload.step)
+        ) {
+          setBackupStep(payload.step)
+        } else if (event === 'complete') {
+          completed = true
+        } else if (event === 'backup-error') {
+          throw new Error(
+            typeof payload?.message === 'string'
+              ? payload.message
+              : t('agent.backups.createFailed'),
+          )
+        }
+      })
+      if (!completed) throw new Error(t('agent.backups.createFailed'))
+      setBackupComplete(true)
+      await loadBackups()
+    } catch (reason) {
+      setBackupError(getErrorMessage(reason, t('agent.backups.createFailed')))
+    } finally {
+      setIsCreatingBackup(false)
+    }
+  }
+
+  const restoreBackup = async (backup: AgentBackup) => {
+    if (!channelId || restoringBackupId !== null) return
+    setRestoringBackupId(backup.id)
+    setBackupsError(null)
+    setNotice(null)
+    try {
+      const response = await fetch(
+        `/api/channels/${channelId}/agent-backups/${backup.id}/archive`,
+      )
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, t('agent.backups.restoreFailed')),
+        )
+      }
+      const packageFile = new File([await response.blob()], backup.fileName, {
+        type: 'application/vnd.mba.agent+zip',
+      })
+      setCreateBackupBeforeImport(true)
+      const previewLoaded = await selectImportPackage(packageFile)
+      setActiveTab('import')
+      if (previewLoaded) setNotice(t('agent.backups.restoreReady'))
+    } catch (reason) {
+      setBackupsError(getErrorMessage(reason, t('agent.backups.restoreFailed')))
+    } finally {
+      setRestoringBackupId(null)
+    }
+  }
+
   const exportAgent = () => {
     if (!channelId || !channel || !settings || isExporting) return
     exportSourceRef.current?.close()
@@ -811,7 +985,7 @@ export function AgentPage() {
     setImportFailureMayBePartial(false)
     if (!file) {
       setIsLoadingImportPreview(false)
-      return
+      return false
     }
 
     setIsLoadingImportPreview(true)
@@ -819,13 +993,16 @@ export function AgentPage() {
       const preview = await readAgentImportPreview(file)
       if (importPreviewVersionRef.current === version) {
         setImportPreview(preview)
+        return true
       }
+      return false
     } catch (reason) {
       if (importPreviewVersionRef.current === version) {
         setImportError(
           getErrorMessage(reason, t('agent.importPanel.previewFailed')),
         )
       }
+      return false
     } finally {
       if (importPreviewVersionRef.current === version) {
         setIsLoadingImportPreview(false)
@@ -879,7 +1056,13 @@ export function AgentPage() {
 
       const form = new FormData()
       form.set('package', importPackage)
-      form.set('options', JSON.stringify({ connectorCredentials }))
+      form.set(
+        'options',
+        JSON.stringify({
+          connectorCredentials,
+          createBackupBeforeImport,
+        }),
+      )
       for (const required of importInspection.requirements.files) {
         const file = importFiles[required.providerFileId]
         if (!file) throw new Error(t('agent.importPanel.filesRequired'))
@@ -900,7 +1083,7 @@ export function AgentPage() {
         if (event === 'progress' && typeof payload?.step === 'string') {
           if (isAgentImportStep(payload.step)) {
             activeStep = payload.step
-            mayHaveAppliedChanges = true
+            if (payload.step !== 'backup') mayHaveAppliedChanges = true
             setImportStep(payload.step)
             const completed = payload.completed
             const total = payload.resourceTotal
@@ -1523,6 +1706,17 @@ export function AgentPage() {
     )
   }
 
+  const registrationPill = registrationStatus ? (
+    <Pill
+      className="h-10 shrink-0 gap-2 px-4 text-sm"
+      tone={registrationStatusTone(registrationStatus)}
+    >
+      <RadioTower className="size-4" aria-hidden />
+      {t(`channels.registration.status.${registrationStatus}`)}
+      {registrationProviderStatus ? ` · ${registrationProviderStatus}` : ''}
+    </Pill>
+  ) : null
+
   return (
     <div className="grid gap-6">
       <header className="overflow-hidden rounded-2xl border bg-card shadow-xs">
@@ -1555,6 +1749,24 @@ export function AgentPage() {
                 {t(`agents.status.${status}`)}
               </Pill>
             )}
+            {registrationStatus === 'unregistered' ? (
+              <Link
+                className="rounded-full transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+                to={`/channels?edit=${channel.id}`}
+                aria-label={t('channels.registration.manage')}
+                title={t('channels.registration.manage')}
+              >
+                {registrationPill}
+              </Link>
+            ) : (
+              registrationPill
+            )}
+            <ChannelQrCode
+              className="shrink-0"
+              phoneNumber={channel.waPhoneNumber}
+              size="avatar"
+              state={qrState}
+            />
           </div>
         </div>
         <dl className="grid gap-4 border-t bg-muted/20 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
@@ -1584,7 +1796,15 @@ export function AgentPage() {
         </p>
       )}
 
-      {status === 'not_configured' && (
+      <NumberRegistrationCard
+        canManage={canManage}
+        channelId={channel.id}
+        providerStatus={registrationProviderStatus}
+        status={registrationStatus ?? 'error'}
+        onRetry={() => void loadAgent()}
+      />
+
+      {registrationStatus === 'registered' && status === 'not_configured' && (
         <section className="rounded-2xl border bg-card p-6 shadow-xs">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-4">
@@ -1647,355 +1867,564 @@ export function AgentPage() {
         </section>
       )}
 
-      {settings && status !== 'not_configured' && (
-        <div className="grid gap-6">
-          <Tabs
-            ariaLabel={t('agent.tabs.label')}
-            items={agentTabValues
-              .filter((tab) => tab !== 'import' || canManage)
-              .map((tab) => ({
-                value: tab,
-                label: t(`agent.tabs.${tab}`),
-                ...(tab === 'export' || tab === 'import'
-                  ? {
-                      align: 'end' as const,
-                      icon:
-                        tab === 'export' ? (
-                          <Download className="size-4" aria-hidden />
-                        ) : (
-                          <Upload className="size-4" aria-hidden />
-                        ),
-                    }
-                  : {}),
-              }))}
-            variant="pills"
-            value={activeTab}
-            onValueChange={setActiveTab}
-          />
+      {registrationStatus === 'registered' &&
+        settings &&
+        status !== 'not_configured' && (
+          <div className="grid gap-6">
+            <Tabs
+              ariaLabel={t('agent.tabs.label')}
+              items={agentTabValues
+                .filter((tab) => tab !== 'import' || canManage)
+                .map((tab) => ({
+                  value: tab,
+                  label: t(`agent.tabs.${tab}`),
+                  ...(tab === 'backups' || tab === 'export' || tab === 'import'
+                    ? {
+                        align: 'end' as const,
+                        icon:
+                          tab === 'backups' ? (
+                            <Archive className="size-4" aria-hidden />
+                          ) : tab === 'export' ? (
+                            <Download className="size-4" aria-hidden />
+                          ) : (
+                            <Upload className="size-4" aria-hidden />
+                          ),
+                      }
+                    : {}),
+                }))}
+              variant="pills"
+              value={activeTab}
+              onValueChange={setActiveTab}
+            />
 
-          {activeTab === 'export' ? (
-            <AgentExportPanel
-              complete={exportComplete}
-              currentStep={exportStep}
-              error={exportError}
-              exporting={isExporting}
-              onExport={exportAgent}
-            />
-          ) : activeTab === 'import' ? (
-            <AgentImportPanel
-              complete={importComplete}
-              connectorInputs={importConnectorInputs}
-              currentStep={importStep}
-              itemProgress={importItemProgress}
-              error={importError}
-              failureMayBePartial={importFailureMayBePartial}
-              files={importFiles}
-              importing={isImporting}
-              inspecting={isInspectingImport}
-              inspection={importInspection}
-              loadingPreview={isLoadingImportPreview}
-              packageFile={importPackage}
-              preview={importPreview}
-              onConnectorInputChange={(name, value) =>
-                setImportConnectorInputs((current) => ({
-                  ...current,
-                  [name]: value,
-                }))
-              }
-              onFileChange={(providerFileId, file) =>
-                setImportFiles((current) => {
-                  const next = { ...current }
-                  if (file) next[providerFileId] = file
-                  else delete next[providerFileId]
-                  return next
-                })
-              }
-              onImport={() => void importAgent()}
-              onInspect={() => void inspectAgentImport()}
-              onPackageChange={(file) => void selectImportPackage(file)}
-            />
-          ) : activeTab === 'overview' ? (
-            <div className="grid items-start gap-6" role="tabpanel">
-              <section className="overflow-hidden rounded-2xl border bg-card shadow-xs">
-                <div className="flex items-start gap-4 p-6">
-                  <span
-                    className={
-                      settings.rolloutEnabled
-                        ? 'grid size-11 shrink-0 place-items-center rounded-xl bg-success/12 text-success'
-                        : 'grid size-11 shrink-0 place-items-center rounded-xl bg-destructive/12 text-destructive'
-                    }
-                  >
-                    <Zap className="size-5" aria-hidden />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-bold">{t('agent.rollout.title')}</h2>
-                      <Pill
-                        tone={settings.rolloutEnabled ? 'success' : 'danger'}
-                      >
-                        {t(
-                          settings.rolloutEnabled
-                            ? 'agents.status.enabled'
-                            : 'agents.status.disabled',
-                        )}
-                      </Pill>
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      {t('agent.rollout.description')}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex justify-end border-t bg-muted/10 p-5">
-                  {canManage ? (
-                    <Button
-                      isLoading={isSavingRollout}
-                      variant={settings.rolloutEnabled ? 'danger' : 'success'}
-                      onClick={() => void toggleRollout()}
-                    >
-                      <Zap className="size-4" aria-hidden />
-                      {t(
+            {activeTab === 'backups' ? (
+              <AgentBackupsPanel
+                backups={backups}
+                canManage={canManage}
+                error={backupsError}
+                loading={isLoadingBackups}
+                onBackup={openBackupDialog}
+                onRestore={(backup) => void restoreBackup(backup)}
+                restoringBackupId={restoringBackupId}
+              />
+            ) : activeTab === 'export' ? (
+              <AgentExportPanel
+                complete={exportComplete}
+                currentStep={exportStep}
+                error={exportError}
+                exporting={isExporting}
+                onExport={exportAgent}
+              />
+            ) : activeTab === 'import' ? (
+              <AgentImportPanel
+                complete={importComplete}
+                connectorInputs={importConnectorInputs}
+                createBackupBeforeImport={createBackupBeforeImport}
+                currentStep={importStep}
+                itemProgress={importItemProgress}
+                error={importError}
+                failureMayBePartial={importFailureMayBePartial}
+                files={importFiles}
+                importing={isImporting}
+                inspecting={isInspectingImport}
+                inspection={importInspection}
+                loadingPreview={isLoadingImportPreview}
+                packageFile={importPackage}
+                preview={importPreview}
+                onConnectorInputChange={(name, value) =>
+                  setImportConnectorInputs((current) => ({
+                    ...current,
+                    [name]: value,
+                  }))
+                }
+                onCreateBackupBeforeImportChange={setCreateBackupBeforeImport}
+                onFileChange={(providerFileId, file) =>
+                  setImportFiles((current) => {
+                    const next = { ...current }
+                    if (file) next[providerFileId] = file
+                    else delete next[providerFileId]
+                    return next
+                  })
+                }
+                onImport={() => void importAgent()}
+                onInspect={() => void inspectAgentImport()}
+                onPackageChange={(file) => void selectImportPackage(file)}
+              />
+            ) : activeTab === 'overview' ? (
+              <div className="grid items-start gap-6" role="tabpanel">
+                <section className="overflow-hidden rounded-2xl border bg-card shadow-xs">
+                  <div className="flex items-start gap-4 p-6">
+                    <span
+                      className={
                         settings.rolloutEnabled
-                          ? 'agent.rollout.disable'
-                          : 'agent.rollout.enable',
-                      )}
-                    </Button>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {t('agent.managersOnly')}
-                    </p>
-                  )}
-                </div>
-              </section>
-
-              <section className="overflow-hidden rounded-2xl border bg-card shadow-xs">
-                <div className="flex items-start gap-4 p-6">
-                  <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
-                    <Users className="size-5" aria-hidden />
-                  </span>
-                  <div>
-                    <h2 className="font-bold">{t('agent.audience.title')}</h2>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      {t('agent.audience.description')}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2 border-t bg-muted/10 p-5 sm:flex-row sm:items-end">
-                  <div className="min-w-0 flex-1">
-                    <Select
-                      disabled={!canManage || isSavingAudience}
-                      label={t('agent.audience.label')}
-                      value={selectedAudience}
-                      onChange={(event) =>
-                        setSelectedAudience(event.target.value as AgentAudience)
+                          ? 'grid size-11 shrink-0 place-items-center rounded-xl bg-success/12 text-success'
+                          : 'grid size-11 shrink-0 place-items-center rounded-xl bg-destructive/12 text-destructive'
                       }
                     >
-                      <option value="EVERYONE">
-                        {t('agent.audience.everyone')}
-                      </option>
-                      <option value="ALLOWLISTED_ONLY">
-                        {t('agent.audience.allowlistedOnly')}
-                      </option>
-                    </Select>
-                  </div>
-                  {canManage && (
-                    <Button
-                      className="mb-5 shrink-0"
-                      disabled={selectedAudience === settings.audience}
-                      isLoading={isSavingAudience}
-                      onClick={() => void saveAudience()}
-                    >
-                      {t('agent.audience.save')}
-                    </Button>
-                  )}
-                </div>
-
-                {settings.audience === 'ALLOWLISTED_ONLY' && (
-                  <div className="border-t p-6">
-                    <h3 className="text-sm font-bold">
-                      {t('agent.allowlist.title')}
-                    </h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {t('agent.allowlist.description')}
-                    </p>
-
-                    {canManage && (
-                      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
-                        <div className="min-w-0 flex-1">
-                          <Input
-                            label={t('agent.allowlist.phoneNumber')}
-                            placeholder="+5511999999999"
-                            type="tel"
-                            value={allowlistPhoneNumber}
-                            onChange={(event) =>
-                              setAllowlistPhoneNumber(event.target.value)
-                            }
-                          />
-                        </div>
-                        <Button
-                          className="mb-5 shrink-0"
-                          disabled={
-                            !/^\+[1-9]\d{1,14}$/.test(
-                              allowlistPhoneNumber.trim(),
-                            )
-                          }
-                          isLoading={isAddingAllowlistEntry}
-                          onClick={() => void addAllowlistEntry()}
+                      <Zap className="size-5" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="font-bold">
+                          {t('agent.rollout.title')}
+                        </h2>
+                        <Pill
+                          tone={settings.rolloutEnabled ? 'success' : 'danger'}
                         >
-                          {t('agent.allowlist.add')}
-                        </Button>
+                          {t(
+                            settings.rolloutEnabled
+                              ? 'agents.status.enabled'
+                              : 'agents.status.disabled',
+                          )}
+                        </Pill>
                       </div>
-                    )}
-
-                    <div className="mt-4 overflow-hidden rounded-xl border">
-                      {isLoadingAllowlist ? (
-                        <p className="p-4 text-sm text-muted-foreground">
-                          {t('agent.allowlist.loading')}
-                        </p>
-                      ) : allowlist.length === 0 ? (
-                        <p className="p-4 text-sm text-muted-foreground">
-                          {t('agent.allowlist.empty')}
-                        </p>
-                      ) : (
-                        <ul className="divide-y">
-                          {allowlist.map((entry) => (
-                            <li
-                              className="flex min-w-0 items-center gap-3 px-4 py-3"
-                              key={entry.id}
-                            >
-                              <Phone
-                                className="size-4 shrink-0 text-muted-foreground"
-                                aria-hidden
-                              />
-                              <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                                {entry.phoneNumber ??
-                                  t('agent.allowlist.unknown')}
-                              </span>
-                              {canManage && (
-                                <Button
-                                  aria-label={t('agent.allowlist.remove', {
-                                    phoneNumber: entry.phoneNumber ?? entry.id,
-                                  })}
-                                  disabled={removingAllowlistEntryId !== null}
-                                  isLoading={
-                                    removingAllowlistEntryId === entry.id
-                                  }
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() =>
-                                    void removeAllowlistEntry(entry.id)
-                                  }
-                                >
-                                  <Trash2 className="size-4" aria-hidden />
-                                </Button>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {t('agent.rollout.description')}
+                      </p>
                     </div>
                   </div>
-                )}
-              </section>
+                  <div className="flex justify-end border-t bg-muted/10 p-5">
+                    {canManage ? (
+                      <Button
+                        isLoading={isSavingRollout}
+                        variant={settings.rolloutEnabled ? 'danger' : 'success'}
+                        onClick={() => void toggleRollout()}
+                      >
+                        <Zap className="size-4" aria-hidden />
+                        {t(
+                          settings.rolloutEnabled
+                            ? 'agent.rollout.disable'
+                            : 'agent.rollout.enable',
+                        )}
+                      </Button>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {t('agent.managersOnly')}
+                      </p>
+                    )}
+                  </div>
+                </section>
 
-              <section className="overflow-hidden rounded-2xl border bg-card shadow-xs">
-                <form
-                  aria-busy={isSavingBehavior}
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    void saveBehavior()
-                  }}
-                >
+                <section className="overflow-hidden rounded-2xl border bg-card shadow-xs">
                   <div className="flex items-start gap-4 p-6">
                     <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
-                      <ShieldCheck className="size-5" aria-hidden />
+                      <Users className="size-5" aria-hidden />
                     </span>
                     <div>
-                      <h2 className="font-bold">{t('agent.behavior.title')}</h2>
+                      <h2 className="font-bold">{t('agent.audience.title')}</h2>
                       <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                        {t('agent.behavior.description')}
+                        {t('agent.audience.description')}
                       </p>
                     </div>
                   </div>
 
-                  <div className="grid gap-6 border-t p-6">
-                    <div className="grid gap-4 rounded-xl border bg-muted/10 p-4">
-                      <Switch
-                        checked={handoffEnabled}
-                        description={t('agent.behavior.handoffDescription')}
-                        disabled={!canManage || isSavingBehavior}
-                        label={t('agent.behavior.handoffEnabled')}
-                        onChange={(event) =>
-                          setHandoffEnabled(event.target.checked)
-                        }
-                      />
-
+                  <div className="flex flex-col gap-2 border-t bg-muted/10 p-5 sm:flex-row sm:items-end">
+                    <div className="min-w-0 flex-1">
                       <Select
-                        disabled={!canManage || isSavingBehavior}
-                        hint={t('agent.behavior.messageTypeHint')}
-                        label={t('agent.behavior.messageType')}
-                        value={handoffMessageSelection}
+                        disabled={!canManage || isSavingAudience}
+                        label={t('agent.audience.label')}
+                        value={selectedAudience}
                         onChange={(event) =>
-                          setHandoffMessageSelection(
-                            event.target.value as HandoffMessageSelection,
+                          setSelectedAudience(
+                            event.target.value as AgentAudience,
                           )
                         }
                       >
-                        <option value="DEFAULT">
-                          {t('agent.behavior.messageTypes.default')}
+                        <option value="EVERYONE">
+                          {t('agent.audience.everyone')}
                         </option>
-                        <option value="AGENT">
-                          {t('agent.behavior.messageTypes.agent')}
-                        </option>
-                        <option value="CUSTOM">
-                          {t('agent.behavior.messageTypes.custom')}
+                        <option value="ALLOWLISTED_ONLY">
+                          {t('agent.audience.allowlistedOnly')}
                         </option>
                       </Select>
+                    </div>
+                    {canManage && (
+                      <Button
+                        className="mb-5 shrink-0"
+                        disabled={selectedAudience === settings.audience}
+                        isLoading={isSavingAudience}
+                        onClick={() => void saveAudience()}
+                      >
+                        {t('agent.audience.save')}
+                      </Button>
+                    )}
+                  </div>
 
-                      {handoffMessageSelection === 'CUSTOM' && (
-                        <Textarea
-                          disabled={!canManage || isSavingBehavior}
-                          error={
-                            customHandoffMessageMissing
-                              ? t('agent.behavior.customMessageRequired')
-                              : undefined
-                          }
-                          label={t('agent.behavior.customMessage')}
-                          maxLength={10_000}
-                          required
-                          rows={3}
-                          value={handoffMessage}
-                          onChange={(event) =>
-                            setHandoffMessage(event.target.value)
-                          }
-                        />
+                  {settings.audience === 'ALLOWLISTED_ONLY' && (
+                    <div className="border-t p-6">
+                      <h3 className="text-sm font-bold">
+                        {t('agent.allowlist.title')}
+                      </h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {t('agent.allowlist.description')}
+                      </p>
+
+                      {canManage && (
+                        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+                          <div className="min-w-0 flex-1">
+                            <Input
+                              label={t('agent.allowlist.phoneNumber')}
+                              placeholder="+5511999999999"
+                              type="tel"
+                              value={allowlistPhoneNumber}
+                              onChange={(event) =>
+                                setAllowlistPhoneNumber(event.target.value)
+                              }
+                            />
+                          </div>
+                          <Button
+                            className="mb-5 shrink-0"
+                            disabled={
+                              !/^\+[1-9]\d{1,14}$/.test(
+                                allowlistPhoneNumber.trim(),
+                              )
+                            }
+                            isLoading={isAddingAllowlistEntry}
+                            onClick={() => void addAllowlistEntry()}
+                          >
+                            {t('agent.allowlist.add')}
+                          </Button>
+                        </div>
                       )}
+
+                      <div className="mt-4 overflow-hidden rounded-xl border">
+                        {isLoadingAllowlist ? (
+                          <p className="p-4 text-sm text-muted-foreground">
+                            {t('agent.allowlist.loading')}
+                          </p>
+                        ) : allowlist.length === 0 ? (
+                          <p className="p-4 text-sm text-muted-foreground">
+                            {t('agent.allowlist.empty')}
+                          </p>
+                        ) : (
+                          <ul className="divide-y">
+                            {allowlist.map((entry) => (
+                              <li
+                                className="flex min-w-0 items-center gap-3 px-4 py-3"
+                                key={entry.id}
+                              >
+                                <Phone
+                                  className="size-4 shrink-0 text-muted-foreground"
+                                  aria-hidden
+                                />
+                                <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                                  {entry.phoneNumber ??
+                                    t('agent.allowlist.unknown')}
+                                </span>
+                                {canManage && (
+                                  <Button
+                                    aria-label={t('agent.allowlist.remove', {
+                                      phoneNumber:
+                                        entry.phoneNumber ?? entry.id,
+                                    })}
+                                    disabled={removingAllowlistEntryId !== null}
+                                    isLoading={
+                                      removingAllowlistEntryId === entry.id
+                                    }
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      void removeAllowlistEntry(entry.id)
+                                    }
+                                  >
+                                    <Trash2 className="size-4" aria-hidden />
+                                  </Button>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                <section className="overflow-hidden rounded-2xl border bg-card shadow-xs">
+                  <form
+                    aria-busy={isSavingBehavior}
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      void saveBehavior()
+                    }}
+                  >
+                    <div className="flex items-start gap-4 p-6">
+                      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+                        <ShieldCheck className="size-5" aria-hidden />
+                      </span>
+                      <div>
+                        <h2 className="font-bold">
+                          {t('agent.behavior.title')}
+                        </h2>
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                          {t('agent.behavior.description')}
+                        </p>
+                      </div>
                     </div>
 
-                    <TagInput
-                      disabled={!canManage || isSavingBehavior}
-                      getRemoveLabel={(phrase) =>
-                        t('agent.behavior.removeNeverSayPhrase', { phrase })
-                      }
-                      hint={t('agent.behavior.neverSayHint')}
-                      label={t('agent.behavior.neverSayPhrases')}
-                      maxLength={500}
-                      placeholder={t('agent.behavior.neverSayPlaceholder')}
-                      value={neverSayPhrases}
-                      onValueChange={setNeverSayPhrases}
-                    />
+                    <div className="grid gap-6 border-t p-6">
+                      <div className="grid gap-4 rounded-xl border bg-muted/10 p-4">
+                        <Switch
+                          checked={handoffEnabled}
+                          description={t('agent.behavior.handoffDescription')}
+                          disabled={!canManage || isSavingBehavior}
+                          label={t('agent.behavior.handoffEnabled')}
+                          onChange={(event) =>
+                            setHandoffEnabled(event.target.checked)
+                          }
+                        />
+
+                        <Select
+                          disabled={!canManage || isSavingBehavior}
+                          hint={t('agent.behavior.messageTypeHint')}
+                          label={t('agent.behavior.messageType')}
+                          value={handoffMessageSelection}
+                          onChange={(event) =>
+                            setHandoffMessageSelection(
+                              event.target.value as HandoffMessageSelection,
+                            )
+                          }
+                        >
+                          <option value="DEFAULT">
+                            {t('agent.behavior.messageTypes.default')}
+                          </option>
+                          <option value="AGENT">
+                            {t('agent.behavior.messageTypes.agent')}
+                          </option>
+                          <option value="CUSTOM">
+                            {t('agent.behavior.messageTypes.custom')}
+                          </option>
+                        </Select>
+
+                        {handoffMessageSelection === 'CUSTOM' && (
+                          <Textarea
+                            disabled={!canManage || isSavingBehavior}
+                            error={
+                              customHandoffMessageMissing
+                                ? t('agent.behavior.customMessageRequired')
+                                : undefined
+                            }
+                            label={t('agent.behavior.customMessage')}
+                            maxLength={10_000}
+                            required
+                            rows={3}
+                            value={handoffMessage}
+                            onChange={(event) =>
+                              setHandoffMessage(event.target.value)
+                            }
+                          />
+                        )}
+                      </div>
+
+                      <TagInput
+                        disabled={!canManage || isSavingBehavior}
+                        getRemoveLabel={(phrase) =>
+                          t('agent.behavior.removeNeverSayPhrase', { phrase })
+                        }
+                        hint={t('agent.behavior.neverSayHint')}
+                        label={t('agent.behavior.neverSayPhrases')}
+                        maxLength={500}
+                        placeholder={t('agent.behavior.neverSayPlaceholder')}
+                        value={neverSayPhrases}
+                        onValueChange={setNeverSayPhrases}
+                      />
+                    </div>
+
+                    <div className="flex justify-end border-t bg-muted/10 p-5">
+                      {canManage ? (
+                        <Button
+                          disabled={
+                            !hasBehaviorChanges || customHandoffMessageMissing
+                          }
+                          isLoading={isSavingBehavior}
+                          type="submit"
+                        >
+                          {t('agent.behavior.save')}
+                        </Button>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {t('agent.managersOnly')}
+                        </p>
+                      )}
+                    </div>
+                  </form>
+                </section>
+
+                <section className="overflow-hidden rounded-2xl border border-destructive/30 bg-card shadow-xs">
+                  <div className="flex items-start gap-4 p-6">
+                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-destructive/12 text-destructive">
+                      <AlertTriangle className="size-5" aria-hidden />
+                    </span>
+                    <div>
+                      <h2 className="font-bold text-destructive">
+                        {t('agent.danger.title')}
+                      </h2>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        {t('agent.danger.description')}
+                      </p>
+                    </div>
                   </div>
+                  <div className="flex justify-end border-t border-destructive/20 bg-destructive/5 p-5">
+                    {canManage ? (
+                      <Button
+                        variant="danger"
+                        onClick={() => {
+                          setDeleteError(null)
+                          setIsDeleteDialogOpen(true)
+                        }}
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                        {t('agent.danger.delete')}
+                      </Button>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {t('agent.managersOnly')}
+                      </p>
+                    )}
+                  </div>
+                </section>
+              </div>
+            ) : activeTab === 'businessInfo' ? (
+              <section
+                className="overflow-hidden rounded-2xl border bg-card shadow-xs"
+                role="tabpanel"
+                aria-busy={isLoadingBusinessInfo}
+              >
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    void saveBusinessInfo()
+                  }}
+                >
+                  <div className="flex items-start gap-4 p-6">
+                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+                      <Building2 className="size-5" aria-hidden />
+                    </span>
+                    <div>
+                      <h2 className="font-bold">
+                        {t('agent.businessInfo.title')}
+                      </h2>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        {t('agent.businessInfo.description')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {businessInfoError && (
+                    <p
+                      className="mx-6 mb-6 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                      role="alert"
+                    >
+                      {businessInfoError}
+                    </p>
+                  )}
+
+                  {isLoadingBusinessInfo ? (
+                    <p className="border-t p-6 text-sm text-muted-foreground">
+                      {t('agent.businessInfo.loading')}
+                    </p>
+                  ) : (
+                    <div className="grid gap-x-5 gap-y-2 border-t p-6 md:grid-cols-2">
+                      <fieldset
+                        className="contents"
+                        disabled={!canManage || isSavingBusinessInfo}
+                      >
+                        <Textarea
+                          className="md:min-h-28"
+                          label={t('agent.businessInfo.businessDescription')}
+                          value={businessInfo.businessDescription}
+                          onChange={(event) =>
+                            updateBusinessInfoField(
+                              'businessDescription',
+                              event.target.value,
+                            )
+                          }
+                        />
+                        <Textarea
+                          className="md:min-h-28"
+                          label={t('agent.businessInfo.purchaseInfo')}
+                          value={businessInfo.purchaseInfo}
+                          onChange={(event) =>
+                            updateBusinessInfoField(
+                              'purchaseInfo',
+                              event.target.value,
+                            )
+                          }
+                        />
+                        <Textarea
+                          label={t('agent.businessInfo.deliveryAndShipping')}
+                          value={businessInfo.deliveryAndShipping}
+                          onChange={(event) =>
+                            updateBusinessInfoField(
+                              'deliveryAndShipping',
+                              event.target.value,
+                            )
+                          }
+                        />
+                        <Textarea
+                          label={t('agent.businessInfo.returnPolicy')}
+                          value={businessInfo.returnPolicy}
+                          onChange={(event) =>
+                            updateBusinessInfoField(
+                              'returnPolicy',
+                              event.target.value,
+                            )
+                          }
+                        />
+                        <Input
+                          label={t('agent.businessInfo.paymentMethod')}
+                          value={businessInfo.paymentMethod}
+                          onChange={(event) =>
+                            updateBusinessInfoField(
+                              'paymentMethod',
+                              event.target.value,
+                            )
+                          }
+                        />
+                        <Input
+                          label={t('agent.businessInfo.contactEmail')}
+                          type="email"
+                          value={businessInfo.contactEmail}
+                          onChange={(event) =>
+                            updateBusinessInfoField(
+                              'contactEmail',
+                              event.target.value,
+                            )
+                          }
+                        />
+                        <Input
+                          label={t('agent.businessInfo.hoursOfOperation')}
+                          value={businessInfo.hoursOfOperation}
+                          onChange={(event) =>
+                            updateBusinessInfoField(
+                              'hoursOfOperation',
+                              event.target.value,
+                            )
+                          }
+                        />
+                        <Input
+                          label={t('agent.businessInfo.address')}
+                          value={businessInfo.address}
+                          onChange={(event) =>
+                            updateBusinessInfoField(
+                              'address',
+                              event.target.value,
+                            )
+                          }
+                        />
+                      </fieldset>
+                    </div>
+                  )}
 
                   <div className="flex justify-end border-t bg-muted/10 p-5">
                     {canManage ? (
                       <Button
                         disabled={
-                          !hasBehaviorChanges || customHandoffMessageMissing
+                          isLoadingBusinessInfo || !hasBusinessInfoChanges
                         }
-                        isLoading={isSavingBehavior}
+                        isLoading={isSavingBusinessInfo}
                         type="submit"
                       >
-                        {t('agent.behavior.save')}
+                        {t('agent.businessInfo.save')}
                       </Button>
                     ) : (
                       <p className="text-sm text-muted-foreground">
@@ -2005,363 +2434,90 @@ export function AgentPage() {
                   </div>
                 </form>
               </section>
-
-              <section className="overflow-hidden rounded-2xl border border-destructive/30 bg-card shadow-xs">
-                <div className="flex items-start gap-4 p-6">
-                  <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-destructive/12 text-destructive">
-                    <AlertTriangle className="size-5" aria-hidden />
-                  </span>
-                  <div>
-                    <h2 className="font-bold text-destructive">
-                      {t('agent.danger.title')}
-                    </h2>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      {t('agent.danger.description')}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex justify-end border-t border-destructive/20 bg-destructive/5 p-5">
-                  {canManage ? (
-                    <Button
-                      variant="danger"
-                      onClick={() => {
-                        setDeleteError(null)
-                        setIsDeleteDialogOpen(true)
-                      }}
-                    >
-                      <Trash2 className="size-4" aria-hidden />
-                      {t('agent.danger.delete')}
-                    </Button>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {t('agent.managersOnly')}
-                    </p>
-                  )}
-                </div>
-              </section>
-            </div>
-          ) : activeTab === 'businessInfo' ? (
-            <section
-              className="overflow-hidden rounded-2xl border bg-card shadow-xs"
-              role="tabpanel"
-              aria-busy={isLoadingBusinessInfo}
-            >
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  void saveBusinessInfo()
-                }}
-              >
-                <div className="flex items-start gap-4 p-6">
-                  <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
-                    <Building2 className="size-5" aria-hidden />
-                  </span>
-                  <div>
-                    <h2 className="font-bold">
-                      {t('agent.businessInfo.title')}
-                    </h2>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      {t('agent.businessInfo.description')}
-                    </p>
-                  </div>
-                </div>
-
-                {businessInfoError && (
+            ) : activeTab === 'skills' ? (
+              <div className="grid gap-6" role="tabpanel">
+                {skillError && !isSkillDialogOpen && (
                   <p
-                    className="mx-6 mb-6 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                    className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
                     role="alert"
                   >
-                    {businessInfoError}
+                    {skillError}
                   </p>
                 )}
-
-                {isLoadingBusinessInfo ? (
-                  <p className="border-t p-6 text-sm text-muted-foreground">
-                    {t('agent.businessInfo.loading')}
-                  </p>
-                ) : (
-                  <div className="grid gap-x-5 gap-y-2 border-t p-6 md:grid-cols-2">
-                    <fieldset
-                      className="contents"
-                      disabled={!canManage || isSavingBusinessInfo}
-                    >
-                      <Textarea
-                        className="md:min-h-28"
-                        label={t('agent.businessInfo.businessDescription')}
-                        value={businessInfo.businessDescription}
-                        onChange={(event) =>
-                          updateBusinessInfoField(
-                            'businessDescription',
-                            event.target.value,
-                          )
-                        }
-                      />
-                      <Textarea
-                        className="md:min-h-28"
-                        label={t('agent.businessInfo.purchaseInfo')}
-                        value={businessInfo.purchaseInfo}
-                        onChange={(event) =>
-                          updateBusinessInfoField(
-                            'purchaseInfo',
-                            event.target.value,
-                          )
-                        }
-                      />
-                      <Textarea
-                        label={t('agent.businessInfo.deliveryAndShipping')}
-                        value={businessInfo.deliveryAndShipping}
-                        onChange={(event) =>
-                          updateBusinessInfoField(
-                            'deliveryAndShipping',
-                            event.target.value,
-                          )
-                        }
-                      />
-                      <Textarea
-                        label={t('agent.businessInfo.returnPolicy')}
-                        value={businessInfo.returnPolicy}
-                        onChange={(event) =>
-                          updateBusinessInfoField(
-                            'returnPolicy',
-                            event.target.value,
-                          )
-                        }
-                      />
-                      <Input
-                        label={t('agent.businessInfo.paymentMethod')}
-                        value={businessInfo.paymentMethod}
-                        onChange={(event) =>
-                          updateBusinessInfoField(
-                            'paymentMethod',
-                            event.target.value,
-                          )
-                        }
-                      />
-                      <Input
-                        label={t('agent.businessInfo.contactEmail')}
-                        type="email"
-                        value={businessInfo.contactEmail}
-                        onChange={(event) =>
-                          updateBusinessInfoField(
-                            'contactEmail',
-                            event.target.value,
-                          )
-                        }
-                      />
-                      <Input
-                        label={t('agent.businessInfo.hoursOfOperation')}
-                        value={businessInfo.hoursOfOperation}
-                        onChange={(event) =>
-                          updateBusinessInfoField(
-                            'hoursOfOperation',
-                            event.target.value,
-                          )
-                        }
-                      />
-                      <Input
-                        label={t('agent.businessInfo.address')}
-                        value={businessInfo.address}
-                        onChange={(event) =>
-                          updateBusinessInfoField('address', event.target.value)
-                        }
-                      />
-                    </fieldset>
-                  </div>
-                )}
-
-                <div className="flex justify-end border-t bg-muted/10 p-5">
-                  {canManage ? (
-                    <Button
-                      disabled={
-                        isLoadingBusinessInfo || !hasBusinessInfoChanges
-                      }
-                      isLoading={isSavingBusinessInfo}
-                      type="submit"
-                    >
-                      {t('agent.businessInfo.save')}
-                    </Button>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {t('agent.managersOnly')}
-                    </p>
-                  )}
-                </div>
-              </form>
-            </section>
-          ) : activeTab === 'skills' ? (
-            <div className="grid gap-6" role="tabpanel">
-              {skillError && !isSkillDialogOpen && (
-                <p
-                  className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-                  role="alert"
+                <KnowledgeListCard
+                  action={
+                    canManage ? (
+                      <Button
+                        onClick={() => {
+                          setEditingSkillId(null)
+                          setSkillTitle('')
+                          setSkillDescription('')
+                          setSkillInstructions('')
+                          setSkillError(null)
+                          setIsSkillDialogOpen(true)
+                        }}
+                      >
+                        <Plus className="size-4" aria-hidden />
+                        {t('agent.skills.add')}
+                      </Button>
+                    ) : undefined
+                  }
+                  icon={<Sparkles className="size-5" aria-hidden />}
+                  title={t('agent.skills.listTitle')}
+                  isLoading={isLoadingSkills}
+                  loadingLabel={t('agent.skills.loading')}
+                  emptyLabel={t('agent.skills.empty')}
+                  isEmpty={skills.length === 0}
                 >
-                  {skillError}
-                </p>
-              )}
-              <KnowledgeListCard
-                action={
-                  canManage ? (
-                    <Button
-                      onClick={() => {
-                        setEditingSkillId(null)
-                        setSkillTitle('')
-                        setSkillDescription('')
-                        setSkillInstructions('')
-                        setSkillError(null)
-                        setIsSkillDialogOpen(true)
-                      }}
-                    >
-                      <Plus className="size-4" aria-hidden />
-                      {t('agent.skills.add')}
-                    </Button>
-                  ) : undefined
-                }
-                icon={<Sparkles className="size-5" aria-hidden />}
-                title={t('agent.skills.listTitle')}
-                isLoading={isLoadingSkills}
-                loadingLabel={t('agent.skills.loading')}
-                emptyLabel={t('agent.skills.empty')}
-                isEmpty={skills.length === 0}
-              >
-                <ul className="divide-y">
-                  {skills.map((skill) => (
-                    <li className="flex items-start gap-4 p-5" key={skill.id}>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-semibold">{skill.title}</p>
-                          {skill.status && (
-                            <Pill
-                              tone={
-                                skill.status === 'active'
-                                  ? 'success'
-                                  : 'neutral'
-                              }
-                            >
-                              {t(`agent.skills.status.${skill.status}`)}
-                            </Pill>
+                  <ul className="divide-y">
+                    {skills.map((skill) => (
+                      <li className="flex items-start gap-4 p-5" key={skill.id}>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold">{skill.title}</p>
+                            {skill.status && (
+                              <Pill
+                                tone={
+                                  skill.status === 'active'
+                                    ? 'success'
+                                    : 'neutral'
+                                }
+                              >
+                                {t(`agent.skills.status.${skill.status}`)}
+                              </Pill>
+                            )}
+                          </div>
+                          {skill.description && (
+                            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                              {skill.description}
+                            </p>
                           )}
                         </div>
-                        {skill.description && (
-                          <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                            {skill.description}
-                          </p>
-                        )}
-                      </div>
-                      {canManage && (
-                        <div className="flex shrink-0 gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setEditingSkillId(skill.id)
-                              setSkillTitle(skill.title)
-                              setSkillDescription(skill.description)
-                              setSkillInstructions(skill.skill)
-                              setSkillError(null)
-                              setIsSkillDialogOpen(true)
-                            }}
-                          >
-                            {t('agent.skills.edit')}
-                          </Button>
-                          <Button
-                            aria-label={t('agent.skills.delete', {
-                              title: skill.title,
-                            })}
-                            disabled={deletingSkillId !== null}
-                            isLoading={deletingSkillId === skill.id}
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => void deleteSkill(skill.id)}
-                          >
-                            <Trash2 className="size-4" aria-hidden />
-                          </Button>
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </KnowledgeListCard>
-            </div>
-          ) : activeTab === 'knowledgeBase' ? (
-            <div className="grid gap-6" role="tabpanel">
-              <Tabs
-                ariaLabel={t('agent.knowledge.tabsLabel')}
-                items={(['faq', 'websites', 'files'] as const).map((tab) => ({
-                  value: tab,
-                  label: t(`agent.knowledge.tabs.${tab}`),
-                }))}
-                value={knowledgeTab}
-                variant="pills"
-                onValueChange={setKnowledgeTab}
-              />
-
-              {knowledgeError && (
-                <p
-                  className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-                  role="alert"
-                >
-                  {knowledgeError}
-                </p>
-              )}
-
-              {knowledgeTab === 'faq' && (
-                <KnowledgeListCard
-                  action={
-                    canManage ? (
-                      <Button
-                        onClick={() => {
-                          setEditingFaqId(null)
-                          setFaqQuestion('')
-                          setFaqAnswer('')
-                          setKnowledgeError(null)
-                          setIsFaqDialogOpen(true)
-                        }}
-                      >
-                        <Plus className="size-4" aria-hidden />
-                        {t('agent.knowledge.faq.add')}
-                      </Button>
-                    ) : undefined
-                  }
-                  icon={<BookOpen className="size-5" aria-hidden />}
-                  title={t('agent.knowledge.faq.listTitle')}
-                  isLoading={isLoadingKnowledge}
-                  loadingLabel={t('agent.knowledge.loading')}
-                  emptyLabel={t('agent.knowledge.faq.empty')}
-                  isEmpty={faqs.length === 0}
-                >
-                  <ul className="divide-y">
-                    {faqs.map((faq) => (
-                      <li className="flex items-start gap-4 p-5" key={faq.id}>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold">{faq.question}</p>
-                          <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                            {faq.answer}
-                          </p>
-                        </div>
                         {canManage && (
                           <div className="flex shrink-0 gap-1">
                             <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => {
-                                setEditingFaqId(faq.id)
-                                setFaqQuestion(faq.question)
-                                setFaqAnswer(faq.answer)
-                                setKnowledgeError(null)
-                                setIsFaqDialogOpen(true)
+                                setEditingSkillId(skill.id)
+                                setSkillTitle(skill.title)
+                                setSkillDescription(skill.description)
+                                setSkillInstructions(skill.skill)
+                                setSkillError(null)
+                                setIsSkillDialogOpen(true)
                               }}
                             >
-                              {t('agent.knowledge.edit')}
+                              {t('agent.skills.edit')}
                             </Button>
                             <Button
-                              aria-label={t('agent.knowledge.faq.delete', {
-                                question: faq.question,
+                              aria-label={t('agent.skills.delete', {
+                                title: skill.title,
                               })}
-                              disabled={deletingFaqId !== null}
-                              isLoading={deletingFaqId === faq.id}
+                              disabled={deletingSkillId !== null}
+                              isLoading={deletingSkillId === skill.id}
                               size="icon"
                               variant="ghost"
-                              onClick={() => void deleteFaq(faq.id)}
+                              onClick={() => void deleteSkill(skill.id)}
                             >
                               <Trash2 className="size-4" aria-hidden />
                             </Button>
@@ -2371,272 +2527,427 @@ export function AgentPage() {
                     ))}
                   </ul>
                 </KnowledgeListCard>
-              )}
-
-              {knowledgeTab === 'websites' && (
-                <KnowledgeListCard
-                  action={
-                    canManage ? (
-                      <Button
-                        onClick={() => {
-                          setEditingWebsiteId(null)
-                          setWebsiteForm(emptyWebsiteForm())
-                          setKnowledgeError(null)
-                          setIsWebsiteDialogOpen(true)
-                        }}
-                      >
-                        <Plus className="size-4" aria-hidden />
-                        {t('agent.knowledge.websites.add')}
-                      </Button>
-                    ) : undefined
-                  }
-                  icon={<Globe2 className="size-5" aria-hidden />}
-                  title={t('agent.knowledge.websites.listTitle')}
-                  isLoading={isLoadingKnowledge}
-                  loadingLabel={t('agent.knowledge.loading')}
-                  emptyLabel={t('agent.knowledge.websites.empty')}
-                  isEmpty={websites.length === 0}
-                >
-                  <ul className="divide-y">
-                    {websites.map((website) => (
-                      <li
-                        className="flex items-start gap-4 p-5"
-                        key={website.id}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="break-all font-semibold">
-                            {website.url}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {website.crawlStatus ??
-                              t('agent.knowledge.websites.statusUnknown')}
-                            {website.pagesCrawled === null
-                              ? ''
-                              : ` · ${t('agent.knowledge.websites.pages', { count: website.pagesCrawled })}`}
-                          </p>
-                        </div>
-                        {canManage && (
-                          <div className="flex shrink-0 gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setEditingWebsiteId(website.id)
-                                setWebsiteForm(toWebsiteForm(website))
-                                setKnowledgeError(null)
-                                setIsWebsiteDialogOpen(true)
-                              }}
-                            >
-                              {t('agent.knowledge.edit')}
-                            </Button>
-                            <Button
-                              aria-label={t('agent.knowledge.websites.delete', {
-                                url: website.url,
-                              })}
-                              disabled={deletingWebsiteId !== null}
-                              isLoading={deletingWebsiteId === website.id}
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => void deleteWebsite(website.id)}
-                            >
-                              <Trash2 className="size-4" aria-hidden />
-                            </Button>
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </KnowledgeListCard>
-              )}
-
-              {knowledgeTab === 'files' && (
-                <KnowledgeListCard
-                  action={
-                    canManage ? (
-                      <Button
-                        onClick={() => {
-                          setSelectedKnowledgeFile(null)
-                          setKnowledgeError(null)
-                          setIsFileDialogOpen(true)
-                        }}
-                      >
-                        <Plus className="size-4" aria-hidden />
-                        {t('agent.knowledge.files.upload')}
-                      </Button>
-                    ) : undefined
-                  }
-                  icon={<FileText className="size-5" aria-hidden />}
-                  title={t('agent.knowledge.files.listTitle')}
-                  isLoading={isLoadingKnowledge}
-                  loadingLabel={t('agent.knowledge.loading')}
-                  emptyLabel={t('agent.knowledge.files.empty')}
-                  isEmpty={knowledgeFiles.length === 0}
-                >
-                  <ul className="divide-y">
-                    {knowledgeFiles.map((file) => (
-                      <li className="flex items-center gap-4 p-5" key={file.id}>
-                        <FileText
-                          className="size-5 shrink-0 text-muted-foreground"
-                          aria-hidden
-                        />
-                        <span className="min-w-0 flex-1 truncate font-semibold">
-                          {file.fileName}
-                        </span>
-                        {canManage && (
-                          <Button
-                            aria-label={t('agent.knowledge.files.delete', {
-                              fileName: file.fileName,
-                            })}
-                            disabled={deletingKnowledgeFileId !== null}
-                            isLoading={deletingKnowledgeFileId === file.id}
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => void deleteKnowledgeFile(file.id)}
-                          >
-                            <Trash2 className="size-4" aria-hidden />
-                          </Button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </KnowledgeListCard>
-              )}
-            </div>
-          ) : activeTab === 'connectors' ? (
-            <div className="grid gap-6" role="tabpanel">
-              {connectorError && (
-                <p
-                  className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-                  role="alert"
-                >
-                  {connectorError}
-                </p>
-              )}
-              <KnowledgeListCard
-                action={
-                  canManage ? (
-                    <Link
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
-                      to={`/agents/${channel.id}/connectors/new`}
-                    >
-                      <Plus className="size-4" aria-hidden />
-                      {t('agent.connectors.add')}
-                    </Link>
-                  ) : undefined
-                }
-                icon={<Plug className="size-5" aria-hidden />}
-                title={t('agent.connectors.title')}
-                isLoading={isLoadingConnectors}
-                loadingLabel={t('agent.connectors.loading')}
-                emptyLabel={t('agent.connectors.empty')}
-                isEmpty={connectors.length === 0}
-              >
-                <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
-                  {connectors.map((connector) => (
-                    <Link
-                      className="group flex min-h-44 flex-col overflow-hidden rounded-xl border bg-background transition hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
-                      key={connector.id}
-                      to={`/agents/${channel.id}/connectors/${encodeURIComponent(connector.id)}`}
-                    >
-                      <div className="flex items-start gap-3 p-5">
-                        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
-                          <Plug className="size-5" aria-hidden />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-bold group-hover:text-primary">
-                            {connector.name}
-                          </p>
-                          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
-                            {connector.description}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-auto flex items-center justify-between gap-3 border-t bg-muted/20 px-5 py-3">
-                        <span className="truncate text-xs text-muted-foreground">
-                          {connector.connectorProtocol} ·{' '}
-                          {t(connectorAuthKey(connector.authType))}
-                        </span>
-                        <Pill
-                          tone={connectorStatusTone(connector.connectionStatus)}
-                        >
-                          {t(connectorStatusKey(connector.connectionStatus))}
-                        </Pill>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </KnowledgeListCard>
-            </div>
-          ) : activeTab === 'evals' ? (
-            <div className="grid gap-6" role="tabpanel">
-              {evaluationError && (
-                <p
-                  className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-                  role="alert"
-                >
-                  {evaluationError}
-                </p>
-              )}
-              <KnowledgeListCard
-                icon={<FlaskConical className="size-5" aria-hidden />}
-                title={t('agent.evals.title')}
-                isLoading={isLoadingEvaluations}
-                loadingLabel={t('agent.evals.loading')}
-                emptyLabel={t('agent.evals.empty')}
-                isEmpty={evaluationCases.length === 0}
-              >
-                <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
-                  {evaluationCases.map((evaluation) => (
-                    <Link
-                      className="group flex min-h-44 flex-col overflow-hidden rounded-xl border bg-background transition hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
-                      key={evaluation.id}
-                      to={`/agents/${channel.id}/evals/${encodeURIComponent(evaluation.id)}`}
-                    >
-                      <div className="flex items-start gap-3 p-5">
-                        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
-                          <FlaskConical className="size-5" aria-hidden />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 font-bold group-hover:text-primary">
-                            {evaluation.scenario}
-                          </p>
-                          <p className="mt-1 truncate text-xs text-muted-foreground">
-                            {evaluation.id}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-auto flex flex-wrap items-center gap-2 border-t bg-muted/20 px-5 py-3">
-                        {evaluation.categories.slice(0, 2).map((category) => (
-                          <Pill key={category}>{category}</Pill>
-                        ))}
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          {evaluation.maxTurns === null
-                            ? t('agent.evals.turnsUnavailable')
-                            : t('agent.evals.maxTurns', {
-                                count: evaluation.maxTurns,
-                              })}
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </KnowledgeListCard>
-            </div>
-          ) : (
-            <section
-              className="grid min-h-40 place-items-center rounded-2xl border bg-card p-6 text-center shadow-xs"
-              role="tabpanel"
-            >
-              <div>
-                <h2 className="font-bold">{t('agent.title')}</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {t('agent.tabs.pending')}
-                </p>
               </div>
-            </section>
+            ) : activeTab === 'knowledgeBase' ? (
+              <div className="grid gap-6" role="tabpanel">
+                <Tabs
+                  ariaLabel={t('agent.knowledge.tabsLabel')}
+                  items={(['faq', 'websites', 'files'] as const).map((tab) => ({
+                    value: tab,
+                    label: t(`agent.knowledge.tabs.${tab}`),
+                  }))}
+                  value={knowledgeTab}
+                  variant="pills"
+                  onValueChange={setKnowledgeTab}
+                />
+
+                {knowledgeError && (
+                  <p
+                    className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                    role="alert"
+                  >
+                    {knowledgeError}
+                  </p>
+                )}
+
+                {knowledgeTab === 'faq' && (
+                  <KnowledgeListCard
+                    action={
+                      canManage ? (
+                        <Button
+                          onClick={() => {
+                            setEditingFaqId(null)
+                            setFaqQuestion('')
+                            setFaqAnswer('')
+                            setKnowledgeError(null)
+                            setIsFaqDialogOpen(true)
+                          }}
+                        >
+                          <Plus className="size-4" aria-hidden />
+                          {t('agent.knowledge.faq.add')}
+                        </Button>
+                      ) : undefined
+                    }
+                    icon={<BookOpen className="size-5" aria-hidden />}
+                    title={t('agent.knowledge.faq.listTitle')}
+                    isLoading={isLoadingKnowledge}
+                    loadingLabel={t('agent.knowledge.loading')}
+                    emptyLabel={t('agent.knowledge.faq.empty')}
+                    isEmpty={faqs.length === 0}
+                  >
+                    <ul className="divide-y">
+                      {faqs.map((faq) => (
+                        <li className="flex items-start gap-4 p-5" key={faq.id}>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold">{faq.question}</p>
+                            <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                              {faq.answer}
+                            </p>
+                          </div>
+                          {canManage && (
+                            <div className="flex shrink-0 gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingFaqId(faq.id)
+                                  setFaqQuestion(faq.question)
+                                  setFaqAnswer(faq.answer)
+                                  setKnowledgeError(null)
+                                  setIsFaqDialogOpen(true)
+                                }}
+                              >
+                                {t('agent.knowledge.edit')}
+                              </Button>
+                              <Button
+                                aria-label={t('agent.knowledge.faq.delete', {
+                                  question: faq.question,
+                                })}
+                                disabled={deletingFaqId !== null}
+                                isLoading={deletingFaqId === faq.id}
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => void deleteFaq(faq.id)}
+                              >
+                                <Trash2 className="size-4" aria-hidden />
+                              </Button>
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </KnowledgeListCard>
+                )}
+
+                {knowledgeTab === 'websites' && (
+                  <KnowledgeListCard
+                    action={
+                      canManage ? (
+                        <Button
+                          onClick={() => {
+                            setEditingWebsiteId(null)
+                            setWebsiteForm(emptyWebsiteForm())
+                            setKnowledgeError(null)
+                            setIsWebsiteDialogOpen(true)
+                          }}
+                        >
+                          <Plus className="size-4" aria-hidden />
+                          {t('agent.knowledge.websites.add')}
+                        </Button>
+                      ) : undefined
+                    }
+                    icon={<Globe2 className="size-5" aria-hidden />}
+                    title={t('agent.knowledge.websites.listTitle')}
+                    isLoading={isLoadingKnowledge}
+                    loadingLabel={t('agent.knowledge.loading')}
+                    emptyLabel={t('agent.knowledge.websites.empty')}
+                    isEmpty={websites.length === 0}
+                  >
+                    <ul className="divide-y">
+                      {websites.map((website) => (
+                        <li
+                          className="flex items-start gap-4 p-5"
+                          key={website.id}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="break-all font-semibold">
+                              {website.url}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {website.crawlStatus ??
+                                t('agent.knowledge.websites.statusUnknown')}
+                              {website.pagesCrawled === null
+                                ? ''
+                                : ` · ${t('agent.knowledge.websites.pages', { count: website.pagesCrawled })}`}
+                            </p>
+                          </div>
+                          {canManage && (
+                            <div className="flex shrink-0 gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingWebsiteId(website.id)
+                                  setWebsiteForm(toWebsiteForm(website))
+                                  setKnowledgeError(null)
+                                  setIsWebsiteDialogOpen(true)
+                                }}
+                              >
+                                {t('agent.knowledge.edit')}
+                              </Button>
+                              <Button
+                                aria-label={t(
+                                  'agent.knowledge.websites.delete',
+                                  {
+                                    url: website.url,
+                                  },
+                                )}
+                                disabled={deletingWebsiteId !== null}
+                                isLoading={deletingWebsiteId === website.id}
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => void deleteWebsite(website.id)}
+                              >
+                                <Trash2 className="size-4" aria-hidden />
+                              </Button>
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </KnowledgeListCard>
+                )}
+
+                {knowledgeTab === 'files' && (
+                  <KnowledgeListCard
+                    action={
+                      canManage ? (
+                        <Button
+                          onClick={() => {
+                            setSelectedKnowledgeFile(null)
+                            setKnowledgeError(null)
+                            setIsFileDialogOpen(true)
+                          }}
+                        >
+                          <Plus className="size-4" aria-hidden />
+                          {t('agent.knowledge.files.upload')}
+                        </Button>
+                      ) : undefined
+                    }
+                    icon={<FileText className="size-5" aria-hidden />}
+                    title={t('agent.knowledge.files.listTitle')}
+                    isLoading={isLoadingKnowledge}
+                    loadingLabel={t('agent.knowledge.loading')}
+                    emptyLabel={t('agent.knowledge.files.empty')}
+                    isEmpty={knowledgeFiles.length === 0}
+                  >
+                    <ul className="divide-y">
+                      {knowledgeFiles.map((file) => (
+                        <li
+                          className="flex items-center gap-4 p-5"
+                          key={file.id}
+                        >
+                          <FileText
+                            className="size-5 shrink-0 text-muted-foreground"
+                            aria-hidden
+                          />
+                          <span className="min-w-0 flex-1 truncate font-semibold">
+                            {file.fileName}
+                          </span>
+                          {canManage && (
+                            <Button
+                              aria-label={t('agent.knowledge.files.delete', {
+                                fileName: file.fileName,
+                              })}
+                              disabled={deletingKnowledgeFileId !== null}
+                              isLoading={deletingKnowledgeFileId === file.id}
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => void deleteKnowledgeFile(file.id)}
+                            >
+                              <Trash2 className="size-4" aria-hidden />
+                            </Button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </KnowledgeListCard>
+                )}
+              </div>
+            ) : activeTab === 'connectors' ? (
+              <div className="grid gap-6" role="tabpanel">
+                {connectorError && (
+                  <p
+                    className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                    role="alert"
+                  >
+                    {connectorError}
+                  </p>
+                )}
+                <KnowledgeListCard
+                  action={
+                    canManage ? (
+                      <Link
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+                        to={`/agents/${channel.id}/connectors/new`}
+                      >
+                        <Plus className="size-4" aria-hidden />
+                        {t('agent.connectors.add')}
+                      </Link>
+                    ) : undefined
+                  }
+                  icon={<Plug className="size-5" aria-hidden />}
+                  title={t('agent.connectors.title')}
+                  isLoading={isLoadingConnectors}
+                  loadingLabel={t('agent.connectors.loading')}
+                  emptyLabel={t('agent.connectors.empty')}
+                  isEmpty={connectors.length === 0}
+                >
+                  <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
+                    {connectors.map((connector) => (
+                      <Link
+                        className="group flex min-h-44 flex-col overflow-hidden rounded-xl border bg-background transition hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+                        key={connector.id}
+                        to={`/agents/${channel.id}/connectors/${encodeURIComponent(connector.id)}`}
+                      >
+                        <div className="flex items-start gap-3 p-5">
+                          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+                            <Plug className="size-5" aria-hidden />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-bold group-hover:text-primary">
+                              {connector.name}
+                            </p>
+                            <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+                              {connector.description}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-auto flex items-center justify-between gap-3 border-t bg-muted/20 px-5 py-3">
+                          <span className="truncate text-xs text-muted-foreground">
+                            {connector.connectorProtocol} ·{' '}
+                            {t(connectorAuthKey(connector.authType))}
+                          </span>
+                          <Pill
+                            tone={connectorStatusTone(
+                              connector.connectionStatus,
+                            )}
+                          >
+                            {t(connectorStatusKey(connector.connectionStatus))}
+                          </Pill>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </KnowledgeListCard>
+              </div>
+            ) : activeTab === 'evals' ? (
+              <div className="grid gap-6" role="tabpanel">
+                {evaluationError && (
+                  <p
+                    className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                    role="alert"
+                  >
+                    {evaluationError}
+                  </p>
+                )}
+                <KnowledgeListCard
+                  icon={<FlaskConical className="size-5" aria-hidden />}
+                  title={t('agent.evals.title')}
+                  isLoading={isLoadingEvaluations}
+                  loadingLabel={t('agent.evals.loading')}
+                  emptyLabel={t('agent.evals.empty')}
+                  isEmpty={evaluationCases.length === 0}
+                >
+                  <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
+                    {evaluationCases.map((evaluation) => (
+                      <Link
+                        className="group flex min-h-44 flex-col overflow-hidden rounded-xl border bg-background transition hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+                        key={evaluation.id}
+                        to={`/agents/${channel.id}/evals/${encodeURIComponent(evaluation.id)}`}
+                      >
+                        <div className="flex items-start gap-3 p-5">
+                          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+                            <FlaskConical className="size-5" aria-hidden />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="line-clamp-2 font-bold group-hover:text-primary">
+                              {evaluation.scenario}
+                            </p>
+                            <p className="mt-1 truncate text-xs text-muted-foreground">
+                              {evaluation.id}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-auto flex flex-wrap items-center gap-2 border-t bg-muted/20 px-5 py-3">
+                          {evaluation.categories.slice(0, 2).map((category) => (
+                            <Pill key={category}>{category}</Pill>
+                          ))}
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            {evaluation.maxTurns === null
+                              ? t('agent.evals.turnsUnavailable')
+                              : t('agent.evals.maxTurns', {
+                                  count: evaluation.maxTurns,
+                                })}
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </KnowledgeListCard>
+              </div>
+            ) : (
+              <section
+                className="grid min-h-40 place-items-center rounded-2xl border bg-card p-6 text-center shadow-xs"
+                role="tabpanel"
+              >
+                <div>
+                  <h2 className="font-bold">{t('agent.title')}</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {t('agent.tabs.pending')}
+                  </p>
+                </div>
+              </section>
+            )}
+          </div>
+        )}
+
+      <Dialog
+        dismissible={!isCreatingBackup}
+        open={isBackupDialogOpen}
+        size="lg"
+        title={
+          isCreatingBackup || backupStep || backupComplete || backupError
+            ? t('agent.backups.progressTitle')
+            : t('agent.backups.confirmTitle')
+        }
+        description={
+          isCreatingBackup || backupStep || backupComplete || backupError
+            ? t('agent.backups.progressDescription')
+            : t('agent.backups.confirmDescription')
+        }
+        icon={
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+            <Archive className="size-5" aria-hidden />
+          </span>
+        }
+        onOpenChange={(open) => {
+          if (!isCreatingBackup) setIsBackupDialogOpen(open)
+        }}
+      >
+        <div className="grid w-full gap-4">
+          {isCreatingBackup || backupStep || backupComplete || backupError ? (
+            <>
+              <AgentBackupProgress
+                complete={backupComplete}
+                currentStep={backupStep}
+                error={backupError}
+                running={isCreatingBackup}
+              />
+              {!isCreatingBackup && (
+                <div className="flex justify-end">
+                  <Button onClick={() => setIsBackupDialogOpen(false)}>
+                    {t('agent.backups.close')}
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setIsBackupDialogOpen(false)}
+              >
+                {t('agent.backups.cancel')}
+              </Button>
+              <Button onClick={() => void createBackup()}>
+                <Archive className="size-4" aria-hidden />
+                {t('agent.backups.confirm')}
+              </Button>
+            </div>
           )}
         </div>
-      )}
+      </Dialog>
 
       <Dialog
         dismissible={!isSavingSkill}
@@ -3003,6 +3314,7 @@ function toWebsiteForm(website: KnowledgeWebsite): WebsiteForm {
 function AgentImportPanel({
   complete,
   connectorInputs,
+  createBackupBeforeImport,
   currentStep,
   itemProgress,
   error,
@@ -3015,6 +3327,7 @@ function AgentImportPanel({
   packageFile,
   preview,
   onConnectorInputChange,
+  onCreateBackupBeforeImportChange,
   onFileChange,
   onImport,
   onInspect,
@@ -3022,6 +3335,7 @@ function AgentImportPanel({
 }: {
   complete: boolean
   connectorInputs: Record<string, AgentImportConnectorInput>
+  createBackupBeforeImport: boolean
   currentStep: AgentImportStep | null
   itemProgress: AgentImportItemProgress | null
   error: string | null
@@ -3037,22 +3351,26 @@ function AgentImportPanel({
     name: string,
     value: AgentImportConnectorInput,
   ) => void
+  onCreateBackupBeforeImportChange: (value: boolean) => void
   onFileChange: (providerFileId: string, file: File | null) => void
   onImport: () => void
   onInspect: () => void
   onPackageChange: (file: File | null) => void
 }) {
   const { t } = useTranslation()
+  const visibleSteps: readonly AgentImportStep[] = createBackupBeforeImport
+    ? agentImportSteps
+    : agentImportSteps.filter((step) => step !== 'backup')
   const currentIndex = complete
-    ? agentImportSteps.length
+    ? visibleSteps.length
     : currentStep
-      ? agentImportSteps.indexOf(currentStep)
+      ? visibleSteps.indexOf(currentStep)
       : -1
   const progress = complete
     ? 100
     : currentIndex < 0
       ? 0
-      : Math.round(((currentIndex + 1) / agentImportSteps.length) * 100)
+      : Math.round(((currentIndex + 1) / visibleSteps.length) * 100)
   const requirementsComplete = Boolean(
     inspection &&
     inspection.requirements.files.every((file) => files[file.providerFileId]) &&
@@ -3339,6 +3657,16 @@ function AgentImportPanel({
                 )
               })}
 
+              <Checkbox
+                checked={createBackupBeforeImport}
+                disabled={importing}
+                label={t('agent.importPanel.createBackup')}
+                description={t('agent.importPanel.createBackupDescription')}
+                onChange={(event) =>
+                  onCreateBackupBeforeImportChange(event.target.checked)
+                }
+              />
+
               <p className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm leading-6 text-foreground">
                 {t('agent.importPanel.replaceWarning')}
               </p>
@@ -3388,7 +3716,7 @@ function AgentImportPanel({
             </div>
           )}
           <ol className="grid gap-2" aria-live="polite">
-            {agentImportSteps.map((step, index) => {
+            {visibleSteps.map((step, index) => {
               const isComplete = complete || index < currentIndex
               const isCurrent = importing && index === currentIndex
               return (
@@ -3806,6 +4134,248 @@ function ImportPreviewList({
   )
 }
 
+function AgentBackupsPanel({
+  backups,
+  canManage,
+  error,
+  loading,
+  onBackup,
+  onRestore,
+  restoringBackupId,
+}: {
+  backups: AgentBackup[]
+  canManage: boolean
+  error: string | null
+  loading: boolean
+  onBackup: () => void
+  onRestore: (backup: AgentBackup) => void
+  restoringBackupId: number | null
+}) {
+  const { t, i18n } = useTranslation()
+
+  return (
+    <section
+      className="overflow-hidden rounded-2xl border bg-card shadow-xs"
+      role="tabpanel"
+    >
+      <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-4">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+            <Archive className="size-5" aria-hidden />
+          </span>
+          <div>
+            <h2 className="text-lg font-bold">{t('agent.backups.title')}</h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+              {t('agent.backups.description')}
+            </p>
+          </div>
+        </div>
+        {canManage ? (
+          <Button className="shrink-0" onClick={onBackup}>
+            <Archive className="size-4" aria-hidden />
+            {t('agent.backups.action')}
+          </Button>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {t('agent.managersOnly')}
+          </p>
+        )}
+      </div>
+
+      <div className="border-t">
+        {error ? (
+          <p
+            className="m-5 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+            role="alert"
+          >
+            {error}
+          </p>
+        ) : loading ? (
+          <p className="p-6 text-sm text-muted-foreground">
+            {t('agent.backups.loading')}
+          </p>
+        ) : backups.length === 0 ? (
+          <div className="grid min-h-52 place-items-center p-6 text-center">
+            <div className="grid max-w-md justify-items-center gap-3">
+              <span className="grid size-12 place-items-center rounded-full bg-muted text-muted-foreground">
+                <Archive className="size-6" aria-hidden />
+              </span>
+              <div>
+                <h3 className="font-bold">{t('agent.backups.emptyTitle')}</h3>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  {t('agent.backups.emptyDescription')}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-160 text-left text-sm">
+              <thead className="border-b bg-muted/30 text-xs tracking-wide text-muted-foreground uppercase">
+                <tr>
+                  <th className="px-5 py-3 font-bold" scope="col">
+                    {t('agent.backups.columns.createdAt')}
+                  </th>
+                  <th className="px-5 py-3 font-bold" scope="col">
+                    {t('agent.backups.columns.fileName')}
+                  </th>
+                  <th className="px-5 py-3 text-right font-bold" scope="col">
+                    {t('agent.backups.columns.size')}
+                  </th>
+                  {canManage && (
+                    <th className="px-5 py-3 text-right font-bold" scope="col">
+                      {t('agent.backups.columns.actions')}
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {backups.map((backup) => (
+                  <tr key={backup.id}>
+                    <td className="px-5 py-4 font-medium whitespace-nowrap">
+                      {new Intl.DateTimeFormat(i18n.language, {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      }).format(new Date(backup.createdAt))}
+                    </td>
+                    <td className="px-5 py-4 font-mono text-xs break-all text-muted-foreground">
+                      {backup.fileName}
+                    </td>
+                    <td className="px-5 py-4 text-right whitespace-nowrap text-muted-foreground">
+                      {formatFileSize(backup.byteSize)}
+                    </td>
+                    {canManage && (
+                      <td className="px-5 py-4 text-right whitespace-nowrap">
+                        <Button
+                          aria-label={t('agent.backups.restoreLabel', {
+                            fileName: backup.fileName,
+                          })}
+                          disabled={restoringBackupId !== null}
+                          isLoading={restoringBackupId === backup.id}
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onRestore(backup)}
+                        >
+                          <RotateCcw className="size-4" aria-hidden />
+                          {t('agent.backups.restore')}
+                        </Button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function AgentBackupProgress({
+  complete,
+  currentStep,
+  error,
+  running,
+}: {
+  complete: boolean
+  currentStep: AgentExportStep | null
+  error: string | null
+  running: boolean
+}) {
+  const { t } = useTranslation()
+  const currentIndex = complete
+    ? agentExportSteps.length
+    : currentStep
+      ? agentExportSteps.indexOf(currentStep)
+      : -1
+  const progress = complete
+    ? 100
+    : currentIndex < 0
+      ? 0
+      : Math.round(((currentIndex + 1) / agentExportSteps.length) * 100)
+
+  return (
+    <div className="grid gap-4 rounded-xl border bg-muted/10 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-bold">
+          {t('agent.backups.progressTitle')}
+        </h3>
+        <span className="text-xs font-semibold text-muted-foreground">
+          {progress}%
+        </span>
+      </div>
+      <div
+        className="h-2 overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-label={t('agent.backups.progressTitle')}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress}
+      >
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-300"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <ol className="grid gap-2" aria-live="polite">
+        {agentExportSteps.map((step, index) => {
+          const isComplete = complete || index < currentIndex
+          const isCurrent = running && index === currentIndex
+          const hasError = Boolean(error) && index === currentIndex
+          return (
+            <li
+              key={step}
+              className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5 text-sm"
+            >
+              <span
+                className={
+                  hasError
+                    ? 'text-destructive'
+                    : isComplete
+                      ? 'text-success'
+                      : isCurrent
+                        ? 'text-primary'
+                        : 'text-muted-foreground'
+                }
+              >
+                {hasError ? (
+                  <AlertTriangle className="size-4" aria-hidden />
+                ) : isComplete ? (
+                  <Check className="size-4" aria-hidden />
+                ) : isCurrent ? (
+                  <LoaderCircle className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <span className="block size-3 rounded-full border-2" />
+                )}
+              </span>
+              <span className={isCurrent || isComplete ? 'font-semibold' : ''}>
+                {t(`agent.exportPanel.steps.${step}`)}
+              </span>
+            </li>
+          )
+        })}
+      </ol>
+      {error && (
+        <p
+          className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
+      {complete && (
+        <p
+          className="rounded-lg bg-success/10 p-3 text-sm font-semibold text-success"
+          role="status"
+        >
+          {t('agent.backups.complete')}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function AgentImportDropzone({
   disabled,
   file,
@@ -4116,6 +4686,82 @@ function KnowledgeDialogError({ message }: { message: string | null }) {
   )
 }
 
+function NumberRegistrationCard({
+  canManage,
+  channelId,
+  providerStatus,
+  status,
+  onRetry,
+}: {
+  canManage: boolean
+  channelId: number
+  providerStatus: string | null
+  status: RegistrationStatus
+  onRetry: () => void
+}) {
+  const { t } = useTranslation()
+  const registered = status === 'registered'
+  const failed = status === 'error'
+  return (
+    <section className="overflow-hidden rounded-2xl border bg-card shadow-xs">
+      <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center">
+        <span
+          className={cn(
+            'grid size-11 shrink-0 place-items-center rounded-xl',
+            registered
+              ? 'bg-success/12 text-success'
+              : failed
+                ? 'bg-destructive/10 text-destructive'
+                : 'bg-warning/15 text-warning-foreground',
+          )}
+        >
+          <RadioTower className="size-5" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-bold">{t('agent.registration.title')}</h2>
+            <Pill tone={registrationStatusTone(status)}>
+              {t(`channels.registration.status.${status}`)}
+              {providerStatus ? ` · ${providerStatus}` : ''}
+            </Pill>
+          </div>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+            {t(
+              registered
+                ? 'agent.registration.registeredDescription'
+                : failed
+                  ? 'agent.registration.errorDescription'
+                  : 'agent.registration.unregisteredDescription',
+            )}
+          </p>
+        </div>
+        {failed ? (
+          <Button className="shrink-0" variant="outline" onClick={onRetry}>
+            <RotateCcw className="size-4" aria-hidden />
+            {t('agent.registration.retry')}
+          </Button>
+        ) : canManage ? (
+          <Link
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border bg-background px-4 text-sm font-semibold transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+            to={`/channels?edit=${channelId}`}
+          >
+            <RadioTower className="size-4" aria-hidden />
+            {t(
+              registered
+                ? 'agent.registration.manage'
+                : 'agent.registration.register',
+            )}
+          </Link>
+        ) : !registered ? (
+          <p className="text-sm text-muted-foreground">
+            {t('agent.registration.managersOnly')}
+          </p>
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
 function ChannelDatum({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
@@ -4370,6 +5016,14 @@ function statusTone(
   if (status === 'disabled') return 'danger'
   if (status === 'error') return 'danger'
   return 'neutral'
+}
+
+function registrationStatusTone(
+  status: RegistrationStatus,
+): 'success' | 'warning' | 'danger' {
+  if (status === 'registered') return 'success'
+  if (status === 'unregistered') return 'warning'
+  return 'danger'
 }
 
 async function readApiError(response: Response, fallback: string) {

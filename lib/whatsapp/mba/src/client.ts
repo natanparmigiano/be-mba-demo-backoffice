@@ -547,12 +547,109 @@ function parseConnectorLogs(body: unknown): T.ConnectorLogResponse {
   return { ...value, data }
 }
 
+function parseConnectorToolBodyNode(
+  value: unknown,
+  responseBody: unknown,
+  path: string,
+): T.ConnectorToolBodyNode {
+  let decoded = value
+  if (typeof decoded === 'string') {
+    try {
+      decoded = JSON.parse(decoded) as unknown
+    } catch {
+      responseError(`an invalid ${path} JSON object string`, responseBody)
+    }
+  }
+  const node = record(decoded, path)
+  stringField(node, 'type', responseBody)
+  const properties =
+    node.properties === undefined
+      ? undefined
+      : Object.fromEntries(
+          Object.entries(record(node.properties, `${path}.properties`)).map(
+            ([name, child]) => [
+              name,
+              parseConnectorToolBodyNode(
+                child,
+                responseBody,
+                `${path}.properties.${name}`,
+              ),
+            ],
+          ),
+        )
+  const items =
+    node.items === undefined
+      ? undefined
+      : parseConnectorToolBodyNode(node.items, responseBody, `${path}.items`)
+  return {
+    ...node,
+    ...(properties === undefined ? {} : { properties }),
+    ...(items === undefined ? {} : { items }),
+  } as T.ConnectorToolBodyNode
+}
+
+function parseConnectorToolRequestDefinition(
+  value: unknown,
+  responseBody: unknown,
+): T.ConnectorToolRequestDefinition {
+  const definition = record(value, 'connector tool request definition')
+  if (definition.body === undefined || definition.body === null) {
+    return definition as unknown as T.ConnectorToolRequestDefinition
+  }
+  const body = record(definition.body, 'connector tool request body')
+  const params = record(body.params, 'connector tool request body params')
+  return {
+    ...definition,
+    body: {
+      ...body,
+      params: Object.fromEntries(
+        Object.entries(params).map(([name, node]) => [
+          name,
+          parseConnectorToolBodyNode(
+            node,
+            responseBody,
+            `request_definition.body.params.${name}`,
+          ),
+        ]),
+      ),
+    },
+  } as unknown as T.ConnectorToolRequestDefinition
+}
+
 function parseConnectorTool(body: unknown): T.ConnectorTool {
   const value = record(body, 'connector tool')
   for (const key of ['id', 'name', 'description']) stringField(value, key, body)
-  record(value.request_definition, 'connector tool request definition')
+  const requestDefinition = parseConnectorToolRequestDefinition(
+    value.request_definition,
+    body,
+  )
   booleanField(value, 'user_auth_required', body)
-  return value as T.ConnectorTool
+  return {
+    ...value,
+    request_definition: requestDefinition,
+  } as T.ConnectorTool
+}
+
+function encodeConnectorToolBodyNode(
+  node: T.ConnectorToolBodyNode,
+): Record<string, unknown> {
+  const { items, properties, ...fields } = node
+  return {
+    ...fields,
+    ...(properties === undefined
+      ? {}
+      : {
+          properties: Object.fromEntries(
+            Object.entries(properties).map(([name, child]) => [
+              name,
+              JSON.stringify(encodeConnectorToolBodyNode(child)),
+            ]),
+          ),
+        }),
+    ...(items === undefined
+      ? {}
+      : { items: JSON.stringify(encodeConnectorToolBodyNode(items)) }),
+  }
 }
 
 function parseRunConnectorTool(body: unknown): T.RunConnectorToolResponse {
@@ -1863,7 +1960,7 @@ export class WhatsAppMbaClient implements WhatsAppMbaClientContract {
     )
   }
 
-  #connectorToolInput(input: T.ConnectorToolInput): T.ConnectorToolInput {
+  #connectorToolInput(input: T.ConnectorToolInput): object {
     required('name', input.name)
     required('description', input.description)
     required('request_definition.path', input.request_definition.path)
@@ -1875,7 +1972,26 @@ export class WhatsAppMbaClient implements WhatsAppMbaClientContract {
         'transformation_spec must not contain more than 5 steps',
       )
     }
-    return input
+    const body = input.request_definition.body
+    return {
+      ...input,
+      request_definition: {
+        ...input.request_definition,
+        ...(body
+          ? {
+              body: {
+                ...body,
+                params: Object.fromEntries(
+                  Object.entries(body.params).map(([name, node]) => [
+                    name,
+                    encodeConnectorToolBodyNode(node),
+                  ]),
+                ),
+              },
+            }
+          : {}),
+      },
+    }
   }
 
   #connectorToolsUrl(
