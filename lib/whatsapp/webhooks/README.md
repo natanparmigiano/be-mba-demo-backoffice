@@ -23,6 +23,7 @@ remain lossless.
 The `account_settings_update` subscription is accepted as a typed webhook
 envelope with a lossless value object because Meta does not publish a stable,
 closed payload schema for every account setting change.
+`template_correct_category_detection` follows the same lossless treatment.
 
 In the captured Business AI flow, nested `standby.statuses` entries reuse the
 outbound `standby.message_echoes` message ID. Its `read` status therefore means

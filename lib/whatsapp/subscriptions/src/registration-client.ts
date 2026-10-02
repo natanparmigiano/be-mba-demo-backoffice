@@ -41,6 +41,7 @@ export const WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS = [
   'smb_message_echoes',
   'standby',
   'template_category_update',
+  'template_correct_category_detection',
   'tracking_events',
   'user_preferences',
 ] as const
@@ -54,6 +55,15 @@ export const MBA_WEBHOOK_SUBSCRIPTION_FIELDS = [
   'messaging_handovers',
   'account_settings_update',
   'standby',
+  'business_status_update',
+  'flows',
+  'message_template_components_update',
+  'message_template_quality_update',
+  'message_template_status_update',
+  'phone_number_quality_update',
+  'phone_number_name_update',
+  'template_category_update',
+  'template_correct_category_detection',
 ] as const satisfies readonly WhatsAppWebhookSubscriptionField[]
 
 const SUPPORTED_FIELDS: ReadonlySet<string> = new Set(

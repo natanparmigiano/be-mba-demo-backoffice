@@ -2387,6 +2387,11 @@ describe('channel management route', () => {
       })
       assert.equal(JSON.stringify(logged).includes('safe-trace-id'), true)
       assert.equal(JSON.stringify(logged).includes('app-secret'), false)
+      assert.equal(JSON.stringify(logged).includes('app-id'), true)
+      assert.equal(
+        JSON.stringify(logged).includes('account_settings_update'),
+        true,
+      )
     } finally {
       console.error = originalConsoleError
     }
@@ -2472,7 +2477,7 @@ describe('Meta webhook registration', () => {
     assert.equal(body.get('verify_token'), 'verify-secret')
     assert.equal(
       body.get('fields'),
-      'messages,calls,messaging_handovers,account_settings_update,standby',
+      'messages,calls,messaging_handovers,account_settings_update,standby,business_status_update,flows,message_template_components_update,message_template_quality_update,message_template_status_update,phone_number_quality_update,phone_number_name_update,template_category_update,template_correct_category_detection',
     )
     assert.deepEqual(MBA_WEBHOOK_SUBSCRIPTION_FIELDS, [
       'messages',
@@ -2480,6 +2485,15 @@ describe('Meta webhook registration', () => {
       'messaging_handovers',
       'account_settings_update',
       'standby',
+      'business_status_update',
+      'flows',
+      'message_template_components_update',
+      'message_template_quality_update',
+      'message_template_status_update',
+      'phone_number_quality_update',
+      'phone_number_name_update',
+      'template_category_update',
+      'template_correct_category_detection',
     ])
     assert.equal(body.get('access_token'), 'app-id|app-secret')
   })

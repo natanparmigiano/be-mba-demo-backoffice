@@ -3824,6 +3824,13 @@ export const createChannelManagementRoute = ({
             console.error('Meta webhook setup failed', {
               channelId,
               organizationId: access.organizationId,
+              requestAppId: configuration.waAppId.trim(),
+              requestCallbackUrl: callbackUrl,
+              requestFields: MBA_WEBHOOK_SUBSCRIPTION_FIELDS,
+              requestContentType: 'application/x-www-form-urlencoded',
+              appSecretLength: configuration.waAppSecret.trim().length,
+              verifyTokenLength:
+                configuration.waWebhookVerifyToken.trim().length,
               stage: error.stage,
               providerStatus: error.providerStatus,
               providerCode: error.providerCode,

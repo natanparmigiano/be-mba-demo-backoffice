@@ -84,9 +84,10 @@ status updates), business/account updates, `standby`, `message_echoes`, and
 `register()` accepts any non-empty subset of those fields. `list()` reads the
 app-level subscriptions and returns each registered callback plus its field
 names and Graph API versions. `MBA_WEBHOOK_SUBSCRIPTION_FIELDS` is the exact
-field set used when the backoffice registers its app-level callback:
-`messages`, `calls`, `messaging_handovers`, `account_settings_update`, and
-`standby`.
+field set used when the backoffice registers its app-level callback. It covers
+messages, calls, handovers, account and business status, Flows, template
+components/quality/status/category events, phone-number quality/name events,
+standby traffic, and template correct-category detection.
 
 ## Verification
 

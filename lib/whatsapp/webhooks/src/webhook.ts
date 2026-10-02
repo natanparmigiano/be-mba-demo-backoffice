@@ -184,6 +184,11 @@ export const trackingEventsChangeSchema = z.looseObject({
   value: genericWebhookValueSchema,
 })
 
+export const templateCorrectCategoryDetectionChangeSchema = z.looseObject({
+  field: z.literal('template_correct_category_detection'),
+  value: genericWebhookValueSchema,
+})
+
 export const whatsappWebhookChangeSchema = z.discriminatedUnion('field', [
   accountAlertsChangeSchema,
   accountReviewUpdateChangeSchema,
@@ -214,6 +219,7 @@ export const whatsappWebhookChangeSchema = z.discriminatedUnion('field', [
   smbMessageEchoesChangeSchema,
   standbyChangeSchema,
   templateCategoryUpdateChangeSchema,
+  templateCorrectCategoryDetectionChangeSchema,
   trackingEventsChangeSchema,
   userPreferencesChangeSchema,
 ])
