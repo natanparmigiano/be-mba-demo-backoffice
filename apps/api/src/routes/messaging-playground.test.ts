@@ -154,6 +154,9 @@ describe('messaging playground route', () => {
   })
 
   it('maps provider errors without exposing channel credentials', async () => {
+    const logged: unknown[][] = []
+    const originalConsoleError = console.error
+    console.error = (...values: unknown[]) => logged.push(values)
     const route = createMessagingPlaygroundRoute({
       getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
       repository: createRepository(),
@@ -161,27 +164,42 @@ describe('messaging playground route', () => {
         createClient({
           send: async () => {
             throw new WhatsAppMessagingApiError(400, {
-              error: { message: 'Invalid recipient', code: 100 },
+              error: {
+                message: 'Invalid recipient',
+                code: 100,
+                error_subcode: 2494010,
+                fbtrace_id: 'safe-trace-id',
+              },
             })
           },
         }),
     })
 
-    const response = await route.request('/7/send', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: '5511999999999',
-        type: 'text',
-        text: { body: 'Hello' },
-      }),
-    })
-    const body = await response.text()
+    try {
+      const response = await route.request('/7/send', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: '5511999999999',
+          type: 'text',
+          text: { body: 'Hello' },
+        }),
+      })
+      const body = await response.text()
 
-    assert.equal(response.status, 502)
-    assert.match(body, /Invalid recipient/)
-    assert.equal(body.includes(configuration.accessToken), false)
+      assert.equal(response.status, 502)
+      assert.match(body, /Invalid recipient/)
+      assert.match(body, /safe-trace-id/)
+      assert.equal(body.includes(configuration.accessToken), false)
+      assert.equal(JSON.stringify(logged).includes('safe-trace-id'), true)
+      assert.equal(
+        JSON.stringify(logged).includes(configuration.accessToken),
+        false,
+      )
+    } finally {
+      console.error = originalConsoleError
+    }
   })
 })
 

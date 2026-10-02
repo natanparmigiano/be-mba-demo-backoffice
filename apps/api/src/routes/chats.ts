@@ -869,9 +869,41 @@ export const createChatsRoute = ({
           return c.json({ result: { ...persisted, response } }, 201)
         } catch (error) {
           if (error instanceof WhatsAppMessagingApiError) {
-            return c.json({ message: 'Meta rejected the message' }, 502)
+            console.error('Meta chat message send failed', {
+              chatId,
+              organizationId: access.organizationId,
+              messageType: outbound.type,
+              providerStatus: error.status,
+              providerCode: error.code,
+              providerSubcode: error.subcode,
+              providerType: error.errorType,
+              providerTraceId: error.traceId,
+              message: error.message,
+            })
+            return c.json(
+              {
+                message: `Meta rejected the message: ${error.message}`,
+                providerStatus: error.status,
+                ...(error.code === undefined
+                  ? {}
+                  : { providerCode: error.code }),
+                ...(error.subcode === undefined
+                  ? {}
+                  : { providerSubcode: error.subcode }),
+                ...(error.traceId === undefined
+                  ? {}
+                  : { providerTraceId: error.traceId }),
+              },
+              502,
+            )
           }
           if (error instanceof WhatsAppMessagingResponseError) {
+            console.error('Meta chat message response validation failed', {
+              chatId,
+              organizationId: access.organizationId,
+              messageType: outbound.type,
+              message: error.message,
+            })
             return c.json(
               { message: 'Meta returned an unexpected message response' },
               502,

@@ -266,11 +266,19 @@ export class WhatsAppMessagingClient implements WhatsAppMessagingClientContract 
       body: JSON.stringify(payload),
       signal: options.signal,
     })
-    const body = parseJson(await response.text())
+    const responseText = await response.text()
     if (!response.ok) {
-      throw new WhatsAppMessagingApiError(response.status, body)
+      let errorBody: unknown
+      try {
+        errorBody = responseText
+          ? (JSON.parse(responseText) as unknown)
+          : undefined
+      } catch {
+        errorBody = responseText
+      }
+      throw new WhatsAppMessagingApiError(response.status, errorBody)
     }
-    return body
+    return parseJson(responseText)
   }
 
   async #sendAction(

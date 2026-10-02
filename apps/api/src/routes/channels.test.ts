@@ -31,6 +31,7 @@ import type {
   AgentEvaluationsService,
   AgentKnowledgeService,
   AgentSkillsService,
+  ChannelDashboardAnalytics,
   ChannelManagementRepository,
   ChannelSummary,
 } from './channels.js'
@@ -107,10 +108,11 @@ describe('channel management route', () => {
     })
 
     const response = await route.request('/7/dashboard?days=7')
-    const body = await response.json()
+    const body = (await response.json()) as ChannelDashboardAnalytics
 
     assert.equal(response.status, 200)
     assert.equal(receivedDays, 7)
+    assert.ok(body.messaging)
     assert.equal(body.messaging.sent, 120)
     assert.equal(JSON.stringify(body).includes('access-secret'), false)
   })

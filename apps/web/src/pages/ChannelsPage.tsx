@@ -230,14 +230,14 @@ export function ChannelsPage() {
     setDeleteConfirmation('')
     setRegistrationPin('')
     setIsLoadingDeletionPreview(false)
-    if (isFormPage) navigate('/channels')
+    if (isFormPage) void navigate('/channels')
   }
 
   const openCreateDialog = () => {
     setForm({ ...emptyForm, waWebhookVerifyToken: generateVerifyToken() })
     setSelectedChannel(null)
     setDialogError(null)
-    navigate('/channels/new')
+    void navigate('/channels/new')
   }
 
   const openEditDialog = useCallback(
@@ -256,7 +256,7 @@ export function ChannelsPage() {
       })
       setDialogError(null)
       setRegistrationPin('')
-      navigate(`/channels/${channel.id}`)
+      void navigate(`/channels/${channel.id}`)
     },
     [navigate],
   )
@@ -374,7 +374,7 @@ export function ChannelsPage() {
           ? t('channels.channelCreated')
           : t('channels.channelUpdated'),
       )
-      navigate('/channels')
+      void navigate('/channels')
     } catch (reason) {
       setDialogError(getErrorMessage(reason, t('channels.operationFailed')))
     } finally {
@@ -523,7 +523,7 @@ export function ChannelsPage() {
           title={t('channels.noChannelSelected')}
           description={t('channels.noChannelsDescription')}
           action={
-            <Button onClick={() => navigate('/channels')}>
+            <Button onClick={() => void navigate('/channels')}>
               <ArrowLeft className="size-4" aria-hidden />
               {t('channels.backToChannels')}
             </Button>

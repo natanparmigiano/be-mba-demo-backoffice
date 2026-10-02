@@ -132,7 +132,11 @@ export const createMessagingPlaygroundRoute = ({
           })
           return c.json({ result })
         } catch (error) {
-          return messagingError(c, error)
+          return messagingError(c, error, {
+            channelId: c.req.valid('param').channelId,
+            operation: 'send',
+            messageType: message.type,
+          })
         }
       },
     )
@@ -165,7 +169,10 @@ export const createMessagingPlaygroundRoute = ({
           })
           return c.json({ result })
         } catch (error) {
-          return messagingError(c, error)
+          return messagingError(c, error, {
+            channelId: c.req.valid('param').channelId,
+            operation: 'mark_read',
+          })
         }
       },
     )
@@ -198,7 +205,10 @@ export const createMessagingPlaygroundRoute = ({
           })
           return c.json({ result })
         } catch (error) {
-          return messagingError(c, error)
+          return messagingError(c, error, {
+            channelId: c.req.valid('param').channelId,
+            operation: 'typing_indicator',
+          })
         }
       },
     )
@@ -345,8 +355,25 @@ function withoutMessagingProduct(
   return message as unknown as SendMessageInput
 }
 
-function messagingError(c: Context, error: unknown) {
+function messagingError(
+  c: Context,
+  error: unknown,
+  context: {
+    channelId: number
+    operation: 'mark_read' | 'send' | 'typing_indicator'
+    messageType?: string
+  },
+) {
   if (error instanceof WhatsAppMessagingApiError) {
+    console.error('Meta messaging request failed', {
+      ...context,
+      providerStatus: error.status,
+      providerCode: error.code,
+      providerSubcode: error.subcode,
+      providerType: error.errorType,
+      providerTraceId: error.traceId,
+      message: error.message,
+    })
     return c.json(
       {
         message: `Meta rejected the messaging request: ${error.message}`,
@@ -355,11 +382,21 @@ function messagingError(c: Context, error: unknown) {
         ...(error.subcode === undefined
           ? {}
           : { providerSubcode: error.subcode }),
+        ...(error.errorType === undefined
+          ? {}
+          : { providerType: error.errorType }),
+        ...(error.traceId === undefined
+          ? {}
+          : { providerTraceId: error.traceId }),
       },
       502,
     )
   }
   if (error instanceof WhatsAppMessagingResponseError) {
+    console.error('Meta messaging response validation failed', {
+      ...context,
+      message: error.message,
+    })
     return c.json(
       { message: 'Meta returned an unexpected messaging response' },
       502,
@@ -368,5 +405,10 @@ function messagingError(c: Context, error: unknown) {
   if (error instanceof TypeError) {
     return c.json({ message: error.message }, 400)
   }
+  console.error('Meta messaging request could not be completed', {
+    ...context,
+    errorName: error instanceof Error ? error.name : typeof error,
+    message: error instanceof Error ? error.message : 'Unknown error',
+  })
   return c.json({ message: 'Could not reach the Meta Graph API' }, 502)
 }

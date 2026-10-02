@@ -437,6 +437,31 @@ describe('WhatsAppMessagingClient', () => {
     )
   })
 
+  it('preserves status and text for non-JSON Graph API errors', async () => {
+    const { fetch } = recordingFetch(
+      new Response('Template parameter validation failed', { status: 502 }),
+    )
+    const client = createWhatsAppMessagingClient({
+      accessToken: 'test-token',
+      phoneNumberId: '123',
+      fetch,
+    })
+
+    await assert.rejects(
+      client.sendTemplate({
+        to: '1',
+        template: { name: 'order_update', language: { code: 'en_US' } },
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof WhatsAppMessagingApiError)
+        assert.equal(error.status, 502)
+        assert.equal(error.message, 'Template parameter validation failed')
+        assert.equal(error.body, 'Template parameter validation failed')
+        return true
+      },
+    )
+  })
+
   it('rejects malformed successful responses', async () => {
     const { fetch } = recordingFetch(
       new Response(JSON.stringify({ messages: [] }), { status: 200 }),

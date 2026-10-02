@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { messages } from '@mba-demo/db'
+import { WhatsAppMessagingApiError } from '@mba-demo/wa-messaging'
 import { PgDialect } from 'drizzle-orm/pg-core'
 import {
   ChatMarkReadError,
@@ -584,6 +585,60 @@ describe('chats route', () => {
     )
     assert.equal(published[0]?.channel, 'chats.31')
     assert.equal(published[1]?.channel, 'organizations.org-one.chats')
+  })
+
+  it('returns and logs Meta template-send failure details', async () => {
+    const logged: unknown[][] = []
+    const originalConsoleError = console.error
+    console.error = (...values: unknown[]) => logged.push(values)
+    try {
+      const route = createChatsRoute({
+        getAccess: async () => ({ organizationId: 'org-one' }),
+        sendMessage: async () => {
+          throw new WhatsAppMessagingApiError(400, {
+            error: {
+              message: 'Template parameter count does not match',
+              code: 132000,
+              error_subcode: 2494073,
+              type: 'OAuthException',
+              fbtrace_id: 'template-trace-id',
+            },
+          })
+        },
+        repository: createRepository(),
+      })
+
+      const response = await route.request('/31/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          clientMessageId: 'ec73ed89-ecb8-49c2-aefe-0a54f87e68c3',
+          message: {
+            messaging_product: 'whatsapp',
+            to: 'client-value-is-overridden',
+            type: 'template',
+            template: {
+              name: 'order_update',
+              language: { code: 'en_US' },
+            },
+          },
+        }),
+      })
+
+      assert.equal(response.status, 502)
+      assert.deepEqual(await response.json(), {
+        message:
+          'Meta rejected the message: Template parameter count does not match',
+        providerStatus: 400,
+        providerCode: 132000,
+        providerSubcode: 2494073,
+        providerTraceId: 'template-trace-id',
+      })
+      assert.equal(JSON.stringify(logged).includes('template-trace-id'), true)
+      assert.equal(JSON.stringify(logged).includes('test-token'), false)
+    } finally {
+      console.error = originalConsoleError
+    }
   })
 
   it('rejects composer sends while AI owns the conversation', async () => {

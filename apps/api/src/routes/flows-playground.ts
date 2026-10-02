@@ -9,7 +9,6 @@ import {
   type ListFlowsOptions,
   type MigrateFlowsInput,
   type SetEncryptionPublicKeyInput,
-  type UpdateFlowMetadataInput,
   type WhatsAppFlowsClientContract,
 } from '@mba-demo/wa-flows'
 import { zValidator } from '@hono/zod-validator'
@@ -152,11 +151,7 @@ async function execute(
     case 'migrate':
       return client.migrate(input as unknown as MigrateFlowsInput, timeout())
     case 'updateMetadata':
-      return client.updateMetadata(
-        requiredFlowId(request),
-        input as UpdateFlowMetadataInput,
-        timeout(),
-      )
+      return client.updateMetadata(requiredFlowId(request), input, timeout())
     case 'uploadJson': {
       const document = input.document
       if (typeof document !== 'object' || document === null)
