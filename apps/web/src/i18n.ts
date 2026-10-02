@@ -22,10 +22,9 @@ const en = {
     metaDescription: 'Monitor and manage your WhatsApp business workspace.',
     eyebrow: 'Workspace overview',
     title: 'Home',
-    greeting: '{{organization}}, at a glance.',
+    greeting: '{{organization}} Dashboard',
     workspace: 'Your workspace',
-    intro:
-      'Track your WhatsApp and Business Agent performance, then jump straight into the work that matters.',
+    intro: 'Track your WhatsApp and Business Agent performance',
     channelLabel: 'Analytics channel',
     refresh: 'Refresh',
     loadFailed: 'We could not load the dashboard right now.',
@@ -48,17 +47,13 @@ const en = {
     featuresDescription: 'Your most-used backoffice areas, one click away.',
     features: {
       chat: 'Conversations',
-      chatDescription:
-        'Review customer conversations and continue human handoffs.',
+      chatDescription: 'View conversations and human handoffs.',
       agents: 'Business Agents',
-      agentsDescription:
-        'Configure behavior, knowledge, connectors, and evaluations.',
+      agentsDescription: 'Manage behavior, knowledge, and connectors.',
       channels: 'WhatsApp channels',
-      channelsDescription:
-        'Manage phone numbers, webhooks, and channel credentials.',
+      channelsDescription: 'Manage numbers, webhooks, and credentials.',
       contacts: 'Contacts',
-      contactsDescription:
-        'Search the customer directory across your channels.',
+      contactsDescription: 'Search and manage customer contacts.',
     },
     referencesTitle: 'Quick references',
     referencesDescription: 'Useful tools and workspace settings.',
@@ -69,6 +64,20 @@ const en = {
       designSystem: 'Design system',
     },
     configuredChannels: '{{count}} configured channels',
+    evals: {
+      title: 'Evaluations',
+      description: 'Test Business Agent scenarios.',
+      count: '{{count}} scenarios',
+      empty: 'No evaluation scenarios available.',
+      loadFailed: 'Could not load evaluation scenarios.',
+    },
+    agents: {
+      title: 'Business Agents',
+      count: '{{count}} agents',
+      empty: 'No Business Agents available.',
+      type: 'WhatsApp Business Agent',
+      open: 'Open Business Agent for {{phone}}',
+    },
   },
   auth: {
     metaDescription: 'Sign in securely to the MBA Demo Backoffice.',
@@ -2701,10 +2710,9 @@ const pt: typeof en = {
       'Monitore e gerencie seu ambiente de negócios no WhatsApp.',
     eyebrow: 'Visão geral do ambiente',
     title: 'Início',
-    greeting: '{{organization}}, em resumo.',
+    greeting: 'Dashboard {{organization}}',
     workspace: 'Seu ambiente',
-    intro:
-      'Acompanhe o desempenho do WhatsApp e do Business Agent e acesse rapidamente o que importa.',
+    intro: 'Acompanhe o desempenho do WhatsApp e do Business Agent',
     channelLabel: 'Canal das análises',
     refresh: 'Atualizar',
     loadFailed: 'Não foi possível carregar o painel agora.',
@@ -2727,16 +2735,13 @@ const pt: typeof en = {
     featuresDescription: 'As áreas mais usadas do backoffice a um clique.',
     features: {
       chat: 'Conversas',
-      chatDescription:
-        'Revise conversas de clientes e continue transferências humanas.',
+      chatDescription: 'Veja conversas e transferências humanas.',
       agents: 'Business Agents',
-      agentsDescription:
-        'Configure comportamento, conhecimento, conectores e avaliações.',
+      agentsDescription: 'Gerencie comportamento, conhecimento e conectores.',
       channels: 'Canais do WhatsApp',
-      channelsDescription:
-        'Gerencie números, webhooks e credenciais dos canais.',
+      channelsDescription: 'Gerencie números, webhooks e credenciais.',
       contacts: 'Contatos',
-      contactsDescription: 'Pesquise clientes em todos os seus canais.',
+      contactsDescription: 'Pesquise e gerencie contatos de clientes.',
     },
     referencesTitle: 'Referências rápidas',
     referencesDescription: 'Ferramentas úteis e configurações do ambiente.',
@@ -2747,6 +2752,20 @@ const pt: typeof en = {
       designSystem: 'Design system',
     },
     configuredChannels: '{{count}} canais configurados',
+    evals: {
+      title: 'Avaliações',
+      description: 'Teste cenários do Business Agent.',
+      count: '{{count}} cenários',
+      empty: 'Nenhum cenário de avaliação disponível.',
+      loadFailed: 'Não foi possível carregar os cenários de avaliação.',
+    },
+    agents: {
+      title: 'Business Agents',
+      count: '{{count}} agentes',
+      empty: 'Nenhum Business Agent disponível.',
+      type: 'Business Agent do WhatsApp',
+      open: 'Abrir Business Agent de {{phone}}',
+    },
   },
   auth: {
     metaDescription: 'Entre com segurança no MBA Demo Backoffice.',
@@ -5418,10 +5437,9 @@ const es: typeof en = {
       'Supervisa y administra tu espacio de negocios de WhatsApp.',
     eyebrow: 'Resumen del espacio',
     title: 'Inicio',
-    greeting: '{{organization}}, de un vistazo.',
+    greeting: 'Dashboard de {{organization}}',
     workspace: 'Tu espacio',
-    intro:
-      'Sigue el rendimiento de WhatsApp y Business Agent y accede directamente al trabajo importante.',
+    intro: 'Sigue el rendimiento de WhatsApp y Business Agent',
     channelLabel: 'Canal de analíticas',
     refresh: 'Actualizar',
     loadFailed: 'No pudimos cargar el panel en este momento.',
@@ -5444,16 +5462,14 @@ const es: typeof en = {
     featuresDescription: 'Las áreas más usadas del backoffice a un clic.',
     features: {
       chat: 'Conversaciones',
-      chatDescription:
-        'Revisa conversaciones y continúa transferencias humanas.',
+      chatDescription: 'Consulta conversaciones y transferencias humanas.',
       agents: 'Business Agents',
       agentsDescription:
-        'Configura comportamiento, conocimiento, conectores y evaluaciones.',
+        'Administra comportamiento, conocimiento y conectores.',
       channels: 'Canales de WhatsApp',
-      channelsDescription:
-        'Administra números, webhooks y credenciales de canales.',
+      channelsDescription: 'Administra números, webhooks y credenciales.',
       contacts: 'Contactos',
-      contactsDescription: 'Busca clientes en todos tus canales.',
+      contactsDescription: 'Busca y administra contactos de clientes.',
     },
     referencesTitle: 'Referencias rápidas',
     referencesDescription: 'Herramientas útiles y ajustes del espacio.',
@@ -5464,6 +5480,20 @@ const es: typeof en = {
       designSystem: 'Sistema de diseño',
     },
     configuredChannels: '{{count}} canales configurados',
+    evals: {
+      title: 'Evaluaciones',
+      description: 'Prueba escenarios de Business Agent.',
+      count: '{{count}} escenarios',
+      empty: 'No hay escenarios de evaluación disponibles.',
+      loadFailed: 'No se pudieron cargar los escenarios de evaluación.',
+    },
+    agents: {
+      title: 'Business Agents',
+      count: '{{count}} agentes',
+      empty: 'No hay Business Agents disponibles.',
+      type: 'Business Agent de WhatsApp',
+      open: 'Abrir Business Agent de {{phone}}',
+    },
   },
   auth: {
     metaDescription: 'Inicia sesión de forma segura en MBA Demo Backoffice.',

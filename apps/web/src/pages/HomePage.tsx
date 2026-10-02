@@ -4,6 +4,7 @@ import {
   Bot,
   CheckCheck,
   ContactRound,
+  FlaskConical,
   MessagesSquare,
   RadioTower,
   RefreshCw,
@@ -27,6 +28,10 @@ type DashboardResponse = InferResponseType<
   (typeof apiClient.api.channels)[':id']['dashboard']['$get'],
   200
 >
+type EvaluationListResponse = InferResponseType<
+  (typeof apiClient.api.channels)[':id']['agent-evals']['$get'],
+  200
+>
 
 export function HomePage() {
   const { t, i18n } = useTranslation()
@@ -36,8 +41,13 @@ export function HomePage() {
     null,
   )
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null)
+  const [evaluationCases, setEvaluationCases] = useState<
+    EvaluationListResponse['cases']
+  >([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [evaluationError, setEvaluationError] = useState<string | null>(null)
 
   useEffect(() => {
     document.title = `${t('home.title')} · ${t('design.brand')}`
@@ -96,6 +106,32 @@ export function HomePage() {
   useEffect(() => {
     void loadDashboard()
   }, [loadDashboard])
+
+  const loadEvaluationCases = useCallback(async () => {
+    if (!selectedChannelId) {
+      setEvaluationCases([])
+      setEvaluationError(null)
+      return
+    }
+    setIsLoadingEvaluations(true)
+    setEvaluationError(null)
+    try {
+      const response = await apiClient.api.channels[':id']['agent-evals'].$get({
+        param: { id: String(selectedChannelId) },
+      })
+      if (!response.ok) throw new Error()
+      setEvaluationCases((await response.json()).cases)
+    } catch {
+      setEvaluationCases([])
+      setEvaluationError(t('home.evals.loadFailed'))
+    } finally {
+      setIsLoadingEvaluations(false)
+    }
+  }, [selectedChannelId, t])
+
+  useEffect(() => {
+    void loadEvaluationCases()
+  }, [loadEvaluationCases])
 
   const number = useMemo(
     () => new Intl.NumberFormat(i18n.language),
@@ -185,10 +221,6 @@ export function HomePage() {
         <div className="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full bg-primary/10 blur-3xl" />
         <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border bg-background/70 px-3 py-1.5 text-xs font-bold text-primary backdrop-blur">
-              <Sparkles className="size-3.5" aria-hidden />
-              {t('home.eyebrow')}
-            </div>
             <h1 className="text-3xl font-black tracking-[-0.035em] sm:text-4xl">
               {t('home.greeting', {
                 organization: organization?.name ?? t('home.workspace'),
@@ -277,6 +309,118 @@ export function HomePage() {
         </div>
       </section>
 
+      <section aria-labelledby="evaluations-title">
+        <div className="mb-4 flex items-end justify-between gap-4">
+          <div>
+            <h2
+              id="evaluations-title"
+              className="text-xl font-extrabold tracking-tight"
+            >
+              {t('home.evals.title')}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t('home.evals.description')}
+            </p>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {t('home.evals.count', { count: evaluationCases.length })}
+          </span>
+        </div>
+        {evaluationError ? (
+          <p
+            className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+            role="alert"
+          >
+            {evaluationError}
+          </p>
+        ) : isLoadingEvaluations ? (
+          <div className="grid gap-3 md:grid-cols-3" aria-busy="true">
+            {[0, 1, 2].map((item) => (
+              <div
+                className="h-28 animate-pulse rounded-2xl border bg-card"
+                key={item}
+              />
+            ))}
+          </div>
+        ) : evaluationCases.length === 0 ? (
+          <p className="rounded-2xl border bg-card p-5 text-sm text-muted-foreground shadow-xs">
+            {t('home.evals.empty')}
+          </p>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-3">
+            {evaluationCases.slice(0, 3).map((evaluation) => (
+              <Link
+                className="group flex items-start gap-3 rounded-2xl border bg-card p-5 shadow-xs transition-colors hover:border-primary/35 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+                key={evaluation.id}
+                to={`/agents/${selectedChannelId}/evals/${encodeURIComponent(evaluation.id)}`}
+              >
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+                  <FlaskConical className="size-4" aria-hidden />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-2 font-bold group-hover:text-primary">
+                    {evaluation.scenario}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {evaluation.id}
+                  </p>
+                </div>
+                <ArrowRight
+                  className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+                  aria-hidden
+                />
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section
+        className="rounded-2xl border bg-card p-5 shadow-xs sm:p-6"
+        aria-labelledby="agents-title"
+      >
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <h2 id="agents-title" className="text-lg font-extrabold">
+            {t('home.agents.title')}
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            {t('home.agents.count', { count: channels.length })}
+          </span>
+        </div>
+        {channels.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {t('home.agents.empty')}
+          </p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {channels.map((channel) => (
+              <Link
+                className="group flex items-center gap-3 rounded-xl border bg-background p-4 transition-colors hover:border-primary/35 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+                key={channel.id}
+                to={`/agents/${channel.id}`}
+                aria-label={t('home.agents.open', {
+                  phone: channel.waPhoneNumber,
+                })}
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+                  <Bot className="size-5" aria-hidden />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-bold">{channel.waPhoneNumber}</p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {t('home.agents.type')}
+                  </p>
+                </div>
+                <ArrowRight
+                  className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+                  aria-hidden
+                />
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
       <div className="grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
         <section
           className="rounded-2xl border bg-card p-5 shadow-xs sm:p-6"
@@ -286,9 +430,6 @@ export function HomePage() {
             <h2 id="features-title" className="text-lg font-extrabold">
               {t('home.featuresTitle')}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t('home.featuresDescription')}
-            </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {features.map(({ to, icon: Icon, title, description }) => (
@@ -326,9 +467,6 @@ export function HomePage() {
           <h2 id="references-title" className="text-lg font-extrabold">
             {t('home.referencesTitle')}
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t('home.referencesDescription')}
-          </p>
           <div className="mt-5 grid gap-2">
             <QuickLink
               to="/api-playground"
