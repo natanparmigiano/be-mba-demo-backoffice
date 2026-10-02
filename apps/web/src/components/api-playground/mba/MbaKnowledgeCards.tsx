@@ -639,7 +639,6 @@ function CardList({
 function MbaCard({
   definition,
   channelId,
-  phoneNumberId,
   mutationDisabled,
   defaultOpen,
 }: Props & { definition: Definition; defaultOpen: boolean }) {

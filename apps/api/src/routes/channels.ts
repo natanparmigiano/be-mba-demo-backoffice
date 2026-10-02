@@ -21,7 +21,12 @@ import {
   runnerMcps,
   webhooks,
 } from '@mba-demo/db'
-import { hashApiKey, runner } from '@mba-demo/runner'
+import {
+  hashApiKey,
+  runner,
+  type RunnerMcpDefinition,
+  type RunnerMcpPackage,
+} from '@mba-demo/runner'
 import {
   createWhatsAppMbaClient,
   WhatsAppMbaApiError,
@@ -56,11 +61,8 @@ import {
   type OnboardAgentResponse,
 } from '@mba-demo/wa-mba'
 import {
-  createWhatsAppSubscriptionsClient,
   createWhatsAppWebhookRegistrationClient,
   MBA_WEBHOOK_SUBSCRIPTION_FIELDS,
-  WhatsAppSubscriptionsApiError,
-  WhatsAppSubscriptionsResponseError,
   WhatsAppWebhookRegistrationApiError,
   WhatsAppWebhookRegistrationResponseError,
 } from '@mba-demo/wa-subscriptions'
@@ -91,6 +93,10 @@ import {
   type AgentKnowledgeArchive,
 } from '../agent-knowledge-archive.js'
 import { parseAgentArchive } from '../agent-import.js'
+import {
+  parseRunnerMcpPackageYaml,
+  stringifyRunnerMcpPackageYaml,
+} from '../runner-mcp-package.js'
 import { stringifyYaml } from '../yaml.js'
 import {
   createAgentBackupService,
@@ -485,11 +491,32 @@ const agentImportConnectorSchema = connectorSchema
     userAuthInjectionConfig:
       connectorSchema.shape.userAuthInjectionConfig.nullable(),
     mcpToolSync: z.unknown().nullable(),
+    localMcp: z
+      .object({
+        name: z.string().trim().min(1).max(64),
+        path: z
+          .string()
+          .min(1)
+          .max(1_024)
+          .refine((path) => path.startsWith('MCPs/')),
+      })
+      .nullable()
+      .optional()
+      .default(null),
     tools: z
       .array(agentImportConnectorToolSchema)
       .max(500)
       .optional()
       .default([]),
+  })
+  .superRefine((connector, context) => {
+    if (connector.localMcp && connector.connectorProtocol !== 'MCP') {
+      context.addIssue({
+        code: 'custom',
+        path: ['localMcp'],
+        message: 'Local MCP associations require the MCP protocol',
+      })
+    }
   })
 
 const agentImportManifestSchema = z.object({
@@ -632,6 +659,7 @@ type AgentImportProgressStep =
   | 'faqs'
   | 'websites'
   | 'files'
+  | 'mcps'
   | 'connectors'
   | 'finalizing'
 
@@ -645,6 +673,7 @@ type AgentImportResource =
   | 'faqs'
   | 'websites'
   | 'files'
+  | 'mcps'
   | 'connectors'
   | 'finalizing'
 
@@ -689,9 +718,7 @@ interface OrganizationAccess {
 export interface ChannelWebhookConfiguration {
   waAppId: string
   waAppSecret: string
-  waWabaId: string
   waWebhookVerifyToken: string
-  waSystemUserAccessToken: string
 }
 
 export interface ChannelAgentConfiguration {
@@ -771,6 +798,10 @@ export interface ChannelManagementRepository {
     channelId: number,
     connectorId?: string,
   ) => Promise<boolean>
+  listLocalMcpAssociations?: (
+    organizationId: string,
+    channelId: number,
+  ) => Promise<Array<{ connectorId: string; mcpId: number; mcpName: string }>>
   removeLocalMcpAssociation: (
     organizationId: string,
     channelId: number,
@@ -1071,9 +1102,7 @@ const databaseRepository: ChannelManagementRepository = {
       .select({
         waAppId: channels.waAppId,
         waAppSecret: channels.waAppSecret,
-        waWabaId: channels.waWabaId,
         waWebhookVerifyToken: channels.waWebhookVerifyToken,
-        waSystemUserAccessToken: channels.waSystemUserAccessToken,
       })
       .from(channels)
       .where(
@@ -1190,6 +1219,21 @@ const databaseRepository: ChannelManagementRepository = {
       .returning({ apiKeyId: runnerAgentMcpConnectors.apiKeyId })
     return association?.apiKeyId
   },
+  listLocalMcpAssociations: async (organizationId, channelId) =>
+    db
+      .select({
+        connectorId: runnerAgentMcpConnectors.connectorId,
+        mcpId: runnerMcps.id,
+        mcpName: runnerMcps.name,
+      })
+      .from(runnerAgentMcpConnectors)
+      .innerJoin(runnerMcps, eq(runnerMcps.id, runnerAgentMcpConnectors.mcpId))
+      .where(
+        and(
+          eq(runnerAgentMcpConnectors.organizationId, organizationId),
+          eq(runnerAgentMcpConnectors.channelId, channelId),
+        ),
+      ),
   delete: async (organizationId, channelId, confirmation) => {
     return db.transaction(async (transaction) => {
       const [channel] = await transaction
@@ -1776,6 +1820,7 @@ export const createChannelManagementRoute = ({
             faqs: imported.manifest.agent.knowledge.faqs.length,
             websites: imported.manifest.agent.knowledge.websites.length,
             files: imported.manifest.agent.knowledge.files.length,
+            mcps: imported.mcps.size,
             connectors: imported.manifest.agent.connectors.length,
           },
           requirements,
@@ -1819,7 +1864,7 @@ export const createChannelManagementRoute = ({
       return streamSSE(c, async (stream) => {
         const includeBackup = prepared.options.createBackupBeforeImport
         const positionOffset = includeBackup ? 1 : 0
-        const total = 11 + positionOffset
+        const total = 12 + positionOffset
         const startedAt = Date.now()
         let currentStep: AgentImportProgressStep = includeBackup
           ? 'backup'
@@ -1846,7 +1891,7 @@ export const createChannelManagementRoute = ({
         }
 
         try {
-          const { manifest, files, options } = prepared
+          const { manifest, files, mcps, options, origin } = prepared
           const selected = new Set(options.components)
           const importLog: AgentImportLog = (event, details, error) =>
             reportImportLog(
@@ -1892,6 +1937,7 @@ export const createChannelManagementRoute = ({
               faqs: manifest.agent.knowledge.faqs.length,
               websites: manifest.agent.knowledge.websites.length,
               files: files.length,
+              mcps: mcps.size,
               connectors: manifest.agent.connectors.length,
               tools: manifest.agent.connectors.reduce(
                 (total, connector) =>
@@ -2214,15 +2260,33 @@ export const createChannelManagementRoute = ({
           }
 
           await progress(
-            'connectors',
+            'mcps',
             10 + positionOffset,
+            !selected.has('connectors'),
+          )
+          const importedMcps = selected.has('connectors')
+            ? await importAgentMcps(
+                access.organizationId,
+                mcps,
+                resourceProgress,
+              )
+            : new Map<string, RunnerMcpDefinition>()
+
+          await progress(
+            'connectors',
+            11 + positionOffset,
             !selected.has('connectors'),
           )
           if (selected.has('connectors')) {
             await reconcileConnectors(
+              access.organizationId,
+              channelId,
+              origin,
               configuration,
               manifest.agent.connectors,
+              importedMcps,
               options.connectorCredentials,
+              repository,
               agentConnectors,
               runProviderRequest,
               resourceProgress,
@@ -2231,7 +2295,7 @@ export const createChannelManagementRoute = ({
 
           await progress(
             'finalizing',
-            11 + positionOffset,
+            12 + positionOffset,
             !selected.has('settings'),
           )
           if (selected.has('settings')) {
@@ -3752,7 +3816,7 @@ export const createChannelManagementRoute = ({
           await registerWebhook(configuration, callbackUrl)
           return c.json({
             success: true as const,
-            message: 'Meta webhook registered and app subscribed successfully',
+            message: 'Meta app webhook subscription registered successfully',
             callbackUrl,
           })
         } catch (error) {
@@ -4132,52 +4196,30 @@ export async function registerMetaWebhook(
       verifyToken: configuration.waWebhookVerifyToken,
       fields: MBA_WEBHOOK_SUBSCRIPTION_FIELDS,
     })
-
-    const subscriptions = createWhatsAppSubscriptionsClient({
-      accessToken: configuration.waSystemUserAccessToken,
-      wabaId: configuration.waWabaId,
-      fetch: request,
-    })
-    await subscriptions.subscribe()
   } catch (error) {
     if (error instanceof WhatsAppWebhookRegistrationApiError) {
       throw new MetaWebhookRegistrationError(
-        `Meta rejected the webhook registration: ${error.message}`,
+        `Meta rejected the app webhook subscription: ${error.message}`,
         'app_registration',
         error,
       )
     }
     if (error instanceof WhatsAppWebhookRegistrationResponseError) {
       throw new MetaWebhookRegistrationError(
-        'Meta returned an unexpected webhook registration response',
+        'Meta returned an unexpected app webhook subscription response',
         'app_registration',
         error,
       )
     }
-    if (error instanceof WhatsAppSubscriptionsApiError) {
-      throw new MetaWebhookRegistrationError(
-        `Meta rejected the WABA app subscription: ${error.message}`,
-        'waba_subscription',
-        error,
-      )
-    }
-    if (error instanceof WhatsAppSubscriptionsResponseError) {
-      throw new MetaWebhookRegistrationError(
-        'Meta returned an unexpected WABA app subscription response',
-        'waba_subscription',
-        error,
-      )
-    }
     throw new MetaWebhookRegistrationError(
-      'Could not register the Meta webhook and subscribe the app',
+      'Could not register the Meta app webhook subscription',
       'unknown',
       error,
     )
   }
 }
 
-type MetaWebhookRegistrationStage =
-  'app_registration' | 'waba_subscription' | 'unknown'
+type MetaWebhookRegistrationStage = 'app_registration' | 'unknown'
 
 export class MetaWebhookRegistrationError extends Error {
   readonly stage: MetaWebhookRegistrationStage
@@ -4195,10 +4237,7 @@ export class MetaWebhookRegistrationError extends Error {
     super(message, { cause })
     this.name = 'MetaWebhookRegistrationError'
     this.stage = stage
-    if (
-      cause instanceof WhatsAppWebhookRegistrationApiError ||
-      cause instanceof WhatsAppSubscriptionsApiError
-    ) {
+    if (cause instanceof WhatsAppWebhookRegistrationApiError) {
       this.providerStatus = cause.status
       this.providerCode = cause.code
       this.providerSubcode = cause.subcode
@@ -5530,6 +5569,7 @@ const agentExportProgressSteps = [
   'knowledge',
   'files',
   'connectors',
+  'mcps',
   'packaging',
 ] as const
 type AgentExportProgressStep = (typeof agentExportProgressSteps)[number]
@@ -5632,13 +5672,27 @@ async function buildAgentExport({
 
   await progress('connectors', 7)
   const connectors = await agentConnectors.list(configuration)
+  const localMcpAssociations = repository.listLocalMcpAssociations
+    ? await repository.listLocalMcpAssociations(organizationId, channelId)
+    : []
+  const localMcpByConnectorId = new Map(
+    localMcpAssociations.map((association) => [
+      association.connectorId,
+      {
+        name: association.mcpName,
+        path: `MCPs/${association.mcpId}-${association.mcpName}.mcpx`,
+      },
+    ]),
+  )
   const connectorsWithTools = await Promise.all(
     connectors.map(async (connector) => {
       const exportedConnector = toAgentConnector(connector)
+      const localMcp = localMcpByConnectorId.get(connector.id) ?? null
       return exportedConnector.connectorProtocol === 'MCP'
-        ? exportedConnector
+        ? { ...exportedConnector, localMcp }
         : {
             ...exportedConnector,
+            localMcp,
             tools: (
               await agentConnectors.listTools(configuration, connector.id)
             ).map(toAgentConnectorTool),
@@ -5646,7 +5700,32 @@ async function buildAgentExport({
     }),
   )
 
-  await progress('packaging', 8)
+  await progress('mcps', 8)
+  const uniqueLocalMcps = [
+    ...new Map(
+      localMcpAssociations.map((association) => [
+        association.mcpId,
+        association,
+      ]),
+    ).values(),
+  ]
+  const mcpEntries = await Promise.all(
+    uniqueLocalMcps.map(async (association) => {
+      const exported = await runner.exportMcpPackage(
+        organizationId,
+        association.mcpId,
+      )
+      if (!exported) {
+        throw new Error(`Local MCP not found: ${association.mcpName}`)
+      }
+      return {
+        path: `MCPs/${association.mcpId}-${association.mcpName}.mcpx`,
+        body: new TextEncoder().encode(stringifyRunnerMcpPackageYaml(exported)),
+      }
+    }),
+  )
+
+  await progress('packaging', 9)
   const exportedAt = new Date()
   const includedFileCount = knowledgeFiles.filter(
     (file) => file.included,
@@ -5677,7 +5756,9 @@ async function buildAgentExport({
     },
     importRequirements: {
       requestConnectorCredentials: connectors.some(
-        (connector) => connector.auth_type !== 'NONE',
+        (connector) =>
+          connector.auth_type !== 'NONE' &&
+          !localMcpByConnectorId.has(connector.id),
       ),
       requestConnectorCertificates: connectors.some((connector) =>
         Boolean(connector.mtls_config),
@@ -5723,6 +5804,7 @@ async function buildAgentExport({
       ...knowledgeFiles.flatMap((file) =>
         file.path && file.body ? [{ path: file.path, body: file.body }] : [],
       ),
+      ...mcpEntries,
     ],
     exportedAt,
   )
@@ -5737,12 +5819,15 @@ interface ParsedAgentImportPackage {
   entries: ReadonlyMap<string, Uint8Array>
   form: FormData
   manifest: AgentImportManifest
+  mcps: ReadonlyMap<string, RunnerMcpPackage>
 }
 
 interface PreparedAgentImport {
   files: File[]
   manifest: AgentImportManifest
+  mcps: ReadonlyMap<string, RunnerMcpPackage>
   options: z.infer<typeof agentImportOptionsSchema>
+  origin: string
 }
 
 async function readAgentImportPackage(
@@ -5775,17 +5860,44 @@ async function readAgentImportPackage(
     new Uint8Array(await packageFile.arrayBuffer()),
   )
   const manifest = agentImportManifestSchema.parse(archive.manifest)
-  const referencedPaths = new Set(
-    manifest.agent.knowledge.files.flatMap((file) =>
+  const referencedPaths = new Set([
+    ...manifest.agent.knowledge.files.flatMap((file) =>
       file.path ? [file.path] : [],
     ),
-  )
+    ...manifest.agent.connectors.flatMap((connector) =>
+      connector.localMcp ? [connector.localMcp.path] : [],
+    ),
+  ])
   for (const path of archive.entries.keys()) {
     if (path !== 'agent.yaml' && !referencedPaths.has(path)) {
       throw new TypeError(`AGTX contains an unreferenced file: ${path}`)
     }
   }
-  return { entries: archive.entries, form, manifest }
+  const decoder = new TextDecoder('utf-8', { fatal: true })
+  const mcps = new Map<string, RunnerMcpPackage>()
+  const mcpPathByName = new Map<string, string>()
+  for (const connector of manifest.agent.connectors) {
+    if (!connector.localMcp) continue
+    const body = archive.entries.get(connector.localMcp.path)
+    if (!body) {
+      throw new TypeError(`MCP package is missing: ${connector.localMcp.name}`)
+    }
+    const imported = parseRunnerMcpPackageYaml(decoder.decode(body))
+    if (imported.mcp.name !== connector.localMcp.name) {
+      throw new TypeError(
+        `MCP package name does not match: ${connector.localMcp.name}`,
+      )
+    }
+    const previousPath = mcpPathByName.get(imported.mcp.name)
+    if (previousPath && connector.localMcp.path !== previousPath) {
+      throw new TypeError(
+        `MCP has conflicting package paths: ${imported.mcp.name}`,
+      )
+    }
+    mcpPathByName.set(imported.mcp.name, connector.localMcp.path)
+    mcps.set(imported.mcp.name, imported)
+  }
+  return { entries: archive.entries, form, manifest, mcps }
 }
 
 function getAgentImportRequirements(imported: ParsedAgentImportPackage) {
@@ -5799,7 +5911,8 @@ function getAgentImportRequirements(imported: ParsedAgentImportPackage) {
     connectors: imported.manifest.agent.connectors
       .filter(
         (connector) =>
-          connector.authType !== 'NONE' || connector.requiresCertificate,
+          !connector.localMcp &&
+          (connector.authType !== 'NONE' || connector.requiresCertificate),
       )
       .map((connector) => ({
         name: connector.name,
@@ -5812,6 +5925,7 @@ function getAgentImportRequirements(imported: ParsedAgentImportPackage) {
 async function prepareAgentImport(
   request: Request,
 ): Promise<PreparedAgentImport> {
+  const origin = new URL(request.url).origin
   const imported = await readAgentImportPackage(request)
   const rawOptions = imported.form.get('options')
   const options = agentImportOptionsSchema.parse(
@@ -5867,16 +5981,26 @@ async function prepareAgentImport(
     createConnectorSchema.parse({
       name: connector.name,
       description: connector.description,
-      baseUrl: connector.baseUrl,
-      connectorProtocol: connector.connectorProtocol,
-      authType: connector.authType,
-      authConfig: supplied?.authConfig,
+      baseUrl: connector.localMcp ? `${origin}/api/mcp/1` : connector.baseUrl,
+      connectorProtocol: connector.localMcp
+        ? 'MCP'
+        : connector.connectorProtocol,
+      authType: connector.localMcp ? 'API_KEY' : connector.authType,
+      authConfig: connector.localMcp
+        ? localMcpAuthConfig('placeholder')
+        : supplied?.authConfig,
       userAuthInjectionConfig: connector.userAuthInjectionConfig ?? undefined,
       requiresCertificate: connector.requiresCertificate,
     })
   }
 
-  return { files, manifest: imported.manifest, options }
+  return {
+    files,
+    manifest: imported.manifest,
+    mcps: imported.mcps,
+    options,
+    origin,
+  }
 }
 
 interface RunAgentImportProviderRequest {
@@ -6555,10 +6679,88 @@ async function reconcileKnowledge(
   }
 }
 
+async function importAgentMcps(
+  organizationId: string,
+  packages: ReadonlyMap<string, RunnerMcpPackage>,
+  reportProgress: AgentImportResourceProgress,
+): Promise<Map<string, RunnerMcpDefinition>> {
+  const imported = new Map<string, RunnerMcpDefinition>()
+  let completed = 0
+  await reportProgress('mcps', completed, packages.size)
+  for (const [name, mcpPackage] of packages) {
+    const result = await runner.importMcpPackage(
+      organizationId,
+      mcpPackage,
+      true,
+    )
+    if (result.status !== 'imported') {
+      throw new Error(`Could not import local MCP: ${name}`)
+    }
+    imported.set(name, result.mcp)
+    completed += 1
+    await reportProgress('mcps', completed, packages.size)
+  }
+  return imported
+}
+
+async function replaceLocalMcpAssociation(
+  organizationId: string,
+  channelId: number,
+  connectorId: string,
+  mcpId: number,
+  apiKeyId: number,
+): Promise<void> {
+  const existing = await db
+    .select({
+      connectorId: runnerAgentMcpConnectors.connectorId,
+      mcpId: runnerAgentMcpConnectors.mcpId,
+      apiKeyId: runnerAgentMcpConnectors.apiKeyId,
+    })
+    .from(runnerAgentMcpConnectors)
+    .where(
+      and(
+        eq(runnerAgentMcpConnectors.organizationId, organizationId),
+        eq(runnerAgentMcpConnectors.channelId, channelId),
+      ),
+    )
+  for (const association of existing) {
+    if (
+      association.connectorId !== connectorId &&
+      association.mcpId !== mcpId
+    ) {
+      continue
+    }
+    await db
+      .delete(runnerAgentMcpConnectors)
+      .where(
+        and(
+          eq(runnerAgentMcpConnectors.organizationId, organizationId),
+          eq(runnerAgentMcpConnectors.channelId, channelId),
+          eq(runnerAgentMcpConnectors.mcpId, association.mcpId),
+        ),
+      )
+    if (association.apiKeyId !== apiKeyId) {
+      await runner.revokeApiKey(organizationId, association.apiKeyId)
+    }
+  }
+  await db.insert(runnerAgentMcpConnectors).values({
+    organizationId,
+    channelId,
+    connectorId,
+    mcpId,
+    apiKeyId,
+  })
+}
+
 async function reconcileConnectors(
+  organizationId: string,
+  channelId: number,
+  origin: string,
   configuration: ChannelAgentConfiguration,
   desired: AgentImportManifest['agent']['connectors'],
+  importedMcps: ReadonlyMap<string, RunnerMcpDefinition>,
   credentials: z.infer<typeof agentImportOptionsSchema>['connectorCredentials'],
+  repository: ChannelManagementRepository,
   service: AgentConnectorsService,
   runProviderRequest: RunAgentImportProviderRequest,
   reportProgress: AgentImportResourceProgress,
@@ -6581,13 +6783,31 @@ async function reconcileConnectors(
 
   for (const connector of desired) {
     const supplied = credentials[connector.name]
+    const localMcp = connector.localMcp
+      ? importedMcps.get(connector.localMcp.name)
+      : undefined
+    if (connector.localMcp && !localMcp) {
+      throw new Error(`Imported MCP not found: ${connector.localMcp.name}`)
+    }
+    const localApiKey = localMcp
+      ? await runner.createApiKey(organizationId, {
+          name: `Agent connector: ${localMcp.name} (${channelId})`,
+          expiresAt: addUtcYears(new Date(), 1),
+          allowedFunctionIds: [],
+          allowedMcpIds: [localMcp.id],
+        })
+      : undefined
     const parsedInput = createConnectorSchema.parse({
       name: connector.name,
       description: connector.description,
-      baseUrl: connector.baseUrl,
-      connectorProtocol: connector.connectorProtocol,
-      authType: connector.authType,
-      authConfig: supplied?.authConfig,
+      baseUrl: localMcp
+        ? `${origin}/api/mcp/${localMcp.id}`
+        : connector.baseUrl,
+      connectorProtocol: localMcp ? 'MCP' : connector.connectorProtocol,
+      authType: localMcp ? 'API_KEY' : connector.authType,
+      authConfig: localApiKey
+        ? localMcpAuthConfig(localApiKey.apiKey)
+        : supplied?.authConfig,
       userAuthInjectionConfig: connector.userAuthInjectionConfig ?? undefined,
       requiresCertificate: connector.requiresCertificate,
     })
@@ -6621,6 +6841,25 @@ async function reconcileConnectors(
               : agentImportDoesNotMatch<Connector>()
           },
         )
+
+    if (localMcp && localApiKey) {
+      await replaceLocalMcpAssociation(
+        organizationId,
+        channelId,
+        imported.id,
+        localMcp.id,
+        localApiKey.id,
+      )
+    } else {
+      const previousApiKeyId = await repository.removeLocalMcpAssociation(
+        organizationId,
+        channelId,
+        imported.id,
+      )
+      if (previousApiKeyId) {
+        await runner.revokeApiKey(organizationId, previousApiKeyId)
+      }
+    }
 
     if (connector.connectorProtocol === 'HTTP') {
       const currentTools = await runAgentImportRead(
@@ -6750,6 +6989,14 @@ async function reconcileConnectors(
           : agentImportMatches(undefined)
       },
     )
+    const apiKeyId = await repository.removeLocalMcpAssociation(
+      organizationId,
+      channelId,
+      connector.id,
+    )
+    if (apiKeyId) {
+      await runner.revokeApiKey(organizationId, apiKeyId)
+    }
     completed += 1
     await reportProgress('connectors', completed, operationTotal)
   }

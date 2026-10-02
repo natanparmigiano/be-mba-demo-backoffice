@@ -208,7 +208,7 @@ function toMetaPayload(value: unknown): unknown {
     ...(payload.prompts === undefined ? {} : { prompts: payload.prompts }),
     ...(Array.isArray(payload.commands)
       ? {
-          commands: payload.commands.map((command) => {
+          commands: (payload.commands as unknown[]).map((command: unknown) => {
             if (
               typeof command !== 'object' ||
               command === null ||

@@ -1082,7 +1082,8 @@ function connectorUrl(phone: string, connectorId: string, ...parts: string[]) {
 function toolUrl(phone: string, connectorId: string, ...parts: string[]) {
   return connectorUrl(phone, connectorId, 'tools', ...parts)
 }
-function exportPhoneNumberId(_phone: string) {
+function exportPhoneNumberId(phone: string) {
+  void phone
   return '{{Phone-Number-ID}}'
 }
 function exportConnectorId(values: Values) {
@@ -1136,7 +1137,7 @@ function jsonObject(value: Value | undefined, label: string) {
 function jsonArray(value: Value | undefined, label: string) {
   const parsed = parseJson(value, label)
   if (!Array.isArray(parsed)) throw new Error(`${label} must be a JSON array.`)
-  return parsed
+  return parsed as unknown[]
 }
 function optionalJson(name: string, value: Value | undefined) {
   return s(value).trim() ? { [name]: jsonObject(value, name) } : {}

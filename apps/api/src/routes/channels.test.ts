@@ -3,10 +3,8 @@ import { readFile } from 'node:fs/promises'
 import { describe, it } from 'node:test'
 import {
   MBA_WEBHOOK_SUBSCRIPTION_FIELDS,
-  WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS,
   WhatsAppWebhookRegistrationApiError,
 } from '@mba-demo/wa-subscriptions'
-import { whatsappWebhookChangeSchema } from '@mba-demo/wa-webhooks'
 import { createAgentExportArchive } from '../agent-export.js'
 import { parseAgentArchive } from '../agent-import.js'
 import { parseRunnerMcpPackageYaml } from '../runner-mcp-package.js'
@@ -844,6 +842,7 @@ describe('channel management route', () => {
         'knowledge',
         'files',
         'connectors',
+        'mcps',
         'packaging',
       ],
     )
@@ -875,6 +874,7 @@ describe('channel management route', () => {
         'knowledge',
         'files',
         'connectors',
+        'mcps',
         'packaging',
       ],
     )
@@ -1152,6 +1152,7 @@ describe('channel management route', () => {
         'faqs',
         'websites',
         'files',
+        'mcps',
         'connectors',
         'finalizing',
       ],
@@ -1168,6 +1169,7 @@ describe('channel management route', () => {
         'knowledge',
         'files',
         'connectors',
+        'mcps',
         'packaging',
       ],
     )
@@ -1239,6 +1241,7 @@ describe('channel management route', () => {
       faqs: 1,
       websites: 1,
       files: 1,
+      mcps: 0,
       connectors: 2,
       tools: 1,
     })
@@ -1292,6 +1295,7 @@ describe('channel management route', () => {
         'faqs',
         'websites',
         'files',
+        'mcps',
         'connectors',
         'finalizing',
       ],
@@ -1338,12 +1342,14 @@ describe('channel management route', () => {
         'utf8',
       ),
     ])
-    const manifest = parseAgentArchive(new Uint8Array(agentBytes)).manifest as {
+    const archive = parseAgentArchive(new Uint8Array(agentBytes))
+    const manifest = archive.manifest as {
       agent: {
         skills: Array<{ skill: string }>
         connectors: Array<{
           name: string
           connectorProtocol: string
+          localMcp?: { name: string; path: string }
           mcpToolSync?: { toolCount?: number }
           tools?: Array<{ name: string }>
         }>
@@ -1355,6 +1361,11 @@ describe('channel management route', () => {
     assert.equal(manifest.agent.connectors.length, 1)
     assert.equal(connector?.name, mcpPackage.mcp.name)
     assert.equal(connector?.connectorProtocol, 'MCP')
+    assert.equal(connector?.localMcp?.name, mcpPackage.mcp.name)
+    assert.equal(connector?.localMcp?.path, 'MCPs/dunder_mifflin_mcp.mcpx')
+    const embeddedMcp = archive.entries.get('MCPs/dunder_mifflin_mcp.mcpx')
+    assert.ok(embeddedMcp)
+    assert.equal(new TextDecoder().decode(embeddedMcp), mcpText)
     assert.equal(
       connector?.mcpToolSync?.toolCount,
       mcpPackage.mcp.functions.length,
@@ -1407,13 +1418,7 @@ describe('channel management route', () => {
     const inspected = (await response.json()) as { requirements: unknown }
     assert.deepEqual(inspected.requirements, {
       files: [],
-      connectors: [
-        {
-          name: 'dunder_mifflin_mcp',
-          authType: 'API_KEY',
-          requiresCertificate: false,
-        },
-      ],
+      connectors: [],
     })
   })
 
@@ -2311,7 +2316,7 @@ describe('channel management route', () => {
     assert.deepEqual(await response.json(), { deletedAgentId: 'agent-one' })
   })
 
-  it('registers the webhook and subscribes the app for an organization manager', async () => {
+  it('registers the app webhook subscription for an organization manager', async () => {
     let requestedCallbackUrl: string | undefined
     const route = createChannelManagementRoute({
       getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
@@ -2332,12 +2337,12 @@ describe('channel management route', () => {
     assert.equal(requestedCallbackUrl, callbackUrl)
     assert.deepEqual(await response.json(), {
       success: true,
-      message: 'Meta webhook registered and app subscribed successfully',
+      message: 'Meta app webhook subscription registered successfully',
       callbackUrl,
     })
   })
 
-  it('returns and logs safe Meta details when webhook registration fails', async () => {
+  it('returns and logs safe Meta details when app registration fails', async () => {
     const logged: unknown[][] = []
     const originalConsoleError = console.error
     console.error = (...values: unknown[]) => logged.push(values)
@@ -2347,7 +2352,7 @@ describe('channel management route', () => {
         repository: createRepository(),
         registerWebhook: async () => {
           throw new MetaWebhookRegistrationError(
-            'Meta rejected the webhook registration: Callback is unreachable',
+            'Meta rejected the app webhook subscription: Callback is unreachable',
             'app_registration',
             new WhatsAppWebhookRegistrationApiError(433, {
               error: {
@@ -2373,7 +2378,7 @@ describe('channel management route', () => {
       assert.equal(response.status, 502)
       assert.deepEqual(await response.json(), {
         message:
-          'Meta rejected the webhook registration: Callback is unreachable',
+          'Meta rejected the app webhook subscription: Callback is unreachable',
         stage: 'app_registration',
         providerStatus: 433,
         providerCode: 2200,
@@ -2421,18 +2426,7 @@ describe('channel management route', () => {
 })
 
 describe('Meta webhook registration', () => {
-  it('subscribes to exactly every webhook field the application parses', () => {
-    const parsedFields = whatsappWebhookChangeSchema.options.map(
-      (schema) => schema.shape.field.value,
-    )
-
-    assert.deepEqual(
-      [...WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS].sort(),
-      parsedFields.sort(),
-    )
-  })
-
-  it('registers the MBA field set before subscribing the app to the WABA', async () => {
+  it('registers the exact supported field set on the app subscription', async () => {
     const requests: Array<{ url: string; init?: RequestInit }> = []
     const request = (async (
       input: string | URL | Request,
@@ -2452,48 +2446,42 @@ describe('Meta webhook registration', () => {
       {
         waAppId: 'app-id',
         waAppSecret: 'app-secret',
-        waWabaId: 'waba-id',
         waWebhookVerifyToken: 'verify-secret',
-        waSystemUserAccessToken: 'access-secret',
       },
       'https://example.com/api/wa-cloud/webhook/7',
       request,
     )
 
-    assert.equal(requests.length, 2)
-    assert.equal(
-      requests[0]?.url,
-      'https://graph.facebook.com/v26.0/app-id/subscriptions',
-    )
+    assert.equal(requests.length, 1)
     assert.equal(requests[0]?.init?.method, 'POST')
     assert.equal(
       new Headers(requests[0]?.init?.headers).get('content-type'),
       'application/x-www-form-urlencoded',
     )
-    assert.ok(requests[0]?.init?.body instanceof URLSearchParams)
-    const registrationBody = requests[0]?.init?.body
-    assert.equal(registrationBody.get('object'), 'whatsapp_business_account')
     assert.equal(
-      registrationBody.get('callback_url'),
+      requests[0]?.url,
+      'https://graph.facebook.com/v26.0/app-id/subscriptions',
+    )
+    assert.ok(requests[0]?.init?.body instanceof URLSearchParams)
+    const body = requests[0].init?.body
+    assert.equal(body.get('object'), 'whatsapp_business_account')
+    assert.equal(
+      body.get('callback_url'),
       'https://example.com/api/wa-cloud/webhook/7',
     )
-    assert.equal(registrationBody.get('verify_token'), 'verify-secret')
+    assert.equal(body.get('verify_token'), 'verify-secret')
     assert.equal(
-      registrationBody.get('fields'),
-      MBA_WEBHOOK_SUBSCRIPTION_FIELDS.join(','),
+      body.get('fields'),
+      'messages,calls,messaging_handovers,account_settings_update,standby',
     )
-    assert.equal(registrationBody.get('access_token'), 'app-id|app-secret')
-
-    assert.equal(
-      requests[1]?.url,
-      'https://graph.facebook.com/v26.0/waba-id/subscribed_apps',
-    )
-    assert.equal(requests[1]?.init?.method, 'POST')
-    assert.equal(
-      new Headers(requests[1]?.init?.headers).get('authorization'),
-      'Bearer access-secret',
-    )
-    assert.equal(requests[1]?.init?.body, undefined)
+    assert.deepEqual(MBA_WEBHOOK_SUBSCRIPTION_FIELDS, [
+      'messages',
+      'calls',
+      'messaging_handovers',
+      'account_settings_update',
+      'standby',
+    ])
+    assert.equal(body.get('access_token'), 'app-id|app-secret')
   })
 })
 

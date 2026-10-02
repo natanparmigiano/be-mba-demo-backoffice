@@ -69,11 +69,6 @@ const descriptions: Record<string, string> = {
     'Takes ownership of the conversation thread for the Business Agent.',
 }
 
-const entityUrl = (phoneNumberId: string, ...parts: string[]) =>
-  `https://api.facebook.com/${[phoneNumberId || 'PHONE_NUMBER_ID', ...parts]
-    .map(encodeURIComponent)
-    .join('/')}`
-
 const exportPathPart = (part: string) =>
   part.startsWith('{{') && part.endsWith('}}') ? part : encodeURIComponent(part)
 
@@ -125,7 +120,7 @@ function jsonObject(value: string, label: string) {
 function jsonArray(value: string, label: string) {
   const parsed: unknown = JSON.parse(value)
   if (!Array.isArray(parsed)) throw new Error(`${label} must be a JSON array`)
-  return parsed
+  return parsed as unknown[]
 }
 
 function useOperation() {

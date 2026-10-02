@@ -31,14 +31,18 @@ An AGTX version 1 file is a standard ZIP32 container with this layout:
 ```text
 agent-5511999990000.agtx
 ├── agent.yaml
-└── files/
-    ├── 001-product-catalog.pdf
-    └── 002-return-policy.docx
+├── files/
+│   ├── 001-product-catalog.pdf
+│   └── 002-return-policy.docx
+└── MCPs/
+    └── local_catalog.mcpx
 ```
 
 `agent.yaml` is mandatory and is the authoritative manifest. The `files/`
 directory is optional: it contains only knowledge files that were available in
-the application's configured file store when the export was created.
+the application's configured file store when the export was created. `MCPs/`
+is optional and contains one MCPX package for each distinct local MCP associated
+with an exported connector.
 
 The current writer stores ZIP entries without compression and uses UTF-8 entry
 names. Consumers should treat that as the version 1 encoding. Import currently
@@ -60,17 +64,18 @@ unzip agent-5511999990000.agtx -d agent-export
 for Dunder Mifflin Paper Company. It demonstrates agent settings, business
 information, an allowlist, skills, a QR code, icebreakers, the `/human`
 command, FAQs, the Dunder Mifflin Wikipedia knowledge website, and one API-key
-MCP connector configured to discover six tools. That
-`dunder_mifflin_mcp` connector is the agent-side counterpart of
+MCP connector configured to discover six tools. The connector references
+`MCPs/dunder_mifflin_mcp.mcpx`, which is the same canonical package published
+separately as
 [`../mcpx/sample_dunder_mifflin.mcpx`](../mcpx/sample_dunder_mifflin.mcpx).
 It deliberately contains no knowledge files, API keys, certificates, or other
 secrets.
 
-The connector host uses the reserved `.example` domain. It documents the
-portable MCP connector and synced-tool shapes but does not provide a working
-service. Import the counterpart MCPX package, expose its MCP endpoint, replace
-the sample connector URL with that endpoint, and supply a scoped runner bearer
-token before expecting its tools to execute.
+The manifest's connector host uses the reserved `.example` domain as source
+provenance. During import, the embedded MCP is imported first, a fresh scoped
+runner key is generated, and the connector URL is replaced with the current
+destination host's `/api/mcp/:id` URL before Meta creates or updates the
+connector. No MCP credential input is required.
 
 From the repository root, verify that the ZIP directory and CRC32 checksums are
 valid before extracting anything:
@@ -107,9 +112,11 @@ order:
    HTTP connectors also carry nested tool definitions; MCP tools are refreshed
    from the server and are intentionally absent. Connector credentials are
    always absent.
-6. Compare the manifest with [`schema.yml`](./schema.yml), particularly field
+6. For connectors with `localMcp`, match its `path` to an MCPX entry under
+   `MCPs/` and confirm the MCPX `mcp.name` equals `localMcp.name`.
+7. Compare the manifest with [`schema.yml`](./schema.yml), particularly field
    names, required properties, enums, and nullability.
-7. Match each non-null `agent.knowledge.files[].path` to an archive entry under
+8. Match each non-null `agent.knowledge.files[].path` to an archive entry under
    `files/`. This sample has no such entries.
 
 `unzip -t` validates ZIP entry checksums; it does not validate the YAML schema
@@ -132,7 +139,9 @@ The manifest can contain:
 - FAQs and knowledge websites;
 - Meta knowledge-file references and, when available, their bundled bytes;
 - connector definitions and explicit HTTP connector tools, without
-  credentials; MCP tools are discovered from their server after import.
+  credentials; MCP tools are discovered from their server after import;
+- deduplicated local MCPX packages under `MCPs/` when connectors have local MCP
+  associations.
 
 The export deliberately excludes:
 
@@ -224,7 +233,9 @@ in version 1. Secrets are never portable inside AGTX.
 
 This section lets a reader predict whether interactive input will be needed:
 
-- `requestConnectorCredentials` is true if a connector uses authentication;
+- `requestConnectorCredentials` is true if an ordinary connector uses
+  authentication. It remains false for a local MCP connector because import
+  generates a new scoped key;
 - `requestConnectorCertificates` is true if any connector requires mTLS;
 - `requestMissingKnowledgeFiles` is true if any file is not bundled.
 
@@ -356,10 +367,25 @@ URL, protocol, authentication type, certificate requirements, non-secret
 connection metadata, optional user-auth injection configuration, and MCP sync
 metadata.
 
+An MCP connector associated with an application-local MCP also contains:
+
+```yaml
+localMcp:
+  name: 'dunder_mifflin_mcp'
+  path: 'MCPs/dunder_mifflin_mcp.mcpx'
+```
+
+`name` is the deduplication identity. Import validates the referenced MCPX
+package and its matching `mcp.name`, then overwrites the organization's MCP of
+that name or creates it when absent. Multiple connectors may reference the
+same path; the MCP package is imported once. `localMcp` is valid only when
+`connectorProtocol` is `MCP`.
+
 Credential values and certificate material are not present. During inspection,
 the importer asks for authentication configuration when `authType` is not
-`NONE`, and for PEM certificate material when `requiresCertificate` is true.
-Import reconciles connectors by `name`.
+`NONE`, except for embedded local MCP connectors whose credentials are
+generated during import. It asks for PEM certificate material when
+`requiresCertificate` is true. Import reconciles connectors by `name`.
 
 HTTP connectors also include `tools`. Each HTTP connector tool contains:
 
@@ -373,10 +399,12 @@ Tools are reconciled by name within their connector. Source connector and tool
 IDs are not portable identities.
 
 MCP connectors omit `tools` from export because their tool catalog belongs to
-the remote MCP server. During import, any legacy MCP `tools` field is ignored.
-After the connector, authentication, and certificate configuration are
-reconciled, import calls Meta's MCP tool refresh action so the current tools are
-discovered from the configured server.
+the MCP server. During import, any legacy MCP `tools` field is ignored. For an
+embedded local MCP, import installs the MCP first, generates a 12-month scoped
+API key, rewrites `baseUrl` to the destination host, creates or updates the Meta
+connector, and records the channel/MCP/connector association. It then calls
+Meta's MCP tool refresh action so the current tools are discovered from the
+configured server.
 
 ## YAML profile
 
@@ -409,8 +437,9 @@ application, follow the profile and the version 1 schema exactly.
    understand the agent's behavior.
 7. Review `agent.knowledge`. For every file, follow `path` into the ZIP. A null
    path means the file must be supplied during import.
-8. Review connectors and any explicit HTTP tools, remembering that credentials
-   and MCP tool catalogs are not included.
+8. Review connectors and any explicit HTTP tools. Follow every `localMcp.path`
+   into `MCPs/`; credentials and MCP tool catalogs are not stored in the
+   connector manifest.
 9. Treat provider IDs and status fields as provenance. The importer uses stable
    names, questions, URLs, or phone numbers when reconciling destination data.
 10. Validate all paths and checksums before using file bytes. Never extract
@@ -420,8 +449,8 @@ application, follow the profile and the version 1 schema exactly.
 
 An AGTX file can be inspected with standard ZIP and text tools. If it is edited,
 rebuild the ZIP so entry sizes and CRC32 checksums are correct. Keep
-`agent.yaml` at the root, keep knowledge files under `files/`, and make every
-file path in the manifest match the ZIP entry exactly.
+`agent.yaml` at the root, knowledge files under `files/`, embedded MCPX packages
+under `MCPs/`, and make every manifest path match the ZIP entry exactly.
 
 Do not add secrets to the manifest. The import workflow intentionally collects
 credentials and private keys separately. A manually created package should use

@@ -462,6 +462,16 @@ $defs:
         then:
           required:
             - tools
+      - if:
+          required:
+            - localMcp
+          properties:
+            localMcp:
+              type: object
+        then:
+          properties:
+            connectorProtocol:
+              const: MCP
     properties:
       id:
         type: string
@@ -506,12 +516,33 @@ $defs:
         oneOf:
           - $ref: '#/$defs/mcpToolSync'
           - type: 'null'
+      localMcp:
+        description: 'Embedded local MCP package associated with this connector. Null or omitted for ordinary connectors.'
+        oneOf:
+          - $ref: '#/$defs/localMcp'
+          - type: 'null'
       tools:
         type: array
         maxItems: 500
         description: 'Explicit HTTP connector tools. Omitted and ignored for MCP connectors, whose tools are refreshed from the server.'
         items:
           $ref: '#/$defs/connectorTool'
+  localMcp:
+    type: object
+    additionalProperties: false
+    required:
+      - name
+      - path
+    properties:
+      name:
+        type: string
+        minLength: 1
+        maxLength: 64
+      path:
+        type: string
+        pattern: '^MCPs/'
+        minLength: 1
+        maxLength: 1024
   userAuthInjectionConfig:
     type: object
     additionalProperties: false

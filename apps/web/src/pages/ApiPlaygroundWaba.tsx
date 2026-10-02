@@ -16,7 +16,6 @@ type T = ReturnType<typeof useTranslation>['t']
 
 export function WabaPlayground(props: Props) {
   const { t } = useTranslation()
-  const { channelId } = props
   return (
     <div
       className="grid gap-4"

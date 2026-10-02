@@ -73,15 +73,18 @@ invalid successful responses throw `WhatsAppSubscriptionsResponseError`.
 
 The registration client submits URL-encoded form data to
 `/<APP_ID>/subscriptions` using the app access token
-`<APP_ID>|<APP_SECRET>`. `WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS` covers every
-field currently parsed by `@mba-demo/wa-webhooks`, including `messages` (which
-also carries message status updates), business/account updates, `standby`,
-`message_echoes`, and `smb_message_echoes`.
+`<APP_ID>|<APP_SECRET>`; it does not use the system-user access token.
+`WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS` covers every field currently parsed by
+`@mba-demo/wa-webhooks`, including `messages` (which also carries message
+status updates), business/account updates, `standby`, `message_echoes`, and
+`smb_message_echoes`.
 
 `register()` accepts any non-empty subset of those fields. `list()` reads the
 app-level subscriptions and returns each registered callback plus its field
-names and Graph API versions. `MBA_WEBHOOK_SUBSCRIPTION_FIELDS` is the curated
-field set used when the backoffice points a channel webhook at itself.
+names and Graph API versions. `MBA_WEBHOOK_SUBSCRIPTION_FIELDS` is the exact
+field set used when the backoffice registers its app-level callback:
+`messages`, `calls`, `messaging_handovers`, `account_settings_update`, and
+`standby`.
 
 ## Verification
 

@@ -159,6 +159,11 @@ export const businessStatusUpdateChangeSchema = z.looseObject({
   value: genericWebhookValueSchema,
 })
 
+export const accountSettingsUpdateChangeSchema = z.looseObject({
+  field: z.literal('account_settings_update'),
+  value: genericWebhookValueSchema,
+})
+
 export const flowsChangeSchema = z.looseObject({
   field: z.literal('flows'),
   value: genericWebhookValueSchema,
@@ -182,6 +187,7 @@ export const trackingEventsChangeSchema = z.looseObject({
 export const whatsappWebhookChangeSchema = z.discriminatedUnion('field', [
   accountAlertsChangeSchema,
   accountReviewUpdateChangeSchema,
+  accountSettingsUpdateChangeSchema,
   accountUpdateChangeSchema,
   automaticEventsChangeSchema,
   businessCapabilityUpdateChangeSchema,

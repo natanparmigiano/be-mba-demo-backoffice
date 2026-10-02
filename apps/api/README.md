@@ -58,7 +58,7 @@ composition chained in `src/app.ts`.
 | `DELETE`                 | `/api/channels/:id/agent-knowledge/files/:fileId`                   | Removes an agent knowledge file                                          |
 | `POST`, `DELETE`         | `/api/channels/:id/agent`                                           | Onboards or removes a Meta Business Agent for an owned channel           |
 | `GET`                    | `/api/channels/:id/verify-token`                                    | Returns a channel's webhook verification token to an owner/admin         |
-| `POST`                   | `/api/channels/:id/set-webhook`                                     | Registers the app webhook, then subscribes it to the channel WABA        |
+| `POST`                   | `/api/channels/:id/set-webhook`                                     | Registers the app-level WhatsApp webhook subscription                    |
 | `GET`                    | `/api/channels/:id/deletion-impact`                                 | Counts local contacts, groups, and messages before channel deletion      |
 | `PATCH`                  | `/api/channels/:id`                                                 | Updates an active-organization channel                                   |
 | `DELETE`                 | `/api/channels/:id`                                                 | Confirms and manually deletes a channel's local dependency graph         |
@@ -249,7 +249,9 @@ Agent exports are ZIP-based `.agtx` packages containing a versioned
 allowlists, business information, skills, FAQs, websites, safe connector
 configuration, explicit HTTP connector tools, and every Meta knowledge-file
 reference. MCP connector tools are omitted because the MCP server owns that
-catalog. Locally
+catalog. MCP servers associated with exported connectors are embedded as
+deduplicated MCPX documents under `MCPs/`, and each connector records its MCP
+name and package path. Locally
 archived knowledge files are included under `files/`; files
 configured outside this application remain in the manifest with a null path so
 import can request them. The one-shot SSE response reports each collection
@@ -273,6 +275,10 @@ multipart fields and receives SSE progress while settings, allowlist, business
 information, skills, FAQs, websites, knowledge files, connectors, tools, and
 connector certificates are reconciled. MCP imports ignore legacy packaged tool
 definitions and trigger Meta's MCP tool refresh after the connector is ready.
+Embedded MCPs are imported before connectors and overwrite an organization MCP
+with the same name. The importer then creates a fresh 12-month MCP-scoped key,
+rewrites the connector URL to the destination request origin, creates or
+updates the Meta connector, and persists the channel/MCP/connector association.
 Provider request starts are paced at a
 maximum of two per second for each import; local archive operations are not
 delayed. Failed reads and mutations use five retries with delays of 500 ms, 1

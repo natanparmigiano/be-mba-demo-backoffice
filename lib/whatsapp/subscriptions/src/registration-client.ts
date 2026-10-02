@@ -14,6 +14,7 @@ const WEBHOOK_OBJECT = 'whatsapp_business_account'
 export const WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS = [
   'account_alerts',
   'account_review_update',
+  'account_settings_update',
   'account_update',
   'automatic_events',
   'business_capability_update',
@@ -48,21 +49,11 @@ export type WhatsAppWebhookSubscriptionField =
   (typeof WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS)[number]
 
 export const MBA_WEBHOOK_SUBSCRIPTION_FIELDS = [
-  'account_alerts',
-  'account_review_update',
-  'account_update',
-  'calls',
-  'flows',
-  'message_template_components_update',
-  'message_template_quality_update',
-  'message_template_status_update',
   'messages',
+  'calls',
   'messaging_handovers',
-  'phone_number_name_update',
-  'phone_number_quality_update',
-  'security',
+  'account_settings_update',
   'standby',
-  'template_category_update',
 ] as const satisfies readonly WhatsAppWebhookSubscriptionField[]
 
 const SUPPORTED_FIELDS: ReadonlySet<string> = new Set(

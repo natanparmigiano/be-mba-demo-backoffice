@@ -20,6 +20,10 @@ not an array and does not use the standard `metadata` shape. These objects stay
 loose around their stable routing fields so additive Business Agent properties
 remain lossless.
 
+The `account_settings_update` subscription is accepted as a typed webhook
+envelope with a lossless value object because Meta does not publish a stable,
+closed payload schema for every account setting change.
+
 In the captured Business AI flow, nested `standby.statuses` entries reuse the
 outbound `standby.message_echoes` message ID. Its `read` status therefore means
 the customer read the agent response; no captured status acknowledged that the

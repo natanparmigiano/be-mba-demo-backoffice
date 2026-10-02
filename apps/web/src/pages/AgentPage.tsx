@@ -149,6 +149,7 @@ const agentExportSteps = [
   'knowledge',
   'files',
   'connectors',
+  'mcps',
   'packaging',
 ] as const
 type AgentExportStep = (typeof agentExportSteps)[number]
@@ -163,6 +164,7 @@ const agentImportSteps = [
   'faqs',
   'websites',
   'files',
+  'mcps',
   'connectors',
   'finalizing',
 ] as const
@@ -177,18 +179,22 @@ const agentImportResources = [
   'faqs',
   'websites',
   'files',
+  'mcps',
   'connectors',
   'finalizing',
 ] as const
 type AgentImportResource = (typeof agentImportResources)[number]
-type AgentImportComponent = Exclude<AgentImportResource, 'finalizing'>
+type AgentImportComponent = Exclude<AgentImportResource, 'finalizing' | 'mcps'>
 const defaultAgentImportComponents = (): Record<
   AgentImportComponent,
   boolean
 > =>
   Object.fromEntries(
     agentImportResources
-      .filter((resource) => resource !== 'finalizing')
+      .filter(
+        (resource): resource is AgentImportComponent =>
+          resource !== 'finalizing' && resource !== 'mcps',
+      )
       .map((resource) => [resource, true]),
   ) as Record<AgentImportComponent, boolean>
 
@@ -207,6 +213,7 @@ interface AgentImportInspection {
     faqs: number
     websites: number
     files: number
+    mcps: number
     connectors: number
   }
   requirements: {
@@ -3761,7 +3768,8 @@ function AgentImportPanel({
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {(
                     agentImportResources.filter(
-                      (resource) => resource !== 'finalizing',
+                      (resource) =>
+                        resource !== 'finalizing' && resource !== 'mcps',
                     ) as AgentImportComponent[]
                   ).map((component) => (
                     <Checkbox
@@ -3832,7 +3840,9 @@ function AgentImportPanel({
                   ? null
                   : step === 'finalizing'
                     ? 'settings'
-                    : step
+                    : step === 'mcps'
+                      ? 'connectors'
+                      : step
               const isSkipped =
                 (step === 'backup' && !createBackupBeforeImport) ||
                 (component !== null && !selectedComponents[component])

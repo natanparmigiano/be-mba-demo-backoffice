@@ -1478,7 +1478,7 @@ const en = {
         'Create a portable AGTX package containing a versioned agent.yaml manifest and every knowledge file available in local storage.',
       includedTitle: 'Included in the export',
       includedDescription:
-        'Settings, allowlist, business information, skills, QR codes, icebreakers, commands, FAQs, websites, connectors and tools, and locally available knowledge files.',
+        'Settings, allowlist, business information, skills, QR codes, icebreakers, commands, FAQs, websites, connectors and tools, associated MCPs, and locally available knowledge files.',
       excludedTitle: 'Requested during import',
       excludedDescription:
         'Knowledge files that are only present in Meta are listed as missing in agent.yaml. Import will request those files, API keys, OAuth secrets, and certificates securely.',
@@ -1495,6 +1495,7 @@ const en = {
         knowledge: 'Exporting FAQs and websites',
         files: 'Collecting available knowledge files',
         connectors: 'Exporting connectors and tools',
+        mcps: 'Exporting associated MCPs',
         packaging: 'Packaging agent.yaml and files',
       },
     },
@@ -1567,6 +1568,7 @@ const en = {
         faqs: 'FAQs',
         websites: 'Websites',
         files: 'Files',
+        mcps: 'MCPs',
         connectors: 'Connectors',
         finalizing: 'Final checks',
       },
@@ -1612,6 +1614,7 @@ const en = {
         faqs: 'FAQs',
         websites: 'Websites',
         files: 'Files',
+        mcps: 'MCPs',
         connectors: 'Connectors',
       },
       steps: {
@@ -1625,6 +1628,7 @@ const en = {
         faqs: 'Reconciling FAQs',
         websites: 'Reconciling websites',
         files: 'Replacing knowledge files',
+        mcps: 'Importing associated MCPs',
         connectors: 'Reconciling connectors and tools',
         finalizing: 'Refreshing the imported agent',
       },
@@ -1977,14 +1981,14 @@ const en = {
     channelUpdated: 'Channel updated.',
     channelDeleted: 'Channel deleted.',
     noChannelSelected: 'No channel selected.',
-    setWebhookTitle: 'Register this webhook with Meta?',
+    setWebhookTitle: 'Register this app webhook with Meta?',
     setWebhookDescription:
-      'This registers the app-level callback and supported fields, then subscribes the app to this WhatsApp Business Account.',
+      'This registers the WhatsApp callback and supported fields on the Meta app.',
     setWebhookWarning:
-      'The callback belongs to Meta app {{appId}} and applies to its WhatsApp webhook subscriptions. Registering another callback for the same app can replace this one.',
+      'This replaces the app-level WhatsApp webhook subscription for Meta app {{appId}}. It uses the app ID and app secret, not the system-user access token.',
     newWebhookUrl: 'New webhook URL',
-    setWebhook: 'Register webhook',
-    webhookSet: 'Webhook registered and app subscribed: {{url}}',
+    setWebhook: 'Register app webhook',
+    webhookSet: 'App webhook subscription registered: {{url}}',
     deleteTitle: 'Delete channel?',
     deleteDescription:
       'This permanently removes {{channel}} and all of its local data.',
@@ -4481,7 +4485,7 @@ const pt: typeof en = {
         'Crie um pacote AGTX portátil com um manifesto agent.yaml versionado e todos os arquivos de conhecimento disponíveis no armazenamento local.',
       includedTitle: 'Incluído na exportação',
       includedDescription:
-        'Configurações, lista de permissão, informações da empresa, habilidades, códigos QR, quebra-gelos, comandos, perguntas frequentes, sites, conectores e ferramentas e arquivos de conhecimento disponíveis localmente.',
+        'Configurações, lista de permissão, informações da empresa, habilidades, códigos QR, quebra-gelos, comandos, perguntas frequentes, sites, conectores e ferramentas, MCPs associados e arquivos de conhecimento disponíveis localmente.',
       excludedTitle: 'Solicitado durante a importação',
       excludedDescription:
         'Arquivos de conhecimento presentes apenas na Meta são listados como ausentes no agent.yaml. A importação solicitará esses arquivos, chaves de API, segredos OAuth e certificados com segurança.',
@@ -4498,6 +4502,7 @@ const pt: typeof en = {
         knowledge: 'Exportando perguntas frequentes e sites',
         files: 'Coletando arquivos de conhecimento disponíveis',
         connectors: 'Exportando conectores e ferramentas',
+        mcps: 'Exportando MCPs associados',
         packaging: 'Empacotando agent.yaml e arquivos',
       },
     },
@@ -4569,6 +4574,7 @@ const pt: typeof en = {
         faqs: 'Perguntas frequentes',
         websites: 'Sites',
         files: 'Arquivos',
+        mcps: 'MCPs',
         connectors: 'Conectores',
         finalizing: 'Verificações finais',
       },
@@ -4615,6 +4621,7 @@ const pt: typeof en = {
         faqs: 'Perguntas frequentes',
         websites: 'Sites',
         files: 'Arquivos',
+        mcps: 'MCPs',
         connectors: 'Conectores',
       },
       steps: {
@@ -4628,6 +4635,7 @@ const pt: typeof en = {
         faqs: 'Reconciliando perguntas frequentes',
         websites: 'Reconciliando sites',
         files: 'Substituindo arquivos de conhecimento',
+        mcps: 'Importando MCPs associados',
         connectors: 'Reconciliando conectores e ferramentas',
         finalizing: 'Atualizando o agente importado',
       },
@@ -4985,14 +4993,14 @@ const pt: typeof en = {
     channelUpdated: 'Canal atualizado.',
     channelDeleted: 'Canal excluído.',
     noChannelSelected: 'Nenhum canal selecionado.',
-    setWebhookTitle: 'Registrar este webhook na Meta?',
+    setWebhookTitle: 'Registrar este webhook da aplicação na Meta?',
     setWebhookDescription:
-      'Isso registra o callback e os campos compatíveis no nível da aplicação e depois inscreve a aplicação nesta conta do WhatsApp Business.',
+      'Isso registra o callback do WhatsApp e os campos compatíveis na aplicação Meta.',
     setWebhookWarning:
-      'O callback pertence à aplicação Meta {{appId}} e vale para suas inscrições de webhook do WhatsApp. Registrar outro callback na mesma aplicação pode substituir este.',
+      'Isso substitui a inscrição de webhook do WhatsApp no nível da aplicação Meta {{appId}}. São usados o ID e o segredo da aplicação, não o token de acesso do usuário do sistema.',
     newWebhookUrl: 'Nova URL do webhook',
-    setWebhook: 'Registrar webhook',
-    webhookSet: 'Webhook registrado e aplicação inscrita: {{url}}',
+    setWebhook: 'Registrar webhook da aplicação',
+    webhookSet: 'Inscrição de webhook da aplicação registrada: {{url}}',
     deleteTitle: 'Excluir canal?',
     deleteDescription:
       'Isso remove permanentemente {{channel}} e todos os seus dados locais.',
@@ -7516,7 +7524,7 @@ const es: typeof en = {
         'Crea un paquete AGTX portátil con un manifiesto agent.yaml versionado y todos los archivos de conocimiento disponibles en el almacenamiento local.',
       includedTitle: 'Incluido en la exportación',
       includedDescription:
-        'Configuración, lista de permitidos, información comercial, habilidades, códigos QR, rompehielos, comandos, preguntas frecuentes, sitios web, conectores y herramientas, y archivos de conocimiento disponibles localmente.',
+        'Configuración, lista de permitidos, información comercial, habilidades, códigos QR, rompehielos, comandos, preguntas frecuentes, sitios web, conectores y herramientas, MCP asociados y archivos de conocimiento disponibles localmente.',
       excludedTitle: 'Solicitado durante la importación',
       excludedDescription:
         'Los archivos de conocimiento que solo están en Meta se marcan como ausentes en agent.yaml. La importación solicitará esos archivos, claves API, secretos OAuth y certificados de forma segura.',
@@ -7534,6 +7542,7 @@ const es: typeof en = {
         knowledge: 'Exportando preguntas frecuentes y sitios web',
         files: 'Recopilando archivos de conocimiento disponibles',
         connectors: 'Exportando conectores y herramientas',
+        mcps: 'Exportando MCP asociados',
         packaging: 'Empaquetando agent.yaml y archivos',
       },
     },
@@ -7606,6 +7615,7 @@ const es: typeof en = {
         faqs: 'Preguntas frecuentes',
         websites: 'Sitios web',
         files: 'Archivos',
+        mcps: 'MCP',
         connectors: 'Conectores',
         finalizing: 'Comprobaciones finales',
       },
@@ -7651,6 +7661,7 @@ const es: typeof en = {
         faqs: 'Preguntas frecuentes',
         websites: 'Sitios web',
         files: 'Archivos',
+        mcps: 'MCP',
         connectors: 'Conectores',
       },
       steps: {
@@ -7664,6 +7675,7 @@ const es: typeof en = {
         faqs: 'Conciliando preguntas frecuentes',
         websites: 'Conciliando sitios web',
         files: 'Reemplazando archivos de conocimiento',
+        mcps: 'Importando MCP asociados',
         connectors: 'Conciliando conectores y herramientas',
         finalizing: 'Actualizando el agente importado',
       },
@@ -8023,14 +8035,14 @@ const es: typeof en = {
     channelUpdated: 'Canal actualizado.',
     channelDeleted: 'Canal eliminado.',
     noChannelSelected: 'Ningún canal seleccionado.',
-    setWebhookTitle: '¿Registrar este webhook en Meta?',
+    setWebhookTitle: '¿Registrar este webhook de la aplicación en Meta?',
     setWebhookDescription:
-      'Esto registra el callback y los campos compatibles a nivel de aplicación y luego suscribe la aplicación a esta cuenta de WhatsApp Business.',
+      'Esto registra el callback de WhatsApp y los campos compatibles en la aplicación de Meta.',
     setWebhookWarning:
-      'El callback pertenece a la aplicación de Meta {{appId}} y se aplica a sus suscripciones de webhook de WhatsApp. Registrar otro callback para la misma aplicación puede reemplazar este.',
+      'Esto reemplaza la suscripción al webhook de WhatsApp de la aplicación de Meta {{appId}}. Utiliza el identificador y el secreto de la aplicación, no el token de acceso del usuario del sistema.',
     newWebhookUrl: 'Nueva URL del webhook',
-    setWebhook: 'Registrar webhook',
-    webhookSet: 'Webhook registrado y aplicación suscrita: {{url}}',
+    setWebhook: 'Registrar webhook de la aplicación',
+    webhookSet: 'Suscripción al webhook de la aplicación registrada: {{url}}',
     deleteTitle: '¿Eliminar canal?',
     deleteDescription:
       'Esto elimina permanentemente {{channel}} y todos sus datos locales.',

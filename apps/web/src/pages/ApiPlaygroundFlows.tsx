@@ -255,7 +255,7 @@ function graphRequest(
         method: 'GET',
         path: flowNode,
         query: {
-          fields: `preview.invalidate(${input.invalidate ?? false})`,
+          fields: `preview.invalidate(${scalarString(input.invalidate, 'false')})`,
           ...(input.unixTimestamp ? { date_format: 'U' } : {}),
         },
       }
@@ -296,7 +296,7 @@ function graphRequest(
         method: 'GET',
         path: flowNode,
         query: {
-          fields: `metric.name(${String(input.name ?? '')}).granularity(${String(input.granularity ?? '')}).since(${String(input.since ?? '')}).until(${String(input.until ?? '')})`,
+          fields: `metric.name(${scalarString(input.name)}).granularity(${scalarString(input.granularity)}).since(${scalarString(input.since)}).until(${scalarString(input.until)})`,
         },
       }
     case 'getEncryptionKey':
@@ -309,6 +309,17 @@ function graphRequest(
         business_public_key: input.business_public_key,
       })
   }
+}
+
+function scalarString(value: unknown, fallback = '') {
+  if (value === undefined || value === null) return fallback
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  )
+    return String(value)
+  return JSON.stringify(value)
 }
 
 function multipart(

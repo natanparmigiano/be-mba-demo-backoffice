@@ -122,7 +122,7 @@ function requestUrl(request: PlaygroundRequestExample) {
     if (value === undefined || value === null || value === '') continue
     url.searchParams.set(
       key,
-      Array.isArray(value) ? value.join(',') : String(value),
+      Array.isArray(value) ? value.join(',') : scalarString(value),
     )
   }
   return restoreVariables(url.toString())
@@ -155,7 +155,7 @@ function buildCode(format: CodeFormat, request: PlaygroundRequestExample) {
         .map(({ name, value, fileName }) =>
           fileName
             ? `form.append(${JSON.stringify(name)}, fileInput.files[0], ${JSON.stringify(fileName)});`
-            : `form.append(${JSON.stringify(name)}, ${JSON.stringify(String(value ?? ''))});`,
+            : `form.append(${JSON.stringify(name)}, ${JSON.stringify(scalarString(value))});`,
         )
         .join('\n')
       return `const form = new FormData();\n${fields}\n\nconst response = await fetch(${JSON.stringify(url)}, {\n  method: '${method}',${fetchHeaders}\n  body: form,\n});\n\nif (!response.ok) throw new Error(\`HTTP \${response.status}\`);\nconst result = await response.json();`
@@ -178,7 +178,7 @@ function buildCode(format: CodeFormat, request: PlaygroundRequestExample) {
         .map(({ name, value, fileName }) =>
           fileName
             ? `  ${hackString(name)} => new CURLFile(${hackString(`/path/to/${fileName}`)}),`
-            : `  ${hackString(name)} => ${hackString(String(value ?? ''))},`,
+            : `  ${hackString(name)} => ${hackString(scalarString(value))},`,
         )
         .join('\n')
       return `<?hh\n\n$handle = curl_init(${hackString(url)});\ncurl_setopt($handle, CURLOPT_CUSTOMREQUEST, ${hackString(method)});${hackHeaders(headers)}\ncurl_setopt($handle, CURLOPT_POSTFIELDS, dict[\n${fields}\n]);\ncurl_setopt($handle, CURLOPT_RETURNTRANSFER, true);\n$response = curl_exec($handle);\nif ($response === false) {\n  throw new Exception(curl_error($handle));\n}\ncurl_close($handle);`
@@ -197,7 +197,7 @@ function buildCode(format: CodeFormat, request: PlaygroundRequestExample) {
         parts.push(
           fileName
             ? `  --form ${shellQuote(`${name}=@/path/to/${fileName}`)}`
-            : `  --form ${shellQuote(`${name}=${String(value ?? '')}`)}`,
+            : `  --form ${shellQuote(`${name}=${scalarString(value)}`)}`,
         )
       }
     } else if (formEncoded) {
@@ -311,6 +311,7 @@ interface PostmanCollection {
   variable?: PostmanCollectionVariable[]
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function buildPostmanCollection(
   title: string,
   originalRequest: PlaygroundRequestExample,
@@ -376,6 +377,7 @@ export function buildPostmanCollection(
  * by every operation card. Requests retain their complete raw URLs, which is
  * important because the playground spans more than one API origin.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function buildMergedPostmanCollection(
   title: string,
   folders: PlaygroundPostmanFolder[],
@@ -439,7 +441,7 @@ function buildPostmanBody(
             : {
                 key: name,
                 type: 'text',
-                value: escapePostmanPositionalPlaceholders(String(value ?? '')),
+                value: escapePostmanPositionalPlaceholders(scalarString(value)),
               },
       ),
     }
@@ -449,7 +451,7 @@ function buildPostmanBody(
       urlencoded: Object.entries(objectValue(request.body)).map(
         ([key, value]) => ({
           key,
-          value: escapePostmanPositionalPlaceholders(String(value ?? '')),
+          value: escapePostmanPositionalPlaceholders(scalarString(value)),
           type: 'text',
         }),
       ),
@@ -508,16 +510,19 @@ const postmanAliases: Record<string, string> = {
 
 function normalizePostmanValue(value: unknown): unknown {
   if (typeof value === 'string') {
-    let normalized = value.replace(/<([A-Z][A-Z0-9_-]*)>/g, (_, alias) => {
-      const name =
-        postmanAliases[alias] ??
-        alias
-          .toLowerCase()
-          .split('_')
-          .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join('-')
-      return `{{${name}}}`
-    })
+    let normalized = value.replace(
+      /<([A-Z][A-Z0-9_-]*)>/g,
+      (_match: string, alias: string) => {
+        const name =
+          postmanAliases[alias] ??
+          alias
+            .toLowerCase()
+            .split('_')
+            .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join('-')
+        return `{{${name}}}`
+      },
+    )
     for (const [alias, name] of Object.entries(postmanAliases))
       normalized = normalized.replace(
         new RegExp(`\\b${alias}\\b`, 'g'),
@@ -567,18 +572,14 @@ function isVariable(value: string) {
 
 function multipartFields(body: unknown) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return []
-  return Object.entries(body).map(([name, value]) => ({
-    name,
-    value,
-    fileName:
-      value && typeof value === 'object' && 'name' in value
-        ? String(value.name)
-        : undefined,
-    mediaType:
-      value && typeof value === 'object' && 'type' in value
-        ? String(value.type)
-        : undefined,
-  }))
+  return Object.entries(body as Record<string, unknown>).map(
+    ([name, value]) => ({
+      name,
+      value,
+      fileName: objectStringProperty(value, 'name'),
+      mediaType: objectStringProperty(value, 'type'),
+    }),
+  )
 }
 
 function requestHeaders(
@@ -612,7 +613,21 @@ function hackValue(value: unknown): string {
       .map(([key, child]) => `${hackString(key)} => ${hackValue(child)}`)
       .join(', ')}]`
   if (typeof value === 'string') return hackString(value)
-  return String(value)
+  return scalarString(value)
+}
+
+function scalarString(value: unknown): string {
+  if (value === undefined || value === null) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean')
+    return String(value)
+  return JSON.stringify(value)
+}
+
+function objectStringProperty(value: unknown, property: string) {
+  if (!value || typeof value !== 'object' || !(property in value))
+    return undefined
+  return scalarString((value as Record<string, unknown>)[property])
 }
 
 function hackHeaders(headers: Record<string, string>) {

@@ -328,7 +328,7 @@ function fieldExpression(field: string, filters: Array<[string, unknown]>) {
     (expression, [name, value]) =>
       value === undefined
         ? expression
-        : `${expression}.${name}(${Array.isArray(value) ? JSON.stringify(value) : String(value)})`,
+        : `${expression}.${name}(${typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? String(value) : JSON.stringify(value)})`,
     field,
   )
 }

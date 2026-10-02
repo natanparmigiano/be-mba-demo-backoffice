@@ -62,6 +62,7 @@ export function PlaygroundPostmanRegistryProvider({
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useRegisterPlaygroundPostmanEntry(
   entry: PlaygroundPostmanEntry,
 ) {
@@ -81,11 +82,13 @@ export function useRegisterPlaygroundPostmanEntry(
   }, [context, entry, id])
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function usePlaygroundPostmanVariableReplacements() {
   return useContext(RegistryContext)?.variableReplacements
 }
 
 /** Converts the mounted-card registry into the nested serializer input. */
+// eslint-disable-next-line react-refresh/only-export-components
 export function postmanFoldersFromRegistry(
   registry: PlaygroundPostmanRegistry,
 ): PlaygroundPostmanFolder[] {
