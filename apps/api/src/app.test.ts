@@ -90,11 +90,16 @@ describe('API', () => {
     assert.ok(event)
     assert.equal(event.key, String(channel.id))
     assert.equal(event.value, payload)
-    assert.deepEqual(event.headers, {
-      'channel-id': String(channel.id),
-      'content-type': 'application/json',
-      source: 'wa-cloud-webhook',
-    })
+    assert.match(event.headers['arrived-at'] ?? '', /^\d{4}-\d{2}-\d{2}T/)
+    assert.deepEqual(
+      { ...event.headers, 'arrived-at': undefined },
+      {
+        'arrived-at': undefined,
+        'channel-id': String(channel.id),
+        'content-type': 'application/json',
+        source: 'wa-cloud-webhook',
+      },
+    )
     await eventBus.close()
   })
 

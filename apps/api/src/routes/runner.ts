@@ -9,6 +9,7 @@ import {
   RunnerFunctionNameConflictError,
   RunnerFunctionNotFoundError,
   RunnerMcpNameConflictError,
+  RunnerMcpInUseError,
   RunnerMcpNotFoundError,
   RUNNER_MCP_PACKAGE_MAX_BYTES,
   RunnerParameterValidationError,
@@ -732,6 +733,12 @@ function handleRunnerError(
   if (error instanceof RunnerMcpNameConflictError) {
     return c.json(
       { code: 'MCP_NAME_CONFLICT' as const, message: error.message },
+      409,
+    )
+  }
+  if (error instanceof RunnerMcpInUseError) {
+    return c.json(
+      { code: 'MCP_USED_BY_AGENT' as const, message: error.message },
       409,
     )
   }

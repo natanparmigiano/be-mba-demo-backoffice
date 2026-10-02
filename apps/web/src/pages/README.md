@@ -36,7 +36,8 @@ switcher. Each page then owns one route-level workflow:
 - `AgentPage`: treats Cloud API phone-number registration as a prerequisite;
   unregistered channels expose only the registration card and do not load or
   render agent management, backup, import, or export workflows.
-- `ChannelsPage`: WhatsApp connections. `/channels/new` and `/channels/:id`
+- `ChannelsPage`: named WhatsApp connections, with display phone numbers shown
+  as secondary identity. `/channels/new` and `/channels/:id`
   provide route-backed, tabbed channel configuration for identity,
   provider-backed phone registration, message QR codes, conversational
   icebreakers and commands, webhook forwarding, and credentials. The directory
@@ -96,7 +97,10 @@ switcher. Each page then owns one route-level workflow:
   agent cannot be unintentionally enabled by the package.
 - `/agents/:id/connectors/:connectorId` provides the full connector form,
   connector-tool CRUD, and recent connector logs. The `new` connector ID opens
-  the creation form. Connector names are normalized to snake_case while skill
+  the creation form. New connectors can be associated with a local MCP, which
+  creates a dedicated 12-month API key and locks the provider-managed fields;
+  associated connectors expose key rotation and expiry warnings. Connector
+  names are normalized to snake_case while skill
   titles are normalized to kebab-case. Connector tool names also normalize to
   snake_case.
 - `/agents/:id/evals/:evalCaseId` shows an MBA evaluation scenario, starts its

@@ -39,7 +39,7 @@ type ChannelsResponse = InferResponseType<
 >
 type ChannelOption = Pick<
   ChannelsResponse['channels'][number],
-  'id' | 'waPhoneNumber'
+  'id' | 'name' | 'waPhoneNumber'
 >
 
 interface GroupQuery {
@@ -98,8 +98,9 @@ export function GroupsPage() {
         const result = await response.json()
         if (!ignore) {
           setChannels(
-            result.channels.map(({ id, waPhoneNumber }) => ({
+            result.channels.map(({ id, name, waPhoneNumber }) => ({
               id,
+              name,
               waPhoneNumber,
             })),
           )
@@ -313,7 +314,7 @@ export function GroupsPage() {
               <option value="">{t('groups.allChannels')}</option>
               {channels.map((channel) => (
                 <option key={channel.id} value={channel.id}>
-                  {channel.waPhoneNumber}
+                  {channel.name} — {channel.waPhoneNumber}
                 </option>
               ))}
             </Select>
@@ -388,8 +389,9 @@ export function GroupsPage() {
                       <code className="text-xs">{group.providerGroupId}</code>
                     </TableCell>
                     <TableCell>
-                      <p>{group.channel.waPhoneNumber}</p>
+                      <p>{group.channel.name}</p>
                       <p className="text-xs text-muted-foreground">
+                        {group.channel.waPhoneNumber} ·{' '}
                         {t('groups.channelNumber', { id: group.channel.id })}
                       </p>
                     </TableCell>
@@ -531,7 +533,7 @@ function GroupDetailsDialog({
               />
               <GroupField
                 label={t('groups.channel')}
-                value={`${detail.channel.waPhoneNumber} · #${detail.channel.id}`}
+                value={`${detail.channel.name} · ${detail.channel.waPhoneNumber} · #${detail.channel.id}`}
               />
               <GroupField
                 label={t('groups.descriptionField')}

@@ -73,7 +73,7 @@ production deployments should use the S3-compatible files adapter.
 
 ### MBA chats and messages
 
-`mba.channels` owns WhatsApp phone-number configuration and sensitive credentials for an application agent. Every channel belongs to exactly one Better Auth `auth.organization`; the indexed foreign key is the tenant boundary. `mba.contacts` and `mba.groups` reference their channel and store provider identities plus current metadata. Both feed `mba.chats`, which gives every direct or group message stream a durable application identity. Chats also retain channel and organization foreign keys as deliberate denormalizations for indexed tenant inbox pagination. Neither group webhook state nor chat activity deletes these records.
+`mba.channels` owns a human-readable channel name, WhatsApp phone-number configuration, and sensitive credentials for an application agent. Every channel belongs to exactly one Better Auth `auth.organization`; the indexed foreign key is the tenant boundary. `mba.contacts` and `mba.groups` reference their channel and store provider identities plus current metadata. Both feed `mba.chats`, which gives every direct or group message stream a durable application identity. Chats also retain channel and organization foreign keys as deliberate denormalizations for indexed tenant inbox pagination. Neither group webhook state nor chat activity deletes these records.
 
 `mba.messages` stores the current WhatsApp message projection and belongs to a chat. Its optional `contact_id` identifies the remote direct-chat contact or the sender represented by a group message. Common identifiers, timestamps, forwarding markers, AI-generation provenance, display text, media metadata, outbound template names and their nullable Marketing Messages API flag, the durable file-store key for downloaded media, and typed UI-facing content objects are normalized during ingestion, while the complete deeply typed message remains in JSONB. Incoming messages receive the local `read` status when the chat is handled by the MBA agent and `delivered` otherwise; current outbound delivery status, recipient, Meta billing-conversation, pricing, callback, and error data are projected onto the message. AI-owned inbound traffic also advances the local read cursor without increasing the unread count.
 
@@ -93,12 +93,24 @@ their unique storage paths, sizes, and creation order.
 
 `mba.message_status_events` preserves the append-only delivery-status history while the provider message ID makes message upserts idempotent. `mba.chat_events` stores non-message activity attached to a chat: billing-window observations, Business Agents ownership handovers and agent events, group changes, calls, call statuses, and user preferences. The model supports incoming `messages`, Business Agents `standby`, history, message echoes, and status-first rows.
 
+`mba.webhooks` is the organization-scoped archival log for successfully
+processed webhook envelopes. It preserves the complete JSON payload together
+with arrival, processing-start, and completion timestamps plus processing and
+end-to-end durations. Channel and arrival indexes support the log viewer's
+newest-first cursor pagination and filters.
+
 Channel foreign keys remain restrictive. Application channel deletion performs
 an explicit reverse-order cleanup of status events, chat events, messages,
-chats, contacts, and groups inside one transaction before deleting the channel;
-it does not add or depend on channel-level database cascades.
+chats, contacts, groups, and archived webhooks inside one transaction before
+deleting the channel; it does not add or depend on channel-level database
+cascades.
 
 Composite foreign keys enforce that every chat's denormalized channel matches its contact or group and that its denormalized organization matches the channel owner. These keys are maintained by ingestion and cannot drift through direct database writes.
+
+`runner.agent_mcp_connectors` records the local MCP backing a Meta agent
+connector, including the channel, provider connector ID, and dedicated runner
+API key. Its channel, MCP, and API-key foreign keys are restrictive rather
+than cascading, so an active association blocks channel or MCP deletion.
 
 See [`MBA_MESSAGE_MODEL.md`](MBA_MESSAGE_MODEL.md) for field mappings, ordering rules, and the intended ingestion transactions.
 

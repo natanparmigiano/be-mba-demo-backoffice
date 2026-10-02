@@ -75,6 +75,7 @@ export interface ContactSummary {
   id: number
   channel: {
     id: number
+    name: string
     waPhoneNumber: string
   }
   waId: string | null
@@ -385,6 +386,7 @@ async function listContacts(
       id: contacts.id,
       channelId: channels.id,
       channelPhoneNumber: channels.waPhoneNumber,
+      channelName: channels.name,
       waId: contacts.waId,
       userId: contacts.userId,
       profileName: contacts.profileName,
@@ -422,6 +424,7 @@ async function getContact(
       id: contacts.id,
       channelId: channels.id,
       channelPhoneNumber: channels.waPhoneNumber,
+      channelName: channels.name,
       waId: contacts.waId,
       userId: contacts.userId,
       parentUserId: contacts.parentUserId,
@@ -670,6 +673,7 @@ function toContactSummary(row: {
   id: number
   channelId: number
   channelPhoneNumber: string
+  channelName: string
   waId: string | null
   userId: string | null
   profileName: string | null
@@ -681,6 +685,7 @@ function toContactSummary(row: {
     id: row.id,
     channel: {
       id: row.channelId,
+      name: row.channelName,
       waPhoneNumber: row.channelPhoneNumber,
     },
     waId: row.waId,

@@ -3,6 +3,7 @@ import { describe, it } from 'node:test'
 import {
   RunnerFunctionExecutionInProgressError,
   RunnerFunctionNameConflictError,
+  RunnerMcpInUseError,
 } from '@mba-demo/runner'
 import type {
   CreatedRunnerApiKey,
@@ -357,6 +358,26 @@ describe('runner route', () => {
       'update:org-one:3:customer_operations',
       'delete:org-one:3',
     ])
+  })
+
+  it('reports that an MCP associated with an agent cannot be deleted', async () => {
+    const route = createRunnerRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      runner: createRunner({
+        deleteMcp: async () => {
+          throw new RunnerMcpInUseError()
+        },
+      }),
+    })
+
+    const response = await route.request('/mcps/3', { method: 'DELETE' })
+
+    assert.equal(response.status, 409)
+    assert.deepEqual(await response.json(), {
+      code: 'MCP_USED_BY_AGENT',
+      message:
+        'This MCP cannot be deleted because it is being used by an agent.',
+    })
   })
 
   it('exports, inspects, and transactionally imports complete MCP packages', async () => {

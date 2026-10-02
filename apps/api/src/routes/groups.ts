@@ -38,6 +38,7 @@ export interface GroupSummary {
   id: number
   channel: {
     id: number
+    name: string
     waPhoneNumber: string
   }
   providerGroupId: string
@@ -171,6 +172,7 @@ async function listGroups(
       id: groups.id,
       channelId: channels.id,
       channelPhoneNumber: channels.waPhoneNumber,
+      channelName: channels.name,
       providerGroupId: groups.providerGroupId,
       subject: groups.subject,
       description: groups.description,
@@ -211,6 +213,7 @@ async function getGroup(
       id: groups.id,
       channelId: channels.id,
       channelPhoneNumber: channels.waPhoneNumber,
+      channelName: channels.name,
       providerGroupId: groups.providerGroupId,
       subject: groups.subject,
       description: groups.description,
@@ -243,6 +246,7 @@ function toGroupSummary(row: {
   id: number
   channelId: number
   channelPhoneNumber: string
+  channelName: string
   providerGroupId: string
   subject: string | null
   description: string | null
@@ -257,6 +261,7 @@ function toGroupSummary(row: {
     id: row.id,
     channel: {
       id: row.channelId,
+      name: row.channelName,
       waPhoneNumber: row.channelPhoneNumber,
     },
     providerGroupId: row.providerGroupId,

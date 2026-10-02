@@ -119,6 +119,7 @@ export const createWaCloudWebhookRoute = (
     const eventOptions = {
       key: String(channelId),
       headers: {
+        'arrived-at': new Date().toISOString(),
         'channel-id': String(channelId),
         'content-type': 'application/json',
         source: 'wa-cloud-webhook',

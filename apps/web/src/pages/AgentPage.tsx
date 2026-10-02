@@ -1775,8 +1775,11 @@ export function AgentPage() {
               {t('agent.eyebrow')}
             </p>
             <h1 className="mt-1 text-3xl font-black tracking-tight">
-              {channel.waPhoneNumber}
+              {channel.name}
             </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {channel.waPhoneNumber}
+            </p>
           </div>
           <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
             {status && (

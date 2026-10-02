@@ -11,7 +11,6 @@ COPY package.json yarn.lock ./
 COPY apps/api/package.json ./apps/api/package.json
 COPY apps/sso-cli/package.json ./apps/sso-cli/package.json
 COPY apps/web/package.json ./apps/web/package.json
-COPY apps/webhook-bridge/package.json ./apps/webhook-bridge/package.json
 COPY apps/webhook-generator/package.json ./apps/webhook-generator/package.json
 COPY lib/auth/package.json ./lib/auth/package.json
 COPY lib/db/package.json ./lib/db/package.json
@@ -59,7 +58,6 @@ WORKDIR /app
 COPY --from=production-dependencies --chown=node:node /app/ ./
 COPY --from=build --chown=node:node /app/apps/api/dist/ ./apps/api/dist/
 COPY --from=build --chown=node:node /app/apps/web/dist/ ./apps/web/dist/
-COPY --from=build --chown=node:node /app/apps/webhook-bridge/dist/ ./apps/webhook-bridge/dist/
 COPY --from=build --chown=node:node /app/lib/auth/dist/ ./lib/auth/dist/
 COPY --from=build --chown=node:node /app/lib/db/dist/ ./lib/db/dist/
 COPY --from=build --chown=node:node /app/lib/db/drizzle/ ./lib/db/drizzle/

@@ -2,6 +2,7 @@ import type { InferRequestType, InferResponseType } from 'hono/client'
 import {
   ChevronLeft,
   KeyRound,
+  Link2,
   Pencil,
   Plus,
   Plug,
@@ -56,6 +57,24 @@ type ConnectorToolPayload = InferRequestType<
 >['json']
 type LogsResponse = InferResponseType<ConnectorEndpoint['logs']['$get'], 200>
 type ConnectorLog = LogsResponse['logs'][number]
+type LocalMcpsResponse = InferResponseType<
+  (typeof apiClient.api.channels)[':id']['local-mcps']['$get'],
+  200
+>
+type LocalMcp = LocalMcpsResponse['mcps'][number]
+type LocalMcpAssociationResponse = InferResponseType<
+  ConnectorEndpoint['local-mcp-association']['$get'],
+  200
+>
+type LocalMcpAssociation = NonNullable<
+  LocalMcpAssociationResponse['association']
+>
+type PreparedLocalMcpAssociation = {
+  mcpId: number
+  mcpName: string
+  apiKeyId: number
+  expiresAt: string
+}
 type CredentialLocation = 'headers' | 'queryParams' | 'bodyParams'
 type CredentialRow = {
   id: number
@@ -141,6 +160,15 @@ export function AgentConnectorPage() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [localMcps, setLocalMcps] = useState<LocalMcp[]>([])
+  const [selectedLocalMcpId, setSelectedLocalMcpId] = useState('')
+  const [isLocalMcpDialogOpen, setIsLocalMcpDialogOpen] = useState(false)
+  const [isPreparingLocalMcp, setIsPreparingLocalMcp] = useState(false)
+  const [isRefreshingLocalMcpKey, setIsRefreshingLocalMcpKey] = useState(false)
+  const [preparedLocalMcp, setPreparedLocalMcp] =
+    useState<PreparedLocalMcpAssociation | null>(null)
+  const [localMcpAssociation, setLocalMcpAssociation] =
+    useState<LocalMcpAssociation | null>(null)
 
   const [isToolDialogOpen, setIsToolDialogOpen] = useState(false)
   const [editingToolId, setEditingToolId] = useState<string | null>(null)
@@ -208,6 +236,8 @@ export function AgentConnectorPage() {
       setChannel(selectedChannel)
       if (isNew) {
         setForm(emptyConnectorForm())
+        setPreparedLocalMcp(null)
+        setLocalMcpAssociation(null)
         setIsEditingCredentials(true)
         return
       }
@@ -215,18 +245,25 @@ export function AgentConnectorPage() {
 
       const endpoint =
         apiClient.api.channels[':id']['agent-connectors'][':connectorId']
-      const [connectorResponse, toolsResponse, logsResponse] =
-        await Promise.all([
-          endpoint.$get({
-            param: { id: String(channelId), connectorId: currentConnectorId },
-          }),
-          endpoint.tools.$get({
-            param: { id: String(channelId), connectorId: currentConnectorId },
-          }),
-          endpoint.logs.$get({
-            param: { id: String(channelId), connectorId: currentConnectorId },
-          }),
-        ])
+      const [
+        connectorResponse,
+        toolsResponse,
+        logsResponse,
+        associationResponse,
+      ] = await Promise.all([
+        endpoint.$get({
+          param: { id: String(channelId), connectorId: currentConnectorId },
+        }),
+        endpoint.tools.$get({
+          param: { id: String(channelId), connectorId: currentConnectorId },
+        }),
+        endpoint.logs.$get({
+          param: { id: String(channelId), connectorId: currentConnectorId },
+        }),
+        endpoint['local-mcp-association'].$get({
+          param: { id: String(channelId), connectorId: currentConnectorId },
+        }),
+      ])
       if (!connectorResponse.ok) {
         throw new Error(
           await readApiError(connectorResponse, t('connector.loadFailed')),
@@ -242,6 +279,11 @@ export function AgentConnectorPage() {
           await readApiError(logsResponse, t('connector.logs.failed')),
         )
       }
+      if (!associationResponse.ok) {
+        throw new Error(
+          await readApiError(associationResponse, t('connector.loadFailed')),
+        )
+      }
       const loadedConnector = (await connectorResponse.json()).connector
       const loadedLogs = await logsResponse.json()
       setConnector(loadedConnector)
@@ -250,6 +292,9 @@ export function AgentConnectorPage() {
       setTools((await toolsResponse.json()).tools)
       setLogs(loadedLogs.logs)
       setLogStats(loadedLogs.stats)
+      setLocalMcpAssociation(
+        (await associationResponse.json()).association ?? null,
+      )
     } catch (reason) {
       setError(getErrorMessage(reason, t('connector.loadFailed')))
     } finally {
@@ -282,7 +327,15 @@ export function AgentConnectorPage() {
       const response = isNew
         ? await apiClient.api.channels[':id']['agent-connectors'].$post({
             param: { id: String(channelId) },
-            json: payload,
+            json: preparedLocalMcp
+              ? {
+                  ...payload,
+                  localMcpAssociation: {
+                    mcpId: preparedLocalMcp.mcpId,
+                    apiKeyId: preparedLocalMcp.apiKeyId,
+                  },
+                }
+              : payload,
           })
         : await apiClient.api.channels[':id']['agent-connectors'][
             ':connectorId'
@@ -310,6 +363,106 @@ export function AgentConnectorPage() {
       setError(getErrorMessage(reason, t('connector.saveFailed')))
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const openLocalMcpDialog = async () => {
+    if (!channelId || !canManage || !isNew) return
+    setError(null)
+    try {
+      const response = await apiClient.api.channels[':id']['local-mcps'].$get({
+        param: { id: String(channelId) },
+      })
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, t('connector.localMcp.loadFailed')),
+        )
+      }
+      const mcps = (await response.json()).mcps
+      setLocalMcps(mcps)
+      setSelectedLocalMcpId(mcps[0] ? String(mcps[0].id) : '')
+      setIsLocalMcpDialogOpen(true)
+    } catch (reason) {
+      setError(getErrorMessage(reason, t('connector.localMcp.loadFailed')))
+    }
+  }
+
+  const prepareLocalMcp = async () => {
+    const mcpId = Number(selectedLocalMcpId)
+    if (!channelId || !Number.isSafeInteger(mcpId) || mcpId <= 0) return
+    setIsPreparingLocalMcp(true)
+    setError(null)
+    try {
+      const response = await apiClient.api.channels[':id'][
+        'local-mcps'
+      ].prepare.$post({
+        param: { id: String(channelId) },
+        json: { mcpId },
+      })
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, t('connector.localMcp.prepareFailed')),
+        )
+      }
+      const { association } = await response.json()
+      setForm({
+        ...emptyConnectorForm(),
+        name: association.name,
+        description: association.description,
+        baseUrl: association.baseUrl,
+        connectorProtocol: 'MCP',
+        authType: 'API_KEY',
+      })
+      setCredentialRows([
+        {
+          id: nextCredentialId,
+          location: 'headers',
+          fieldName: 'Authorization',
+          value: association.apiKey,
+          prefix: 'Bearer ',
+        },
+      ])
+      setNextCredentialId((current) => current + 1)
+      setPreparedLocalMcp({
+        mcpId: association.mcpId,
+        mcpName: association.mcpName,
+        apiKeyId: association.apiKeyId,
+        expiresAt: association.expiresAt,
+      })
+      setIsEditingCredentials(true)
+      setIsLocalMcpDialogOpen(false)
+    } catch (reason) {
+      setError(getErrorMessage(reason, t('connector.localMcp.prepareFailed')))
+    } finally {
+      setIsPreparingLocalMcp(false)
+    }
+  }
+
+  const refreshLocalMcpKey = async () => {
+    if (!channelId || !connectorId || !localMcpAssociation) return
+    setIsRefreshingLocalMcpKey(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const response = await apiClient.api.channels[':id']['agent-connectors'][
+        ':connectorId'
+      ]['local-mcp-association']['refresh-key'].$post({
+        param: { id: String(channelId), connectorId },
+      })
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, t('connector.localMcp.refreshFailed')),
+        )
+      }
+      const result = await response.json()
+      setConnector(result.connector)
+      setForm(toConnectorForm(result.connector))
+      setLocalMcpAssociation(result.association)
+      setNotice(t('connector.localMcp.refreshed'))
+    } catch (reason) {
+      setError(getErrorMessage(reason, t('connector.localMcp.refreshFailed')))
+    } finally {
+      setIsRefreshingLocalMcpKey(false)
     }
   }
 
@@ -527,6 +680,13 @@ export function AgentConnectorPage() {
     connector.authType === form.authType &&
     !isEditingCredentials,
   )
+  const isLocalMcpManaged = Boolean(preparedLocalMcp || localMcpAssociation)
+  const localMcpExpiresAt =
+    preparedLocalMcp?.expiresAt ?? localMcpAssociation?.expiresAt
+  const localMcpKeyStatus = getLocalMcpKeyStatus(
+    localMcpExpiresAt,
+    localMcpAssociation?.revokedAt ?? null,
+  )
 
   const editCredentials = () => {
     setIsEditingCredentials(true)
@@ -572,7 +732,9 @@ export function AgentConnectorPage() {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
-            {t('connector.eyebrow', { phoneNumber: channel.waPhoneNumber })}
+            {t('connector.eyebrow', {
+              phoneNumber: `${channel.name} · ${channel.waPhoneNumber}`,
+            })}
           </p>
           <h1 className="mt-1 truncate text-3xl font-black tracking-tight">
             {isNew ? t('connector.createTitle') : connector?.name}
@@ -601,7 +763,55 @@ export function AgentConnectorPage() {
       <SectionCard
         title={t('connector.form.title')}
         description={t('connector.form.description')}
+        action={
+          isNew ? (
+            <Button
+              disabled={!canManage || isSaving || isPreparingLocalMcp}
+              size="sm"
+              type="button"
+              variant="outline"
+              onClick={() => void openLocalMcpDialog()}
+            >
+              <Link2 className="size-4" aria-hidden />
+              {t('connector.localMcp.associate')}
+            </Button>
+          ) : localMcpAssociation && canManage ? (
+            <Button
+              isLoading={isRefreshingLocalMcpKey}
+              size="sm"
+              type="button"
+              variant="outline"
+              onClick={() => void refreshLocalMcpKey()}
+            >
+              <RefreshCw className="size-4" aria-hidden />
+              {t('connector.localMcp.refreshKey')}
+            </Button>
+          ) : null
+        }
       >
+        {isLocalMcpManaged && (
+          <div className="mb-5 grid gap-2">
+            <p className="rounded-lg border border-primary/25 bg-primary/8 p-3 text-sm text-primary">
+              {t('connector.localMcp.managed', {
+                name: preparedLocalMcp?.mcpName ?? localMcpAssociation?.mcpName,
+              })}
+            </p>
+            {localMcpKeyStatus !== 'active' && (
+              <p
+                className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning"
+                role="alert"
+              >
+                {t(`connector.localMcp.${localMcpKeyStatus}`, {
+                  date: localMcpExpiresAt
+                    ? new Intl.DateTimeFormat(undefined, {
+                        dateStyle: 'medium',
+                      }).format(new Date(localMcpExpiresAt))
+                    : '',
+                })}
+              </p>
+            )}
+          </div>
+        )}
         <form
           className="grid gap-5"
           onSubmit={(event) => {
@@ -611,7 +821,7 @@ export function AgentConnectorPage() {
         >
           <fieldset
             className="grid gap-x-5 md:grid-cols-2"
-            disabled={!canManage || isSaving}
+            disabled={!canManage || isSaving || isLocalMcpManaged}
           >
             <Input
               error={
@@ -702,7 +912,8 @@ export function AgentConnectorPage() {
                   </p>
                 </div>
                 {credentialsArePreserved ? (
-                  canManage && (
+                  canManage &&
+                  !isLocalMcpManaged && (
                     <Button
                       size="sm"
                       type="button"
@@ -728,7 +939,7 @@ export function AgentConnectorPage() {
                         </Button>
                       )}
                     <Button
-                      disabled={!canManage}
+                      disabled={!canManage || isLocalMcpManaged}
                       size="sm"
                       type="button"
                       variant="outline"
@@ -760,6 +971,7 @@ export function AgentConnectorPage() {
                       key={row.id}
                     >
                       <Select
+                        disabled={isLocalMcpManaged}
                         aria-label={t('connector.credentials.location')}
                         value={row.location}
                         onChange={(event) =>
@@ -782,6 +994,7 @@ export function AgentConnectorPage() {
                         </option>
                       </Select>
                       <Input
+                        disabled={isLocalMcpManaged}
                         aria-label={t('connector.credentials.fieldName')}
                         placeholder={t('connector.credentials.fieldName')}
                         value={row.fieldName}
@@ -795,6 +1008,7 @@ export function AgentConnectorPage() {
                         }
                       />
                       <Input
+                        disabled={isLocalMcpManaged}
                         aria-label={t('connector.credentials.value')}
                         placeholder={t('connector.credentials.value')}
                         type="password"
@@ -809,6 +1023,7 @@ export function AgentConnectorPage() {
                         }
                       />
                       <Input
+                        disabled={isLocalMcpManaged}
                         aria-label={t('connector.credentials.prefix')}
                         placeholder={t('connector.credentials.prefix')}
                         value={row.prefix}
@@ -824,6 +1039,7 @@ export function AgentConnectorPage() {
                       <Button
                         aria-label={t('connector.credentials.remove')}
                         className="mt-0"
+                        disabled={isLocalMcpManaged}
                         size="icon"
                         type="button"
                         variant="ghost"
@@ -954,6 +1170,7 @@ export function AgentConnectorPage() {
           <div className="grid gap-4 rounded-xl border bg-muted/10 p-4">
             <Checkbox
               checked={form.requiresCertificate}
+              disabled={isLocalMcpManaged}
               description={t('connector.form.certificateDescription')}
               label={t('connector.form.requiresCertificate')}
               onChange={(event) =>
@@ -962,6 +1179,7 @@ export function AgentConnectorPage() {
             />
             <Checkbox
               checked={form.hasUserAuthInjection}
+              disabled={isLocalMcpManaged}
               description={t('connector.form.userAuthDescription')}
               label={t('connector.form.userAuth')}
               onChange={(event) =>
@@ -975,6 +1193,7 @@ export function AgentConnectorPage() {
             {form.hasUserAuthInjection && (
               <div className="grid gap-x-4 md:grid-cols-3">
                 <Select
+                  disabled={isLocalMcpManaged}
                   label={t('connector.form.userAuthLocation')}
                   value={form.userAuthLocation}
                   onChange={(event) =>
@@ -994,6 +1213,7 @@ export function AgentConnectorPage() {
                   )}
                 </Select>
                 <Input
+                  disabled={isLocalMcpManaged}
                   label={t('connector.form.userAuthField')}
                   value={form.userAuthFieldName}
                   onChange={(event) =>
@@ -1001,6 +1221,7 @@ export function AgentConnectorPage() {
                   }
                 />
                 <Input
+                  disabled={isLocalMcpManaged}
                   label={t('connector.form.userAuthPrefix')}
                   value={form.userAuthPrefix}
                   onChange={(event) =>
@@ -1012,7 +1233,7 @@ export function AgentConnectorPage() {
           </div>
 
           <div className="flex justify-end border-t pt-5">
-            {canManage ? (
+            {canManage && (!isLocalMcpManaged || isNew) ? (
               <Button
                 disabled={
                   !isConnectorFormValid(
@@ -1028,11 +1249,11 @@ export function AgentConnectorPage() {
               >
                 {t(isNew ? 'connector.form.create' : 'connector.form.save')}
               </Button>
-            ) : (
+            ) : !canManage ? (
               <p className="text-sm text-muted-foreground">
                 {t('agent.managersOnly')}
               </p>
-            )}
+            ) : null}
           </div>
         </form>
       </SectionCard>
@@ -1213,6 +1434,58 @@ export function AgentConnectorPage() {
           )}
         </>
       )}
+
+      <Dialog
+        dismissible={!isPreparingLocalMcp}
+        open={isLocalMcpDialogOpen}
+        title={t('connector.localMcp.dialogTitle')}
+        description={t('connector.localMcp.dialogDescription')}
+        icon={
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+            <Link2 className="size-5" aria-hidden />
+          </span>
+        }
+        onOpenChange={(open) => {
+          if (!isPreparingLocalMcp) setIsLocalMcpDialogOpen(open)
+        }}
+      >
+        <div className="grid w-full gap-4">
+          {localMcps.length > 0 ? (
+            <Select
+              disabled={isPreparingLocalMcp}
+              label={t('connector.localMcp.select')}
+              value={selectedLocalMcpId}
+              onChange={(event) => setSelectedLocalMcpId(event.target.value)}
+            >
+              {localMcps.map((mcp) => (
+                <option key={mcp.id} value={mcp.id}>
+                  {mcp.name}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {t('connector.localMcp.empty')}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button
+              disabled={isPreparingLocalMcp}
+              variant="ghost"
+              onClick={() => setIsLocalMcpDialogOpen(false)}
+            >
+              {t('connector.cancel')}
+            </Button>
+            <Button
+              disabled={!selectedLocalMcpId || localMcps.length === 0}
+              isLoading={isPreparingLocalMcp}
+              onClick={() => void prepareLocalMcp()}
+            >
+              {t('connector.localMcp.associate')}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
 
       <Dialog
         dismissible={!isSavingTool}
@@ -1532,6 +1805,19 @@ function connectorStatusTone(status: AgentConnector['connectionStatus']) {
   if (status === 'ACTIVE') return 'success' as const
   if (status === 'ERROR' || status === 'EXPIRED') return 'danger' as const
   return 'warning' as const
+}
+
+function getLocalMcpKeyStatus(
+  expiresAt: string | undefined,
+  revokedAt: string | null,
+): 'active' | 'expiringSoon' | 'expired' | 'revoked' {
+  if (revokedAt) return 'revoked'
+  if (!expiresAt) return 'active'
+  const expiration = new Date(expiresAt).getTime()
+  if (expiration <= Date.now()) return 'expired'
+  return expiration - Date.now() < 30 * 24 * 60 * 60 * 1000
+    ? 'expiringSoon'
+    : 'active'
 }
 
 function userAuthLocationKey(location: ConnectorForm['userAuthLocation']) {

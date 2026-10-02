@@ -63,6 +63,15 @@ export function getWhatsAppWebhookMaxRetries(
   return parsed
 }
 
+export function isWebhookArchiveEnabled(
+  env: RuntimeEnvironment = getRuntimeEnvironment(),
+): boolean {
+  const value = env.WEBHOOK_ARCHIVE_ENABLED?.trim().toLowerCase()
+  if (!value || value === 'true') return true
+  if (value === 'false') return false
+  throw new Error('WEBHOOK_ARCHIVE_ENABLED must be true or false')
+}
+
 function getRuntimeEnvironment(): RuntimeEnvironment {
   const runtime = globalThis as typeof globalThis & {
     process?: { env?: RuntimeEnvironment }

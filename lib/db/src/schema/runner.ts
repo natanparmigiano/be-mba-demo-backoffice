@@ -14,6 +14,7 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { organization } from './auth.js'
+import { channels } from './mba.js'
 
 export const runnerSchema = pgSchema('runner')
 
@@ -260,6 +261,54 @@ export const runnerFunctionApiKeys = runnerSchema.table(
       'function_api_keys_expiration_after_creation_check',
       sql`${table.expiresAt} > ${table.createdAt}`,
     ),
+  ],
+)
+
+export const runnerAgentMcpConnectors = runnerSchema.table(
+  'agent_mcp_connectors',
+  {
+    channelId: bigint('channel_id', { mode: 'number' }).notNull(),
+    mcpId: bigint('mcp_id', { mode: 'number' }).notNull(),
+    connectorId: text('connector_id').notNull(),
+    apiKeyId: bigint('api_key_id', { mode: 'number' }).notNull(),
+    organizationId: text('organization_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.channelId, table.mcpId],
+      name: 'agent_mcp_connectors_pkey',
+    }),
+    foreignKey({
+      columns: [table.channelId, table.organizationId],
+      foreignColumns: [channels.id, channels.organizationId],
+      name: 'agent_mcp_connectors_channel_organization_fk',
+    }).onDelete('restrict'),
+    foreignKey({
+      columns: [table.mcpId, table.organizationId],
+      foreignColumns: [runnerMcps.id, runnerMcps.organizationId],
+      name: 'agent_mcp_connectors_mcp_organization_fk',
+    }).onDelete('restrict'),
+    foreignKey({
+      columns: [table.apiKeyId, table.organizationId],
+      foreignColumns: [
+        runnerFunctionApiKeys.id,
+        runnerFunctionApiKeys.organizationId,
+      ],
+      name: 'agent_mcp_connectors_api_key_organization_fk',
+    }).onDelete('restrict'),
+    uniqueIndex('agent_mcp_connectors_channel_connector_uidx').on(
+      table.channelId,
+      table.connectorId,
+    ),
+    index('agent_mcp_connectors_mcp_id_idx').on(table.mcpId),
+    index('agent_mcp_connectors_api_key_id_idx').on(table.apiKeyId),
+    index('agent_mcp_connectors_organization_id_idx').on(table.organizationId),
   ],
 )
 

@@ -388,6 +388,9 @@ export function ApiPlaygroundPage() {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-bold">
+                          {channel.name}
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                           {channel.waPhoneNumber}
                         </span>
                         <span className="mt-1 block truncate font-mono text-[11px] text-muted-foreground">

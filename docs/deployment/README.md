@@ -129,6 +129,7 @@ yarn install --frozen-lockfile
 | `ENABLE_WORKER_IN_PROCESS`    | No                     | App                 | Enables registered subscribers inside the HTTP process                               |
 | `SUBSCRIBE_TO_TOPICS`         | No                     | Subscriber process  | `all` or a comma-separated list of registered topics                                 |
 | `WA_WEBHOOK_MAX_RETRIES`      | No                     | Subscriber process  | Webhook retries before dead-lettering; defaults to `5` and accepts `0` through `100` |
+| `WEBHOOK_ARCHIVE_ENABLED`     | No                     | Subscriber process  | Saves processed webhook payloads and timing data; defaults to `true`                 |
 | `FILES_ADAPTER`               | No                     | App                 | `fs` (default), `postgres`, or `s3`; PostgreSQL is test/demo-only                    |
 | `FILES_DIRECTORY`             | FS                     | App                 | Durable filesystem storage root                                                      |
 | `FILES_PUBLIC_URL`            | FS/Postgres production | App                 | Public Hono base URL used in application-served signed links                         |

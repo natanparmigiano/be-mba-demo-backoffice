@@ -214,6 +214,8 @@ export const channels = mbaSchema.table(
       .references(() => organization.id, { onDelete: 'restrict' }),
     // Provider discriminator; only WhatsApp is supported until Instagram and Messenger are modeled.
     type: text('type', { enum: channelTypes }).notNull(),
+    // Human-readable label used to identify the channel throughout the application.
+    name: text('name').notNull(),
     // WhatsApp phone number in display/dialable form, corresponding to webhook `metadata.display_phone_number`.
     waPhoneNumber: text('wa_phone_number').notNull(),
     // Meta phone-number ID used by Cloud API calls and webhook `metadata.phone_number_id`.
@@ -254,6 +256,33 @@ export const channels = mbaSchema.table(
       table.waPhoneNumberId,
     ),
     index('channels_organization_id_idx').on(table.organizationId),
+  ],
+)
+
+export const webhooks = mbaSchema.table(
+  'webhooks',
+  {
+    id: bigint('id', { mode: 'number' })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    channelId: bigint('channel_id', { mode: 'number' })
+      .notNull()
+      .references(() => channels.id, { onDelete: 'restrict' }),
+    payload: jsonb('payload').notNull(),
+    arrivedAt: timestamp('arrived_at', { withTimezone: true }).notNull(),
+    processingStartedAt: timestamp('processing_started_at', {
+      withTimezone: true,
+    }).notNull(),
+    processedAt: timestamp('processed_at', { withTimezone: true }).notNull(),
+    processingTimeMs: integer('processing_time_ms').notNull(),
+    totalTimeMs: integer('total_time_ms').notNull(),
+  },
+  (table) => [
+    index('webhooks_channel_id_arrived_at_idx').on(
+      table.channelId,
+      table.arrivedAt,
+    ),
+    index('webhooks_arrived_at_idx').on(table.arrivedAt),
   ],
 )
 

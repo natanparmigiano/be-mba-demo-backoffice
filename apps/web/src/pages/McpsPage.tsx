@@ -68,6 +68,7 @@ export function McpsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [endpointCopied, setEndpointCopied] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
@@ -200,11 +201,15 @@ export function McpsPage() {
     if (typeof selectedMcpId !== 'number') return
     setIsDeleting(true)
     setError(null)
+    setDeleteError(null)
     try {
       const response = await apiClient.api.runner.mcps[':id'].$delete({
         param: { id: String(selectedMcpId) },
       })
       if (!response.ok) {
+        if (response.status === 409) {
+          throw new Error(t('mcps.usedByAgent'))
+        }
         throw new Error(await readApiError(response, t('mcps.deleteFailed')))
       }
       setDeleteOpen(false)
@@ -213,7 +218,7 @@ export function McpsPage() {
       setNotice(t('mcps.deleted'))
       await refresh()
     } catch (reason) {
-      setError(getErrorMessage(reason, t('mcps.deleteFailed')))
+      setDeleteError(getErrorMessage(reason, t('mcps.deleteFailed')))
     } finally {
       setIsDeleting(false)
     }
@@ -687,7 +692,10 @@ export function McpsPage() {
                   <Button
                     type="button"
                     variant="danger"
-                    onClick={() => setDeleteOpen(true)}
+                    onClick={() => {
+                      setDeleteError(null)
+                      setDeleteOpen(true)
+                    }}
                   >
                     <Trash2 className="size-4" />
                     {t('mcps.delete')}
@@ -723,21 +731,31 @@ export function McpsPage() {
           title={t('mcps.deleteTitle')}
           onOpenChange={(open) => !isDeleting && setDeleteOpen(open)}
         >
-          <div className="flex justify-end gap-2">
-            <Button
-              disabled={isDeleting}
-              variant="ghost"
-              onClick={() => setDeleteOpen(false)}
-            >
-              {t('mcps.cancel')}
-            </Button>
-            <Button
-              isLoading={isDeleting}
-              variant="danger"
-              onClick={() => void deleteMcp()}
-            >
-              {t('mcps.confirmDelete')}
-            </Button>
+          <div className="grid gap-4">
+            {deleteError && (
+              <p
+                className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                role="alert"
+              >
+                {deleteError}
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button
+                disabled={isDeleting}
+                variant="ghost"
+                onClick={() => setDeleteOpen(false)}
+              >
+                {t('mcps.cancel')}
+              </Button>
+              <Button
+                isLoading={isDeleting}
+                variant="danger"
+                onClick={() => void deleteMcp()}
+              >
+                {t('mcps.confirmDelete')}
+              </Button>
+            </div>
           </div>
         </Dialog>
         {importDialog}

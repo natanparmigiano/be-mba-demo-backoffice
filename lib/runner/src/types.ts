@@ -98,6 +98,9 @@ export type RunnerMcpMutationResult =
   | { status: 'not_found' }
   | { status: 'invalid_function_ids'; functionIds: number[] }
 
+export type RunnerDeleteMcpResult =
+  { status: 'deleted' } | { status: 'not_found' } | { status: 'in_use' }
+
 export type RunnerMcpImportResult =
   | { status: 'imported'; mcp: RunnerMcpDefinition }
   | { status: 'blocked'; preview: RunnerMcpImportPreview }
@@ -244,7 +247,10 @@ export interface RunnerRepository {
     mcpId: number,
     input: UpdateRunnerMcpInput,
   ): Promise<RunnerMcpMutationResult>
-  deleteMcp(organizationId: string, mcpId: number): Promise<boolean>
+  deleteMcp(
+    organizationId: string,
+    mcpId: number,
+  ): Promise<RunnerDeleteMcpResult>
   exportMcpPackage(
     organizationId: string,
     mcpId: number,

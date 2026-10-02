@@ -114,6 +114,7 @@ const en = {
     chat: 'Chat',
     agents: 'Agents',
     channels: 'Channels',
+    webhooks: 'Webhooks',
     templateMessages: 'TEMPLATE MESSAGES',
     templates: 'Templates',
     sending: 'Sending',
@@ -953,6 +954,8 @@ const en = {
     detailLoadFailed: 'Could not load the MCP.',
     saveFailed: 'Could not save the MCP.',
     deleteFailed: 'Could not delete the MCP.',
+    usedByAgent:
+      'This MCP cannot be deleted because it is being used by an agent.',
   },
   apiKeys: {
     metaDescription:
@@ -1199,6 +1202,24 @@ const en = {
     loading: 'Loading connector…',
     loadFailed: 'Could not load the connector.',
     invalid: 'Invalid channel or connector ID.',
+    localMcp: {
+      associate: 'Associate with local MCP',
+      dialogTitle: 'Associate a local MCP',
+      dialogDescription:
+        'Choose an MCP. A dedicated 12-month API key will be created immediately and the connector fields will be filled automatically.',
+      select: 'Local MCP',
+      empty: 'No local MCPs are available.',
+      loadFailed: 'Could not load local MCPs.',
+      prepareFailed: 'Could not prepare the local MCP connector.',
+      managed:
+        'Managed from local MCP {{name}}. Connector fields are read-only.',
+      refreshKey: 'Refresh API key',
+      refreshFailed: 'Could not refresh the local MCP API key.',
+      refreshed: 'The local MCP API key was refreshed.',
+      expiringSoon: 'The API key expires soon, on {{date}}.',
+      expired: 'The API key expired on {{date}}. Refresh it to reconnect.',
+      revoked: 'The API key was revoked. Refresh it to reconnect.',
+    },
     back: 'Back to agent',
     saved: 'Connector saved.',
     saveFailed: 'Could not save the connector.',
@@ -1295,6 +1316,10 @@ const en = {
       title: 'Connector logs',
       description: 'The latest connector activity reported by Meta.',
       refresh: 'Refresh',
+      export: 'Export JSONL',
+      exporting: 'Exporting…',
+      exportHint: 'Select a channel, start time, and end time to export.',
+      exportFailed: 'Could not export webhooks.',
       failed: 'Could not load connector logs.',
       empty: 'No connector activity has been recorded yet.',
       successRate: 'Success rate',
@@ -1965,6 +1990,8 @@ const en = {
       'This permanently removes {{channel}} and all of its local data.',
     loadingDeletionPreview: 'Calculating the local deletion impact…',
     deletionPreviewFailed: 'Could not calculate the deletion impact.',
+    localMcpDeleteBlocked:
+      'This channel cannot be deleted because an agent connector uses a local MCP.',
     deleteWarning:
       'This cannot be undone. The following local records will be permanently deleted.',
     deletionImpact: {
@@ -2017,6 +2044,7 @@ const en = {
     channelIdentity: 'Channel identity',
     identityDescription:
       'Configure the WhatsApp phone number and its Meta business identifiers.',
+    name: 'Channel name',
     displayPhoneNumber: 'Display phone number',
     countryCodeHint: 'Include the country code.',
     whatsAppBusinessAccountId: 'WhatsApp Business Account ID',
@@ -2141,6 +2169,23 @@ const en = {
     saveChanges: 'Save changes',
     requestFailed: 'Request failed',
     operationFailed: 'The operation failed.',
+  },
+  webhooks: {
+    title: 'Webhooks',
+    description: 'An archive of received and processed webhook payloads.',
+    filters: 'Webhook filters',
+    channel: 'Channel',
+    allChannels: 'All channels',
+    from: 'Arrived after',
+    to: 'Arrived before',
+    refresh: 'Refresh',
+    payload: 'Payload',
+    processing: 'Processing',
+    total: 'Total',
+    loading: 'Loading webhooks…',
+    loadFailed: 'Could not load webhooks.',
+    empty: 'No webhooks found',
+    emptyDescription: 'Received webhooks will appear here.',
   },
   contacts: {
     metaDescription:
@@ -3044,6 +3089,7 @@ const pt: typeof en = {
     chat: 'Chat',
     agents: 'Agentes',
     channels: 'Canais',
+    webhooks: 'Webhooks',
     templateMessages: 'MENSAGENS DE MODELO',
     templates: 'Modelos',
     sending: 'Envios',
@@ -3890,6 +3936,8 @@ const pt: typeof en = {
     detailLoadFailed: 'Não foi possível carregar o MCP.',
     saveFailed: 'Não foi possível salvar o MCP.',
     deleteFailed: 'Não foi possível excluir o MCP.',
+    usedByAgent:
+      'Este MCP não pode ser excluído porque está sendo usado por um agente.',
   },
   apiKeys: {
     metaDescription:
@@ -4144,6 +4192,25 @@ const pt: typeof en = {
     loading: 'Carregando conector…',
     loadFailed: 'Não foi possível carregar o conector.',
     invalid: 'ID do canal ou conector inválido.',
+    localMcp: {
+      associate: 'Associar ao MCP local',
+      dialogTitle: 'Associar um MCP local',
+      dialogDescription:
+        'Escolha um MCP. Uma chave de API dedicada com validade de 12 meses será criada imediatamente e os campos do conector serão preenchidos automaticamente.',
+      select: 'MCP local',
+      empty: 'Nenhum MCP local está disponível.',
+      loadFailed: 'Não foi possível carregar os MCPs locais.',
+      prepareFailed: 'Não foi possível preparar o conector do MCP local.',
+      managed:
+        'Gerenciado pelo MCP local {{name}}. Os campos do conector são somente leitura.',
+      refreshKey: 'Atualizar chave da API',
+      refreshFailed: 'Não foi possível atualizar a chave da API do MCP local.',
+      refreshed: 'A chave da API do MCP local foi atualizada.',
+      expiringSoon: 'A chave da API expira em breve, em {{date}}.',
+      expired:
+        'A chave da API expirou em {{date}}. Atualize-a para reconectar.',
+      revoked: 'A chave da API foi revogada. Atualize-a para reconectar.',
+    },
     back: 'Voltar ao agente',
     saved: 'Conector salvo.',
     saveFailed: 'Não foi possível salvar o conector.',
@@ -4245,6 +4312,11 @@ const pt: typeof en = {
       description:
         'As atividades mais recentes do conector relatadas pela Meta.',
       refresh: 'Atualizar',
+      export: 'Exportar JSONL',
+      exporting: 'Exportando…',
+      exportHint:
+        'Selecione um canal, horário inicial e horário final para exportar.',
+      exportFailed: 'Não foi possível exportar os webhooks.',
       failed: 'Não foi possível carregar os logs do conector.',
       empty: 'Nenhuma atividade do conector foi registrada ainda.',
       successRate: 'Taxa de sucesso',
@@ -4926,6 +4998,8 @@ const pt: typeof en = {
       'Isso remove permanentemente {{channel}} e todos os seus dados locais.',
     loadingDeletionPreview: 'Calculando o impacto da exclusão local…',
     deletionPreviewFailed: 'Não foi possível calcular o impacto da exclusão.',
+    localMcpDeleteBlocked:
+      'Este canal não pode ser excluído porque um conector do agente usa um MCP local.',
     deleteWarning:
       'Esta ação não pode ser desfeita. Os seguintes registros locais serão excluídos permanentemente.',
     deletionImpact: {
@@ -4980,6 +5054,7 @@ const pt: typeof en = {
     channelIdentity: 'Identidade do canal',
     identityDescription:
       'Configure o número do WhatsApp e seus identificadores comerciais da Meta.',
+    name: 'Nome do canal',
     displayPhoneNumber: 'Número de telefone exibido',
     countryCodeHint: 'Inclua o código do país.',
     whatsAppBusinessAccountId: 'ID da conta do WhatsApp Business',
@@ -5105,6 +5180,23 @@ const pt: typeof en = {
     saveChanges: 'Salvar alterações',
     requestFailed: 'A solicitação falhou',
     operationFailed: 'A operação falhou.',
+  },
+  webhooks: {
+    title: 'Webhooks',
+    description: 'Um arquivo dos payloads de webhook recebidos e processados.',
+    filters: 'Filtros de webhooks',
+    channel: 'Canal',
+    allChannels: 'Todos os canais',
+    from: 'Recebido após',
+    to: 'Recebido antes',
+    refresh: 'Atualizar',
+    payload: 'Payload',
+    processing: 'Processamento',
+    total: 'Total',
+    loading: 'Carregando webhooks…',
+    loadFailed: 'Não foi possível carregar os webhooks.',
+    empty: 'Nenhum webhook encontrado',
+    emptyDescription: 'Os webhooks recebidos aparecerão aqui.',
   },
   contacts: {
     metaDescription:
@@ -6020,6 +6112,7 @@ const es: typeof en = {
     chat: 'Chat',
     agents: 'Agentes',
     channels: 'Canales',
+    webhooks: 'Webhooks',
     templateMessages: 'MENSAJES DE PLANTILLA',
     templates: 'Plantillas',
     sending: 'Envíos',
@@ -6876,6 +6969,8 @@ const es: typeof en = {
     detailLoadFailed: 'No se pudo cargar el MCP.',
     saveFailed: 'No se pudo guardar el MCP.',
     deleteFailed: 'No se pudo eliminar el MCP.',
+    usedByAgent:
+      'Este MCP no se puede eliminar porque está siendo usado por un agente.',
   },
   apiKeys: {
     metaDescription:
@@ -7131,6 +7226,26 @@ const es: typeof en = {
     loading: 'Cargando conector…',
     loadFailed: 'No se pudo cargar el conector.',
     invalid: 'ID de canal o conector no válido.',
+    localMcp: {
+      associate: 'Asociar con MCP local',
+      dialogTitle: 'Asociar un MCP local',
+      dialogDescription:
+        'Elige un MCP. Se creará de inmediato una clave de API dedicada con 12 meses de validez y los campos del conector se completarán automáticamente.',
+      select: 'MCP local',
+      empty: 'No hay MCP locales disponibles.',
+      loadFailed: 'No se pudieron cargar los MCP locales.',
+      prepareFailed: 'No se pudo preparar el conector del MCP local.',
+      managed:
+        'Administrado por el MCP local {{name}}. Los campos del conector son de solo lectura.',
+      refreshKey: 'Actualizar clave de API',
+      refreshFailed: 'No se pudo actualizar la clave de API del MCP local.',
+      refreshed: 'Se actualizó la clave de API del MCP local.',
+      expiringSoon: 'La clave de API vence pronto, el {{date}}.',
+      expired:
+        'La clave de API venció el {{date}}. Actualízala para volver a conectar.',
+      revoked:
+        'La clave de API fue revocada. Actualízala para volver a conectar.',
+    },
     back: 'Volver al agente',
     saved: 'Conector guardado.',
     saveFailed: 'No se pudo guardar el conector.',
@@ -7231,6 +7346,11 @@ const es: typeof en = {
       title: 'Registros del conector',
       description: 'La actividad más reciente del conector informada por Meta.',
       refresh: 'Actualizar',
+      export: 'Exportar JSONL',
+      exporting: 'Exportando…',
+      exportHint:
+        'Selecciona un canal, una hora inicial y una hora final para exportar.',
+      exportFailed: 'No se pudieron exportar los webhooks.',
       failed: 'No se pudieron cargar los registros del conector.',
       empty: 'Todavía no se registró actividad del conector.',
       successRate: 'Tasa de éxito',
@@ -7916,6 +8036,8 @@ const es: typeof en = {
       'Esto elimina permanentemente {{channel}} y todos sus datos locales.',
     loadingDeletionPreview: 'Calculando el impacto de la eliminación local…',
     deletionPreviewFailed: 'No se pudo calcular el impacto de la eliminación.',
+    localMcpDeleteBlocked:
+      'Este canal no se puede eliminar porque un conector del agente usa un MCP local.',
     deleteWarning:
       'Esta acción no se puede deshacer. Los siguientes registros locales se eliminarán permanentemente.',
     deletionImpact: {
@@ -7970,6 +8092,7 @@ const es: typeof en = {
     channelIdentity: 'Identidad del canal',
     identityDescription:
       'Configura el número de WhatsApp y sus identificadores empresariales de Meta.',
+    name: 'Nombre del canal',
     displayPhoneNumber: 'Número de teléfono visible',
     countryCodeHint: 'Incluye el código del país.',
     whatsAppBusinessAccountId: 'ID de la cuenta de WhatsApp Business',
@@ -8094,6 +8217,24 @@ const es: typeof en = {
     saveChanges: 'Guardar cambios',
     requestFailed: 'La solicitud falló',
     operationFailed: 'La operación falló.',
+  },
+  webhooks: {
+    title: 'Webhooks',
+    description:
+      'Un archivo de los payloads de webhook recibidos y procesados.',
+    filters: 'Filtros de webhooks',
+    channel: 'Canal',
+    allChannels: 'Todos los canales',
+    from: 'Recibido después de',
+    to: 'Recibido antes de',
+    refresh: 'Actualizar',
+    payload: 'Payload',
+    processing: 'Procesamiento',
+    total: 'Total',
+    loading: 'Cargando webhooks…',
+    loadFailed: 'No se pudieron cargar los webhooks.',
+    empty: 'No se encontraron webhooks',
+    emptyDescription: 'Los webhooks recibidos aparecerán aquí.',
   },
   contacts: {
     metaDescription:

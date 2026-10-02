@@ -64,6 +64,8 @@ tests independent from Kafka.
 views. `getFunction` includes the complete immutable revision history.
 `listMcps`, `getMcp`, `createMcp`, `updateMcp`, and `deleteMcp` manage named
 packs of existing active functions.
+An MCP associated with a Meta agent connector cannot be deleted until that
+connector is explicitly removed; the association is never cascade-deleted.
 Function and MCP names have a 512-character limit and use `snake_case`;
 functions additionally allow a double underscore as an import namespace
 separator. The management UI normalizes names as they are entered, and the

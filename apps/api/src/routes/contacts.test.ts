@@ -10,7 +10,11 @@ import {
 
 const contact: ContactSummary = {
   id: 17,
-  channel: { id: 4, waPhoneNumber: '+55 11 99999-0000' },
+  channel: {
+    id: 4,
+    name: 'Brazil support',
+    waPhoneNumber: '+55 11 99999-0000',
+  },
   waId: '5511999990000',
   userId: 'meta-user-id',
   profileName: 'Ada Lovelace',

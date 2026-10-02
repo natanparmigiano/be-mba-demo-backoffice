@@ -17,6 +17,7 @@ import { LoginPage } from '../pages/LoginPage'
 import { OrganizationPage } from '../pages/OrganizationPage'
 import { TemplatesPage } from '../pages/TemplatesPage'
 import { TemplateSendingPage } from '../pages/TemplateSendingPage'
+import { WebhooksPage } from '../pages/WebhooksPage'
 import {
   AdminRoute,
   AuthSessionRoute,
@@ -72,6 +73,7 @@ export function AppRouter() {
               <Route path="/channels" element={<ChannelsPage />} />
               <Route path="/channels/new" element={<ChannelsPage />} />
               <Route path="/channels/:channelId" element={<ChannelsPage />} />
+              <Route path="/webhooks" element={<WebhooksPage />} />
               <Route path="/contacts" element={<ContactsPage />} />
               <Route path="/groups" element={<GroupsPage />} />
               <Route path="/templates" element={<TemplatesPage />} />

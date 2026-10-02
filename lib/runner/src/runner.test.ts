@@ -8,6 +8,7 @@ import {
   RunnerFunctionNameConflictError,
   RunnerFunctionNotFoundError,
   RunnerMcpAccessForbiddenError,
+  RunnerMcpInUseError,
   RunnerMcpNotFoundError,
   RunnerParameterValidationError,
   hashApiKey,
@@ -331,6 +332,16 @@ describe('Runner API keys', () => {
     )
   })
 
+  it('refuses to delete an MCP associated with an agent connector', async () => {
+    const runner = new Runner({
+      repository: createRepository({
+        deleteMcp: async () => ({ status: 'in_use' }),
+      }),
+    })
+
+    await assert.rejects(runner.deleteMcp('org-one', 12), RunnerMcpInUseError)
+  })
+
   it('upserts and uses the organization UI key for browser execution', async () => {
     let upsertedOrganizationId: string | undefined
     let upsertedHash: string | undefined
@@ -477,7 +488,7 @@ function createRepository(
       functionIds: [],
     }),
     updateMcp: async () => ({ status: 'not_found' }),
-    deleteMcp: async () => false,
+    deleteMcp: async () => ({ status: 'not_found' }),
     exportMcpPackage: async () => undefined,
     inspectMcpImport: async () => {
       throw new Error('Unexpected inspectMcpImport call')

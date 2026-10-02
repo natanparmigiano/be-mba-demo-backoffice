@@ -4,6 +4,7 @@ import {
   DEFAULT_WA_WEBHOOK_MAX_RETRIES,
   getSubscribedTopics,
   getWhatsAppWebhookMaxRetries,
+  isWebhookArchiveEnabled,
   isInProcessWorkerEnabled,
 } from './worker-config.js'
 
@@ -75,5 +76,21 @@ describe('worker configuration', () => {
         /integer from 0 to 100/,
       )
     }
+  })
+
+  it('enables webhook archival by default and accepts an explicit override', () => {
+    assert.equal(isWebhookArchiveEnabled({}), true)
+    assert.equal(
+      isWebhookArchiveEnabled({ WEBHOOK_ARCHIVE_ENABLED: 'true' }),
+      true,
+    )
+    assert.equal(
+      isWebhookArchiveEnabled({ WEBHOOK_ARCHIVE_ENABLED: 'false' }),
+      false,
+    )
+    assert.throws(
+      () => isWebhookArchiveEnabled({ WEBHOOK_ARCHIVE_ENABLED: 'sometimes' }),
+      /must be true or false/,
+    )
   })
 })

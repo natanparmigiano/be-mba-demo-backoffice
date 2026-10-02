@@ -10,7 +10,11 @@ import {
 
 const group: GroupSummary = {
   id: 23,
-  channel: { id: 4, waPhoneNumber: '+55 11 99999-0000' },
+  channel: {
+    id: 4,
+    name: 'Brazil support',
+    waPhoneNumber: '+55 11 99999-0000',
+  },
   providerGroupId: 'group-provider-id',
   subject: 'Product team',
   description: 'Product launch planning',

@@ -100,6 +100,13 @@ export class RunnerMcpNameConflictError extends Error {
   }
 }
 
+export class RunnerMcpInUseError extends Error {
+  constructor() {
+    super('This MCP cannot be deleted because it is being used by an agent.')
+    this.name = 'RunnerMcpInUseError'
+  }
+}
+
 export class RunnerMcpAccessForbiddenError extends Error {
   constructor() {
     super('Runner API key does not grant access to this MCP')
@@ -339,7 +346,9 @@ export class Runner {
   async deleteMcp(organizationId: string, mcpId: number): Promise<void> {
     assertOrganizationId(organizationId)
     assertFunctionId(mcpId)
-    if (!(await this.#repository.deleteMcp(organizationId, mcpId))) {
+    const result = await this.#repository.deleteMcp(organizationId, mcpId)
+    if (result.status === 'in_use') throw new RunnerMcpInUseError()
+    if (result.status === 'not_found') {
       throw new RunnerMcpNotFoundError()
     }
   }

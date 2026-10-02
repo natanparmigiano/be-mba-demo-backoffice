@@ -88,6 +88,7 @@ import {
   createWebhooksPlaygroundRoute,
   type WebhooksPlaygroundRouteOptions,
 } from './routes/webhooks-playground.js'
+import { createWebhooksRoute } from './routes/webhooks.js'
 
 interface CreateAppOptions {
   analyticsPlayground?: AnalyticsPlaygroundRouteOptions
@@ -224,6 +225,7 @@ export const createApp = ({
     )
     .route('/api/admin/organizations', createAdminOrganizationsRoute())
     .route('/api/channels', createChannelManagementRoute(channelManagement))
+    .route('/api/webhooks', createWebhooksRoute())
     .route('/api/chats', createChatsRoute({ fileStore, ...chats }))
     .route('/api/contacts', createContactsRoute(contacts))
     .route('/api/files', createFilesRoute(fileStore))

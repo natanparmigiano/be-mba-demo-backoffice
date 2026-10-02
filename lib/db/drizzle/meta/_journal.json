@@ -190,6 +190,27 @@
       "when": 1790964067009,
       "tag": "0026_brown_saracen",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790968737754,
+      "tag": "0027_wealthy_mole_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790970453421,
+      "tag": "0028_dashing_diamondback",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790970945292,
+      "tag": "0029_special_mongu",
+      "breakpoints": true
     }
   ]
 }

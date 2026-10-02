@@ -246,7 +246,7 @@ export function TemplateSendingPage() {
             >
               {channels.map((channel) => (
                 <option key={channel.id} value={channel.id}>
-                  {channel.waPhoneNumber || channel.waPhoneNumberId}
+                  {channel.name} — {channel.waPhoneNumber}
                 </option>
               ))}
             </Select>
@@ -319,7 +319,7 @@ export function TemplateSendingPage() {
             >
               {channels.map((channel) => (
                 <option key={channel.id} value={channel.id}>
-                  {channel.waPhoneNumber || channel.waPhoneNumberId}
+                  {channel.name} — {channel.waPhoneNumber}
                 </option>
               ))}
             </Select>

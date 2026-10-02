@@ -15,6 +15,7 @@ import {
   SendHorizontal,
   ShieldCheck,
   Users,
+  Webhook,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -92,6 +93,12 @@ export function AppShell() {
       to: '/channels',
       label: t('shell.channels'),
       icon: RadioTower,
+      end: false,
+    },
+    {
+      to: '/webhooks',
+      label: t('shell.webhooks'),
+      icon: Webhook,
       end: false,
     },
   ]

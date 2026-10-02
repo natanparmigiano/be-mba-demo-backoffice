@@ -39,6 +39,7 @@ import type {
 const channel: ChannelSummary = {
   id: 7,
   type: 'whatsapp',
+  name: 'Brazil support',
   waPhoneNumber: '+55 11 99999-0000',
   waPhoneNumberId: 'phone-id',
   waWabaId: 'waba-id',
@@ -157,6 +158,31 @@ describe('channel management route', () => {
     assert.equal(createdOrganizationId, 'org-two')
   })
 
+  it('requires a channel name when creating a channel', async () => {
+    let createCalled = false
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository({
+        create: async () => {
+          createCalled = true
+          return channel
+        },
+      }),
+    })
+    const inputWithoutName: Partial<ReturnType<typeof createChannelInput>> =
+      createChannelInput()
+    delete inputWithoutName.name
+
+    const response = await route.request('/', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(inputWithoutName),
+    })
+
+    assert.equal(response.status, 400)
+    assert.equal(createCalled, false)
+  })
+
   it('prevents regular members from mutating channels', async () => {
     const route = createChannelManagementRoute({
       getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
@@ -263,6 +289,24 @@ describe('channel management route', () => {
     })
     assert.equal(metaDeleteCalled, false)
     assert.deepEqual(deletedBackupPaths, ['agent-backups/org/7/backup.agtx'])
+  })
+
+  it('blocks channel deletion previews while a local MCP is associated', async () => {
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
+      repository: createRepository({
+        hasLocalMcpAssociation: async () => true,
+      }),
+    })
+
+    const response = await route.request('/7/deletion-impact')
+
+    assert.equal(response.status, 409)
+    assert.deepEqual(await response.json(), {
+      code: 'CHANNEL_USED_BY_AGENT_MCP',
+      message:
+        'This channel cannot be deleted because an agent connector uses a local MCP.',
+    })
   })
 
   it('requires manager access and matching confirmation to delete a channel', async () => {
@@ -2794,6 +2838,8 @@ function createRepository(
       groups: 0,
       messages: 0,
     }),
+    hasLocalMcpAssociation: async () => false,
+    removeLocalMcpAssociation: async () => undefined,
     delete: async () => ({
       status: 'deleted',
       impact: { contacts: 0, groups: 0, messages: 0 },
@@ -2976,6 +3022,7 @@ function createImportPackage(includeEvaluations = false): File {
 
 function createChannelInput() {
   return {
+    name: 'Brazil support',
     waPhoneNumber: '+55 11 99999-0000',
     waPhoneNumberId: 'phone-id',
     waWabaId: 'waba-id',

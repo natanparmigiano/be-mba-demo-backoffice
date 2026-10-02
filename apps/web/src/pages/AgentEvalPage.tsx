@@ -221,7 +221,9 @@ export function AgentEvalPage() {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
-            {t('evaluation.eyebrow', { phoneNumber: channel.waPhoneNumber })}
+            {t('evaluation.eyebrow', {
+              phoneNumber: `${channel.name} · ${channel.waPhoneNumber}`,
+            })}
           </p>
           <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">
             {evaluation.scenario}

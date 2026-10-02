@@ -345,6 +345,51 @@ describe('WhatsApp webhook subscriber', () => {
     assert.deepEqual(calls, [{ channelId: 42, webhook }])
   })
 
+  it('archives timing and payload data after successful processing', async () => {
+    const archives: unknown[] = []
+    const arrivedAt = '2026-10-02T12:00:00.000Z'
+    const handler = createWhatsAppWebhookHandler(
+      async () => ({
+        organizationId: 'org-one',
+        chatEvents: 0,
+        contacts: 0,
+        groups: 0,
+        messages: 0,
+        statuses: 0,
+        updates: [],
+      }),
+      async () => new Map(),
+      { publish: async () => undefined },
+      async (archive) => {
+        archives.push(archive)
+      },
+    )
+
+    await handler({
+      topic: 'wa-cloud.webhook.v1',
+      key: '42',
+      headers: { 'arrived-at': arrivedAt, 'channel-id': '42' },
+      timestamp: Date.parse(arrivedAt),
+      value: JSON.stringify(webhook),
+    })
+
+    assert.equal(archives.length, 1)
+    assert.deepEqual(
+      {
+        ...(archives[0] as Record<string, unknown>),
+        processedAt: undefined,
+        processingStartedAt: undefined,
+      },
+      {
+        arrivedAt: new Date(arrivedAt),
+        channelId: 42,
+        payload: webhook,
+        processedAt: undefined,
+        processingStartedAt: undefined,
+      },
+    )
+  })
+
   it('rejects inconsistent channel routing metadata', async () => {
     const handler = createWhatsAppWebhookHandler(async () => ({
       organizationId: 'org-one',

@@ -53,7 +53,7 @@ type ChannelsResponse = InferResponseType<
 >
 type ChannelOption = Pick<
   ChannelsResponse['channels'][number],
-  'id' | 'waPhoneNumber'
+  'id' | 'name' | 'waPhoneNumber'
 >
 type ContactDeletionPreview = InferResponseType<
   (typeof apiClient.api.contacts)[':id']['deletion-impact']['$get'],
@@ -151,8 +151,9 @@ export function ContactsPage() {
         const result = await response.json()
         if (!ignore) {
           setChannels(
-            result.channels.map(({ id, waPhoneNumber }) => ({
+            result.channels.map(({ id, name, waPhoneNumber }) => ({
               id,
+              name,
               waPhoneNumber,
             })),
           )
@@ -527,7 +528,7 @@ export function ContactsPage() {
               <option value="">{t('contacts.allChannels')}</option>
               {channels.map((channel) => (
                 <option key={channel.id} value={channel.id}>
-                  {channel.waPhoneNumber}
+                  {channel.name} — {channel.waPhoneNumber}
                 </option>
               ))}
             </Select>
@@ -609,8 +610,9 @@ export function ContactsPage() {
                       </p>
                     </TableCell>
                     <TableCell>
-                      <p>{contact.channel.waPhoneNumber}</p>
+                      <p>{contact.channel.name}</p>
                       <p className="text-xs text-muted-foreground">
+                        {contact.channel.waPhoneNumber} ·{' '}
                         {t('contacts.channelNumber', {
                           id: contact.channel.id,
                         })}
@@ -750,7 +752,7 @@ export function ContactsPage() {
               <option value="">{t('contacts.selectChannel')}</option>
               {channels.map((channel) => (
                 <option key={channel.id} value={channel.id}>
-                  {channel.waPhoneNumber}
+                  {channel.name} — {channel.waPhoneNumber}
                 </option>
               ))}
             </Select>
@@ -1013,7 +1015,7 @@ function ContactDetailsDialog({
               />
               <ContactField
                 label={t('contacts.channel')}
-                value={`${detail.channel.waPhoneNumber} · #${detail.channel.id}`}
+                value={`${detail.channel.name} · ${detail.channel.waPhoneNumber} · #${detail.channel.id}`}
               />
               <ContactField
                 label={t('contacts.firstSeen')}

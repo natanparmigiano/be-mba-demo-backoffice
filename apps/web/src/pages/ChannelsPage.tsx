@@ -53,6 +53,7 @@ import {
 interface ChannelSummary {
   id: number
   type: 'whatsapp'
+  name: string
   waPhoneNumber: string
   waPhoneNumberId: string
   waWabaId: string
@@ -67,6 +68,7 @@ interface ChannelSummary {
 }
 
 interface ChannelFormValues {
+  name: string
   waPhoneNumber: string
   waPhoneNumberId: string
   waWabaId: string
@@ -100,6 +102,7 @@ type ChannelDeletionPreview = InferResponseType<
 >['impact']
 
 const emptyForm: ChannelFormValues = {
+  name: '',
   waPhoneNumber: '',
   waPhoneNumberId: '',
   waWabaId: '',
@@ -244,6 +247,7 @@ export function ChannelsPage() {
     (channel: ChannelSummary) => {
       setSelectedChannel(channel)
       setForm({
+        name: channel.name,
         waPhoneNumber: channel.waPhoneNumber,
         waPhoneNumberId: channel.waPhoneNumberId,
         waWabaId: channel.waWabaId,
@@ -277,6 +281,7 @@ export function ChannelsPage() {
     if (!requestedChannel) return
     setSelectedChannel(requestedChannel)
     setForm({
+      name: requestedChannel.name,
       waPhoneNumber: requestedChannel.waPhoneNumber,
       waPhoneNumberId: requestedChannel.waPhoneNumberId,
       waWabaId: requestedChannel.waWabaId,
@@ -306,6 +311,9 @@ export function ChannelsPage() {
         'deletion-impact'
       ].$get({ param: { id: String(channel.id) } })
       if (!response.ok) {
+        if (response.status === 409) {
+          throw new Error(t('channels.localMcpDeleteBlocked'))
+        }
         throw new Error(
           await readApiError(response, t('channels.deletionPreviewFailed')),
         )
@@ -349,6 +357,7 @@ export function ChannelsPage() {
         response = await apiClient.api.channels[':id'].$patch({
           param: { id: String(selectedChannel.id) },
           json: {
+            name: values.name,
             waPhoneNumber: values.waPhoneNumber,
             waPhoneNumberId: values.waPhoneNumberId,
             waWabaId: values.waWabaId,
@@ -850,7 +859,7 @@ export function ChannelsPage() {
         onOpenChange={(open) => !open && closeDialog()}
         title={t('channels.deleteTitle')}
         description={t('channels.deleteDescription', {
-          channel: selectedChannel?.waPhoneNumber ?? t('channels.thisChannel'),
+          channel: selectedChannel?.name ?? t('channels.thisChannel'),
         })}
         icon={<DialogIcon icon={<Trash2 className="size-5" />} danger />}
       >
@@ -1026,13 +1035,14 @@ function ChannelCard({
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-lg font-bold">
-                {channel.waPhoneNumber}
-              </h3>
+              <h3 className="truncate text-lg font-bold">{channel.name}</h3>
               <Pill tone="success" dot>
                 {t('channels.whatsApp')}
               </Pill>
             </div>
+            <p className="mt-1 truncate text-sm text-muted-foreground">
+              {channel.waPhoneNumber}
+            </p>
           </div>
         </div>
         <div className="flex gap-1">
@@ -1042,7 +1052,7 @@ function ChannelCard({
             size="icon"
             onClick={onShowQrCode}
             aria-label={t('channels.qr.openNamed', {
-              channel: channel.waPhoneNumber,
+              channel: channel.name,
             })}
           >
             <QrCode className="size-4" aria-hidden />
@@ -1055,7 +1065,7 @@ function ChannelCard({
                 size="icon"
                 onClick={onEdit}
                 aria-label={t('channels.editNamed', {
-                  channel: channel.waPhoneNumber,
+                  channel: channel.name,
                 })}
               >
                 <Pencil className="size-4" aria-hidden />
@@ -1066,7 +1076,7 @@ function ChannelCard({
                 size="icon"
                 onClick={onDelete}
                 aria-label={t('channels.deleteNamed', {
-                  channel: channel.waPhoneNumber,
+                  channel: channel.name,
                 })}
               >
                 <Trash2 className="size-4" aria-hidden />
@@ -1461,11 +1471,17 @@ function ChannelFormPage({
             footer={formFooter}
           >
             <Input
+              label={t('channels.name')}
+              value={form.name}
+              onChange={(event) => update('name', event.target.value)}
+              autoFocus
+              required
+            />
+            <Input
               label={t('channels.displayPhoneNumber')}
               hint={t('channels.countryCodeHint')}
               value={form.waPhoneNumber}
               onChange={(event) => update('waPhoneNumber', event.target.value)}
-              autoFocus
               required
             />
             <Input
@@ -1752,6 +1768,7 @@ function DialogError({ message }: { message: string | null }) {
 
 function trimForm(form: ChannelFormValues) {
   return {
+    name: form.name.trim(),
     waPhoneNumber: form.waPhoneNumber.trim(),
     waPhoneNumberId: form.waPhoneNumberId.trim(),
     waWabaId: form.waWabaId.trim(),

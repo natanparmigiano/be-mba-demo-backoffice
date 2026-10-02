@@ -182,6 +182,7 @@ export interface ChatSummary {
   latestInboundMessageAt: string | null
   channel: {
     id: number
+    name: string
     waPhoneNumber: string
   }
   contact: {
@@ -1086,6 +1087,7 @@ async function queryChatSummaryRows(conditions: SQL[], limit: number) {
       unreadMessageCount: chats.unreadMessageCount,
       channelId: channels.id,
       channelPhoneNumber: channels.waPhoneNumber,
+      channelName: channels.name,
       contactId: contacts.id,
       contactProfileName: contacts.profileName,
       contactProfileUsername: contacts.profileUsername,
@@ -1127,6 +1129,7 @@ function toChatSummary(row: ChatSummaryRow): ChatSummary {
     latestInboundMessageAt: row.latestInboundMessageAt?.toISOString() ?? null,
     channel: {
       id: row.channelId,
+      name: row.channelName,
       waPhoneNumber: row.channelPhoneNumber,
     },
     contact:

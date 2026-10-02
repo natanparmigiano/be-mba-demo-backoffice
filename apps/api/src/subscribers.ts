@@ -1,4 +1,4 @@
-import { ingestWhatsAppWebhook } from '@mba-demo/db'
+import { db, ingestWhatsAppWebhook, webhooks } from '@mba-demo/db'
 import type {
   EventBus,
   EventHandler,
@@ -21,6 +21,7 @@ import { archiveWhatsAppWebhookMedia } from './whatsapp-media.js'
 import { publishChatRealtimeEventSafely } from './chat-realtime.js'
 import {
   getSubscribedTopics,
+  isWebhookArchiveEnabled,
   getWhatsAppWebhookMaxRetries,
 } from './worker-config.js'
 
@@ -66,6 +67,27 @@ const executeRunnerFunction = createRunnerExecutionHandler()
 
 type IngestWhatsAppWebhook = typeof ingestWhatsAppWebhook
 type ArchiveWhatsAppWebhookMedia = typeof archiveWhatsAppWebhookMedia
+type ArchiveWhatsAppWebhook = (input: {
+  arrivedAt: Date
+  channelId: number
+  payload: unknown
+  processedAt: Date
+  processingStartedAt: Date
+}) => Promise<void>
+
+const archiveWhatsAppWebhook: ArchiveWhatsAppWebhook = async (input) => {
+  await db.insert(webhooks).values({
+    ...input,
+    processingTimeMs: Math.max(
+      0,
+      input.processedAt.getTime() - input.processingStartedAt.getTime(),
+    ),
+    totalTimeMs: Math.max(
+      0,
+      input.processedAt.getTime() - input.arrivedAt.getTime(),
+    ),
+  })
+}
 
 export interface WhatsAppWebhookDeadLetter {
   schemaVersion: 1
@@ -83,8 +105,18 @@ export function createWhatsAppWebhookHandler(
   ingest: IngestWhatsAppWebhook = ingestWhatsAppWebhook,
   archiveMedia: ArchiveWhatsAppWebhookMedia = archiveWhatsAppWebhookMedia,
   realtime: Pick<PubSub, 'publish'> = pubsub,
+  archive?: ArchiveWhatsAppWebhook,
 ): EventHandler {
+  const archiveWebhook =
+    archive ??
+    (ingest === ingestWhatsAppWebhook &&
+    archiveMedia === archiveWhatsAppWebhookMedia &&
+    realtime === pubsub &&
+    isWebhookArchiveEnabled()
+      ? archiveWhatsAppWebhook
+      : async () => undefined)
   return async (event) => {
+    const processingStartedAt = new Date()
     const headerChannelId = event.headers['channel-id']
     if (event.key && headerChannelId && event.key !== headerChannelId) {
       throw new Error('WhatsApp webhook event key and channel header disagree')
@@ -123,6 +155,20 @@ export function createWhatsAppWebhookHandler(
         ),
       ),
     )
+
+    const headerArrivedAt = event.headers['arrived-at']
+    const arrivedAt = headerArrivedAt
+      ? new Date(headerArrivedAt)
+      : new Date(event.timestamp)
+    await archiveWebhook({
+      arrivedAt: Number.isNaN(arrivedAt.getTime())
+        ? new Date(event.timestamp)
+        : arrivedAt,
+      channelId,
+      payload,
+      processedAt: new Date(),
+      processingStartedAt,
+    })
 
     console.log(
       'Persisted WhatsApp webhook',

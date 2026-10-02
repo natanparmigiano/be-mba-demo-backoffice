@@ -28,7 +28,11 @@ const chat: ChatSummary = {
   updatedAt: '2026-09-30T12:00:00.000Z',
   unreadMessageCount: 3,
   latestInboundMessageAt: '2026-09-30T11:59:00.000Z',
-  channel: { id: 4, waPhoneNumber: '+55 11 99999-0000' },
+  channel: {
+    id: 4,
+    name: 'Brazil support',
+    waPhoneNumber: '+55 11 99999-0000',
+  },
   contact: {
     id: 17,
     profileName: 'Ada Lovelace',

@@ -3,6 +3,7 @@ import {
   organization,
   runnerExecutionLogs,
   runnerFunctionApiKeys,
+  runnerAgentMcpConnectors,
   runnerFunctionRevisions,
   runnerFunctions,
   runnerMcpFunctions,
@@ -541,8 +542,19 @@ export class PostgresRunnerRepository implements RunnerRepository {
     })
   }
 
-  async deleteMcp(organizationId: string, mcpId: number): Promise<boolean> {
+  async deleteMcp(organizationId: string, mcpId: number) {
     return db.transaction(async (transaction) => {
+      const [association] = await transaction
+        .select({ mcpId: runnerAgentMcpConnectors.mcpId })
+        .from(runnerAgentMcpConnectors)
+        .where(
+          and(
+            eq(runnerAgentMcpConnectors.organizationId, organizationId),
+            eq(runnerAgentMcpConnectors.mcpId, mcpId),
+          ),
+        )
+        .limit(1)
+      if (association) return { status: 'in_use' as const }
       await transaction
         .update(runnerFunctionApiKeys)
         .set({
@@ -564,6 +576,8 @@ export class PostgresRunnerRepository implements RunnerRepository {
         )
         .returning({ id: runnerMcps.id })
       return deleted.length > 0
+        ? { status: 'deleted' as const }
+        : { status: 'not_found' as const }
     })
   }
 

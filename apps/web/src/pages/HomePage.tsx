@@ -242,7 +242,7 @@ export function HomePage() {
             >
               {channels.map((channel) => (
                 <option key={channel.id} value={channel.id}>
-                  {channel.waPhoneNumber}
+                  {channel.name} — {channel.waPhoneNumber}
                 </option>
               ))}
             </Select>
@@ -399,16 +399,16 @@ export function HomePage() {
                 key={channel.id}
                 to={`/agents/${channel.id}`}
                 aria-label={t('home.agents.open', {
-                  phone: channel.waPhoneNumber,
+                  phone: channel.name,
                 })}
               >
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
                   <Bot className="size-5" aria-hidden />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-bold">{channel.waPhoneNumber}</p>
+                  <p className="truncate font-bold">{channel.name}</p>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {t('home.agents.type')}
+                    {channel.waPhoneNumber} · {t('home.agents.type')}
                   </p>
                 </div>
                 <ArrowRight

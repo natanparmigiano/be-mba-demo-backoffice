@@ -98,7 +98,6 @@ yarn smoke:runner # smoke-test runner routes, storage, keys, and isolation
 yarn auth:generate # regenerate Better Auth's Drizzle schema
 yarn auth:create-admin --email admin@example.com --name "Admin" --role admin
 yarn sso help     # inspect SSO provider setup and lifecycle commands
-yarn webhook:bridge -- --database-url <url> --channel-id <id>
 ```
 
 The database defaults to `postgresql://postgres:postgres@localhost:5432/mba_demo_backoffice` in development. In production, `NODE_ENV=production` requires an explicit `DATABASE_URL`. Set `PORT` to change the API port and `CORS_ORIGIN` to allow a different frontend origin.
@@ -166,7 +165,6 @@ flowchart LR
 | `apps/api`               | Hono routes, lifecycle, workers, SPA delivery, and exported `AppType`     |
 | `apps/web`               | React/Vite browser application                                            |
 | `apps/sso-cli`           | OIDC and SAML provider administration                                     |
-| `apps/webhook-bridge`    | PostgreSQL-to-Kafka webhook testing bridge                                |
 | `apps/webhook-generator` | Stateful WhatsApp and MBA webhook load generation                         |
 | `lib/*`                  | Shared persistence, auth, messaging, storage, events, and runner packages |
 
@@ -334,7 +332,6 @@ Start with the document closest to the change you are making.
 - [`apps/api/README.md`](apps/api/README.md) — routes, lifecycle, SPA serving, and workers
 - [`apps/web/README.md`](apps/web/README.md) — frontend architecture and conventions
 - [`apps/sso-cli/README.md`](apps/sso-cli/README.md) — SSO administration CLI
-- [`apps/webhook-bridge/README.md`](apps/webhook-bridge/README.md) — PostgreSQL webhook bridge
 - [`apps/webhook-generator/README.md`](apps/webhook-generator/README.md) — synthetic webhook generation
 
 ### Change shared infrastructure

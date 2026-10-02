@@ -227,7 +227,7 @@ function ChannelAgentCard({
     <Link
       className="rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       to={`/agents/${channel.id}`}
-      aria-label={t('agents.openChannel', { phone: channel.waPhoneNumber })}
+      aria-label={t('agents.openChannel', { phone: channel.name })}
     >
       <article className="h-full overflow-hidden rounded-2xl border bg-background shadow-xs transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
         <div className="flex items-start gap-3 border-b p-5">
@@ -236,13 +236,14 @@ function ChannelAgentCard({
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-lg font-bold">
-                {channel.waPhoneNumber}
-              </h3>
+              <h3 className="truncate text-lg font-bold">{channel.name}</h3>
               <Pill tone="success" dot>
                 {t('agents.whatsApp')}
               </Pill>
             </div>
+            <p className="mt-1 truncate text-sm text-muted-foreground">
+              {channel.waPhoneNumber}
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {t('agents.updated', {
                 date: new Intl.DateTimeFormat(locale, {

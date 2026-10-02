@@ -16,7 +16,12 @@ import {
   member,
   messages,
   messageStatusEvents,
+  runnerAgentMcpConnectors,
+  runnerFunctionApiKeys,
+  runnerMcps,
+  webhooks,
 } from '@mba-demo/db'
+import { hashApiKey, runner } from '@mba-demo/runner'
 import {
   createWhatsAppMbaClient,
   WhatsAppMbaApiError,
@@ -108,6 +113,7 @@ const registerPhoneNumberSchema = z.object({
 })
 
 const createChannelSchema = z.object({
+  name: requiredText,
   waPhoneNumber: requiredText,
   waPhoneNumberId: requiredText,
   waWabaId: requiredText,
@@ -260,37 +266,48 @@ const connectorSchema = z
   })
   .strict()
 
-const createConnectorSchema = connectorSchema.superRefine((input, context) => {
-  if (input.authType === 'API_KEY' && !input.authConfig?.apiKey) {
-    context.addIssue({
-      code: 'custom',
-      message: 'API key configuration is required',
-      path: ['authConfig', 'apiKey'],
-    })
-  }
-  if (
-    input.authType === 'API_KEY' &&
-    input.authConfig?.apiKey &&
-    input.authConfig.apiKey.headers.length === 0 &&
-    input.authConfig.apiKey.queryParams.length === 0 &&
-    input.authConfig.apiKey.bodyParams.length === 0
-  ) {
-    context.addIssue({
-      code: 'custom',
-      message: 'At least one API key field is required',
-      path: ['authConfig', 'apiKey'],
-    })
-  }
-  if (
-    input.authType === 'OAUTH2_CLIENT_CREDENTIALS' &&
-    !input.authConfig?.oauth2ClientCredentials
-  ) {
-    context.addIssue({
-      code: 'custom',
-      message: 'OAuth client credentials are required',
-      path: ['authConfig', 'oauth2ClientCredentials'],
-    })
-  }
+const localMcpAssociationSchema = z.object({
+  mcpId: z.number().int().positive(),
+  apiKeyId: z.number().int().positive(),
+})
+
+const createConnectorSchema = connectorSchema
+  .extend({ localMcpAssociation: localMcpAssociationSchema.optional() })
+  .superRefine((input, context) => {
+    if (input.authType === 'API_KEY' && !input.authConfig?.apiKey) {
+      context.addIssue({
+        code: 'custom',
+        message: 'API key configuration is required',
+        path: ['authConfig', 'apiKey'],
+      })
+    }
+    if (
+      input.authType === 'API_KEY' &&
+      input.authConfig?.apiKey &&
+      input.authConfig.apiKey.headers.length === 0 &&
+      input.authConfig.apiKey.queryParams.length === 0 &&
+      input.authConfig.apiKey.bodyParams.length === 0
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'At least one API key field is required',
+        path: ['authConfig', 'apiKey'],
+      })
+    }
+    if (
+      input.authType === 'OAUTH2_CLIENT_CREDENTIALS' &&
+      !input.authConfig?.oauth2ClientCredentials
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'OAuth client credentials are required',
+        path: ['authConfig', 'oauth2ClientCredentials'],
+      })
+    }
+  })
+
+const prepareLocalMcpAssociationSchema = z.object({
+  mcpId: z.number().int().positive(),
 })
 
 const connectorParameterBindingSchema = z.object({
@@ -650,6 +667,7 @@ type UpdateAgentSettingsInput = z.infer<typeof updateAgentSettingsSchema>
 export interface ChannelSummary {
   id: number
   type: 'whatsapp'
+  name: string
   waPhoneNumber: string
   waPhoneNumberId: string
   waWabaId: string
@@ -718,6 +736,7 @@ export type ChannelDeletionResult =
       backupStoragePaths?: string[]
     }
   | { status: 'confirmation_mismatch' }
+  | { status: 'in_use' }
   | { status: 'not_found' }
 
 export interface ChannelManagementRepository {
@@ -747,6 +766,16 @@ export interface ChannelManagementRepository {
     organizationId: string,
     channelId: number,
   ) => Promise<ChannelDeletionPreview | undefined>
+  hasLocalMcpAssociation: (
+    organizationId: string,
+    channelId: number,
+    connectorId?: string,
+  ) => Promise<boolean>
+  removeLocalMcpAssociation: (
+    organizationId: string,
+    channelId: number,
+    connectorId: string,
+  ) => Promise<number | undefined>
   delete: (
     organizationId: string,
     channelId: number,
@@ -1001,6 +1030,7 @@ export interface AgentComponentsService {
 const safeChannelSelection = {
   id: channels.id,
   type: channels.type,
+  name: channels.name,
   waPhoneNumber: channels.waPhoneNumber,
   waPhoneNumberId: channels.waPhoneNumberId,
   waWabaId: channels.waWabaId,
@@ -1131,6 +1161,35 @@ const databaseRepository: ChannelManagementRepository = {
       messages: messageTotal?.value ?? 0,
     }
   },
+  hasLocalMcpAssociation: async (organizationId, channelId, connectorId) => {
+    const [association] = await db
+      .select({ channelId: runnerAgentMcpConnectors.channelId })
+      .from(runnerAgentMcpConnectors)
+      .where(
+        and(
+          eq(runnerAgentMcpConnectors.organizationId, organizationId),
+          eq(runnerAgentMcpConnectors.channelId, channelId),
+          ...(connectorId
+            ? [eq(runnerAgentMcpConnectors.connectorId, connectorId)]
+            : []),
+        ),
+      )
+      .limit(1)
+    return Boolean(association)
+  },
+  removeLocalMcpAssociation: async (organizationId, channelId, connectorId) => {
+    const [association] = await db
+      .delete(runnerAgentMcpConnectors)
+      .where(
+        and(
+          eq(runnerAgentMcpConnectors.organizationId, organizationId),
+          eq(runnerAgentMcpConnectors.channelId, channelId),
+          eq(runnerAgentMcpConnectors.connectorId, connectorId),
+        ),
+      )
+      .returning({ apiKeyId: runnerAgentMcpConnectors.apiKeyId })
+    return association?.apiKeyId
+  },
   delete: async (organizationId, channelId, confirmation) => {
     return db.transaction(async (transaction) => {
       const [channel] = await transaction
@@ -1148,6 +1207,12 @@ const databaseRepository: ChannelManagementRepository = {
         .limit(1)
         .for('update')
       if (!channel) return { status: 'not_found' as const }
+      const [association] = await transaction
+        .select({ channelId: runnerAgentMcpConnectors.channelId })
+        .from(runnerAgentMcpConnectors)
+        .where(eq(runnerAgentMcpConnectors.channelId, channelId))
+        .limit(1)
+      if (association) return { status: 'in_use' as const }
       if (confirmation !== channel.waPhoneNumber) {
         return { status: 'confirmation_mismatch' as const }
       }
@@ -1198,6 +1263,9 @@ const databaseRepository: ChannelManagementRepository = {
         .delete(contacts)
         .where(eq(contacts.channelId, channelId))
       await transaction.delete(groups).where(eq(groups.channelId, channelId))
+      await transaction
+        .delete(webhooks)
+        .where(eq(webhooks.channelId, channelId))
       const deletedBackups = await transaction
         .delete(agentBackups)
         .where(
@@ -2535,6 +2603,72 @@ export const createChannelManagementRoute = ({
         throw error
       }
     })
+    .get('/:id/local-mcps', async (c) => {
+      const channelId = parseChannelId(c.req.param('id'))
+      if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      const configuration = await repository.getAgentConfiguration(
+        access.organizationId,
+        channelId,
+      )
+      if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+      const mcps = await runner.listMcps(access.organizationId)
+      return c.json({
+        mcps: mcps.map((mcp) => ({
+          id: mcp.id,
+          name: mcp.name,
+          description: mcp.description,
+        })),
+      })
+    })
+    .post(
+      '/:id/local-mcps/prepare',
+      zValidator('json', prepareLocalMcpAssociationSchema),
+      async (c) => {
+        const channelId = parseChannelId(c.req.param('id'))
+        if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+        const access = await getAccess(c.req.raw.headers)
+        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        if (!canManageChannels(access.role)) {
+          return c.json(
+            { message: 'Organization owner or admin required' },
+            403,
+          )
+        }
+        const configuration = await repository.getAgentConfiguration(
+          access.organizationId,
+          channelId,
+        )
+        if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+        const { mcpId } = c.req.valid('json')
+        const mcp = await runner.getMcp(access.organizationId, mcpId)
+        const expiresAt = addUtcYears(new Date(), 1)
+        const apiKey = await runner.createApiKey(access.organizationId, {
+          name: `Agent connector: ${mcp.name} (${channelId})`,
+          expiresAt,
+          allowedFunctionIds: [],
+          allowedMcpIds: [mcp.id],
+        })
+        const origin = new URL(c.req.url).origin
+        return c.json(
+          {
+            association: {
+              mcpId: mcp.id,
+              mcpName: mcp.name,
+              apiKeyId: apiKey.id,
+              apiKey: apiKey.apiKey,
+              expiresAt: apiKey.expiresAt.toISOString(),
+              name: toConnectorName(mcp.name),
+              description:
+                mcp.description || `Local MCP connector for ${mcp.name}`,
+              baseUrl: `${origin}/api/mcp/${mcp.id}`,
+            },
+          },
+          201,
+        )
+      },
+    )
     .get('/:id/agent-connectors', async (c) => {
       const channelId = parseChannelId(c.req.param('id'))
       if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
@@ -2578,10 +2712,27 @@ export const createChannelManagementRoute = ({
         )
         if (!configuration) return c.json({ message: 'Channel not found' }, 404)
         try {
+          const input = c.req.valid('json')
+          if (input.localMcpAssociation) {
+            await assertPreparedLocalMcpAssociation(
+              access.organizationId,
+              input.localMcpAssociation,
+              input,
+            )
+          }
           const connector = await agentConnectors.create(
             configuration,
-            toMetaConnectorInput(c.req.valid('json')),
+            toMetaConnectorInput(input),
           )
+          if (input.localMcpAssociation) {
+            await db.insert(runnerAgentMcpConnectors).values({
+              channelId,
+              mcpId: input.localMcpAssociation.mcpId,
+              connectorId: connector.id,
+              apiKeyId: input.localMcpAssociation.apiKeyId,
+              organizationId: access.organizationId,
+            })
+          }
           return c.json({ connector: toAgentConnector(connector) }, 201)
         } catch (error) {
           if (error instanceof MetaAgentConnectorsError) {
@@ -2616,6 +2767,24 @@ export const createChannelManagementRoute = ({
         throw error
       }
     })
+    .get(
+      '/:id/agent-connectors/:connectorId/local-mcp-association',
+      async (c) => {
+        const channelId = parseChannelId(c.req.param('id'))
+        const connectorId = c.req.param('connectorId').trim()
+        if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+        if (!connectorId)
+          return c.json({ message: 'Invalid connector ID' }, 400)
+        const access = await getAccess(c.req.raw.headers)
+        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        const association = await getLocalMcpAssociation(
+          access.organizationId,
+          channelId,
+          connectorId,
+        )
+        return c.json({ association: association ?? null })
+      },
+    )
     .put(
       '/:id/agent-connectors/:connectorId',
       zValidator('json', connectorSchema),
@@ -2638,6 +2807,22 @@ export const createChannelManagementRoute = ({
           channelId,
         )
         if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+        if (
+          await repository.hasLocalMcpAssociation(
+            access.organizationId,
+            channelId,
+            connectorId,
+          )
+        ) {
+          return c.json(
+            {
+              code: 'LOCAL_MCP_CONNECTOR_READ_ONLY' as const,
+              message:
+                'This connector is managed by a local MCP. Refresh its API key instead of editing it.',
+            },
+            409,
+          )
+        }
         try {
           const input = c.req.valid('json')
           const existing = await agentConnectors.get(configuration, connectorId)
@@ -2672,6 +2857,14 @@ export const createChannelManagementRoute = ({
       if (!configuration) return c.json({ message: 'Channel not found' }, 404)
       try {
         await agentConnectors.delete(configuration, connectorId)
+        const apiKeyId = await repository.removeLocalMcpAssociation(
+          access.organizationId,
+          channelId,
+          connectorId,
+        )
+        if (apiKeyId) {
+          await runner.revokeApiKey(access.organizationId, apiKeyId)
+        }
         return c.json({ success: true })
       } catch (error) {
         if (error instanceof MetaAgentConnectorsError) {
@@ -2680,6 +2873,105 @@ export const createChannelManagementRoute = ({
         throw error
       }
     })
+    .post(
+      '/:id/agent-connectors/:connectorId/local-mcp-association/refresh-key',
+      async (c) => {
+        const channelId = parseChannelId(c.req.param('id'))
+        const connectorId = c.req.param('connectorId').trim()
+        if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+        if (!connectorId)
+          return c.json({ message: 'Invalid connector ID' }, 400)
+        const access = await getAccess(c.req.raw.headers)
+        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        if (!canManageChannels(access.role)) {
+          return c.json(
+            { message: 'Organization owner or admin required' },
+            403,
+          )
+        }
+        const configuration = await repository.getAgentConfiguration(
+          access.organizationId,
+          channelId,
+        )
+        if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+        const association = await getLocalMcpAssociation(
+          access.organizationId,
+          channelId,
+          connectorId,
+        )
+        if (!association) {
+          return c.json({ message: 'Local MCP association not found' }, 404)
+        }
+        const expiresAt = addUtcYears(new Date(), 1)
+        const apiKey = await runner.createApiKey(access.organizationId, {
+          name: `Agent connector: ${association.mcpName} (${channelId})`,
+          expiresAt,
+          allowedFunctionIds: [],
+          allowedMcpIds: [association.mcpId],
+        })
+        try {
+          const existing = await agentConnectors.get(configuration, connectorId)
+          const connector = await agentConnectors.update(
+            configuration,
+            connectorId,
+            {
+              name: existing.name,
+              description: existing.description,
+              base_url: existing.base_url,
+              connector_protocol: 'MCP',
+              auth_type: 'API_KEY',
+              auth_config: localMcpAuthConfig(apiKey.apiKey),
+              ...(existing.user_auth_injection_config
+                ? {
+                    user_auth_injection_config:
+                      existing.user_auth_injection_config,
+                  }
+                : {}),
+              requires_certificate: Boolean(existing.mtls_config),
+            },
+          )
+          await db
+            .update(runnerAgentMcpConnectors)
+            .set({ apiKeyId: apiKey.id, updatedAt: new Date() })
+            .where(
+              and(
+                eq(
+                  runnerAgentMcpConnectors.organizationId,
+                  access.organizationId,
+                ),
+                eq(runnerAgentMcpConnectors.channelId, channelId),
+                eq(runnerAgentMcpConnectors.connectorId, connectorId),
+              ),
+            )
+          await runner
+            .revokeApiKey(access.organizationId, association.apiKeyId)
+            .catch((error: unknown) => {
+              console.error('Could not revoke the previous local MCP API key', {
+                organizationId: access.organizationId,
+                channelId,
+                connectorId,
+                apiKeyId: association.apiKeyId,
+                error,
+              })
+            })
+          return c.json({
+            connector: toAgentConnector(connector),
+            association: {
+              ...association,
+              apiKeyId: apiKey.id,
+              expiresAt: apiKey.expiresAt.toISOString(),
+              revokedAt: null,
+            },
+          })
+        } catch (error) {
+          await runner.revokeApiKey(access.organizationId, apiKey.id)
+          if (error instanceof MetaAgentConnectorsError) {
+            return c.json({ message: error.message }, error.status)
+          }
+          throw error
+        }
+      },
+    )
     .post('/:id/agent-connectors/:connectorId/refresh-mcp-tools', async (c) => {
       const channelId = parseChannelId(c.req.param('id'))
       const connectorId = c.req.param('connectorId').trim()
@@ -3514,6 +3806,21 @@ export const createChannelManagementRoute = ({
         access.organizationId,
         channelId,
       )
+      if (
+        await repository.hasLocalMcpAssociation(
+          access.organizationId,
+          channelId,
+        )
+      ) {
+        return c.json(
+          {
+            code: 'CHANNEL_USED_BY_AGENT_MCP' as const,
+            message:
+              'This channel cannot be deleted because an agent connector uses a local MCP.',
+          },
+          409,
+        )
+      }
       if (!impact) return c.json({ message: 'Channel not found' }, 404)
       return c.json({ impact })
     })
@@ -3580,6 +3887,16 @@ export const createChannelManagementRoute = ({
               400,
             )
           }
+          if (result.status === 'in_use') {
+            return c.json(
+              {
+                code: 'CHANNEL_USED_BY_AGENT_MCP' as const,
+                message:
+                  'This channel cannot be deleted because an agent connector uses a local MCP.',
+              },
+              409,
+            )
+          }
           await agentBackups
             .deleteStoredFiles(result.backupStoragePaths ?? [])
             .catch((error: unknown) => {
@@ -3640,9 +3957,120 @@ function parseChannelId(value: string): number | undefined {
   return Number.isSafeInteger(channelId) ? channelId : undefined
 }
 
+function addUtcYears(value: Date, years: number): Date {
+  const result = new Date(value)
+  result.setUTCFullYear(result.getUTCFullYear() + years)
+  return result
+}
+
+function toConnectorName(mcpName: string): string {
+  return mcpName.slice(0, 64).replace(/_+$/, '')
+}
+
+function localMcpAuthConfig(apiKey: string): ConnectorAuthConfig {
+  return {
+    api_key: {
+      headers: [
+        { field_name: 'Authorization', value: apiKey, prefix: 'Bearer ' },
+      ],
+      query_params: [],
+      body_params: [],
+    },
+  }
+}
+
+async function assertPreparedLocalMcpAssociation(
+  organizationId: string,
+  association: z.infer<typeof localMcpAssociationSchema>,
+  connector: z.infer<typeof createConnectorSchema>,
+) {
+  const [prepared] = await db
+    .select({
+      apiKeyId: runnerFunctionApiKeys.id,
+      expiresAt: runnerFunctionApiKeys.expiresAt,
+      revokedAt: runnerFunctionApiKeys.revokedAt,
+      allowedMcpIds: runnerFunctionApiKeys.allowedMcpIds,
+      keyHash: runnerFunctionApiKeys.keyHash,
+    })
+    .from(runnerFunctionApiKeys)
+    .innerJoin(
+      runnerMcps,
+      and(
+        eq(runnerMcps.id, association.mcpId),
+        eq(runnerMcps.organizationId, runnerFunctionApiKeys.organizationId),
+      ),
+    )
+    .where(
+      and(
+        eq(runnerFunctionApiKeys.id, association.apiKeyId),
+        eq(runnerFunctionApiKeys.organizationId, organizationId),
+      ),
+    )
+    .limit(1)
+  if (
+    !prepared ||
+    prepared.revokedAt ||
+    prepared.expiresAt.getTime() <= Date.now() ||
+    !prepared.allowedMcpIds?.includes(association.mcpId) ||
+    connector.connectorProtocol !== 'MCP' ||
+    connector.authType !== 'API_KEY' ||
+    !connector.baseUrl.endsWith(`/api/mcp/${association.mcpId}`) ||
+    !connector.authConfig?.apiKey?.headers.some(
+      (header) =>
+        header.fieldName.toLocaleLowerCase() === 'authorization' &&
+        header.prefix === 'Bearer ' &&
+        hashApiKey(header.value) === prepared.keyHash,
+    )
+  ) {
+    throw new MetaAgentConnectorsError(
+      'The prepared local MCP API key is invalid or expired',
+      400,
+    )
+  }
+}
+
+async function getLocalMcpAssociation(
+  organizationId: string,
+  channelId: number,
+  connectorId: string,
+) {
+  const [association] = await db
+    .select({
+      channelId: runnerAgentMcpConnectors.channelId,
+      mcpId: runnerAgentMcpConnectors.mcpId,
+      mcpName: runnerMcps.name,
+      connectorId: runnerAgentMcpConnectors.connectorId,
+      apiKeyId: runnerAgentMcpConnectors.apiKeyId,
+      expiresAt: runnerFunctionApiKeys.expiresAt,
+      revokedAt: runnerFunctionApiKeys.revokedAt,
+    })
+    .from(runnerAgentMcpConnectors)
+    .innerJoin(runnerMcps, eq(runnerMcps.id, runnerAgentMcpConnectors.mcpId))
+    .innerJoin(
+      runnerFunctionApiKeys,
+      eq(runnerFunctionApiKeys.id, runnerAgentMcpConnectors.apiKeyId),
+    )
+    .where(
+      and(
+        eq(runnerAgentMcpConnectors.organizationId, organizationId),
+        eq(runnerAgentMcpConnectors.channelId, channelId),
+        eq(runnerAgentMcpConnectors.connectorId, connectorId),
+      ),
+    )
+    .limit(1)
+  return association
+    ? {
+        ...association,
+        expiresAt: association.expiresAt.toISOString(),
+        revokedAt: association.revokedAt?.toISOString() ?? null,
+      }
+    : undefined
+}
+
 function toChannelSummary(row: {
   id: number
   type: 'whatsapp'
+  name: string
   waPhoneNumber: string
   waPhoneNumberId: string
   waWabaId: string
@@ -3658,6 +4086,7 @@ function toChannelSummary(row: {
   return {
     id: row.id,
     type: row.type,
+    name: row.name,
     waPhoneNumber: row.waPhoneNumber,
     waPhoneNumberId: row.waPhoneNumberId,
     waWabaId: row.waWabaId,
