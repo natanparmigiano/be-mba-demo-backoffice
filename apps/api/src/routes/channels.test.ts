@@ -2467,17 +2467,11 @@ describe('Meta webhook registration', () => {
       requests[0]?.url,
       'https://graph.facebook.com/v26.0/app-id/subscriptions',
     )
-    assert.ok(requests[0]?.init?.body instanceof URLSearchParams)
+    assert.equal(typeof requests[0]?.init?.body, 'string')
     const body = requests[0].init?.body
-    assert.equal(body.get('object'), 'whatsapp_business_account')
     assert.equal(
-      body.get('callback_url'),
-      'https://example.com/api/wa-cloud/webhook/7',
-    )
-    assert.equal(body.get('verify_token'), 'verify-secret')
-    assert.equal(
-      body.get('fields'),
-      'messages,calls,messaging_handovers,account_settings_update,standby,business_status_update,flows,message_template_components_update,message_template_quality_update,message_template_status_update,phone_number_quality_update,phone_number_name_update,template_category_update,template_correct_category_detection',
+      body,
+      'object=whatsapp_business_account&callback_url=https://example.com/api/wa-cloud/webhook/7&verify_token=verify-secret&fields=messages,calls,messaging_handovers,account_settings_update,standby,business_status_update,flows,message_template_components_update,message_template_quality_update,message_template_status_update,phone_number_quality_update,phone_number_name_update,template_category_update,template_correct_category_detection&access_token=app-id|app-secret',
     )
     assert.deepEqual(MBA_WEBHOOK_SUBSCRIPTION_FIELDS, [
       'messages',
@@ -2495,7 +2489,6 @@ describe('Meta webhook registration', () => {
       'template_category_update',
       'template_correct_category_detection',
     ])
-    assert.equal(body.get('access_token'), 'app-id|app-secret')
   })
 })
 

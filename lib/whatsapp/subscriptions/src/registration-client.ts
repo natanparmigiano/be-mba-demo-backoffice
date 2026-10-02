@@ -172,6 +172,20 @@ function normalizeFields(
   return normalized
 }
 
+function rawFormValue(value: string): string {
+  return encodeURIComponent(value)
+    .replaceAll('%3A', ':')
+    .replaceAll('%2F', '/')
+    .replaceAll('%2C', ',')
+    .replaceAll('%7C', '|')
+}
+
+function rawFormBody(values: Record<string, string>): string {
+  return Object.entries(values)
+    .map(([name, value]) => `${name}=${rawFormValue(value)}`)
+    .join('&')
+}
+
 function parseJson(text: string): unknown {
   if (!text) return undefined
   try {
@@ -308,7 +322,7 @@ export class WhatsAppWebhookRegistrationClient implements WhatsAppWebhookRegistr
     input: RegisterWhatsAppWebhookInput,
     options: WhatsAppWebhookRegistrationRequestOptions = {},
   ): Promise<WhatsAppWebhookRegistrationResult> {
-    const body = new URLSearchParams({
+    const body = rawFormBody({
       object: WEBHOOK_OBJECT,
       callback_url: normalizeCallbackUrl(input.callbackUrl),
       verify_token: required('verifyToken', input.verifyToken),

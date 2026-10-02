@@ -58,19 +58,12 @@ describe('WhatsAppWebhookRegistrationClient', () => {
       new Headers(request?.init?.headers).get('content-type'),
       'application/x-www-form-urlencoded',
     )
-    assert.ok(request?.init?.body instanceof URLSearchParams)
+    assert.equal(typeof request?.init?.body, 'string')
     const body = request.init.body
-    assert.equal(body.get('object'), 'whatsapp_business_account')
     assert.equal(
-      body.get('callback_url'),
-      'https://app.example.com/api/wa-cloud/webhook/7',
+      body,
+      `object=whatsapp_business_account&callback_url=https://app.example.com/api/wa-cloud/webhook/7&verify_token=verify-secret&fields=${WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS.join(',')}&access_token=app/id|app-secret`,
     )
-    assert.equal(body.get('verify_token'), 'verify-secret')
-    assert.equal(
-      body.get('fields'),
-      WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS.join(','),
-    )
-    assert.equal(body.get('access_token'), 'app/id|app-secret')
   })
 
   it('lists the fields currently registered for the app', async () => {
