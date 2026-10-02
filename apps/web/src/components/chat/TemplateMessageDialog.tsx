@@ -1,7 +1,16 @@
-import { FileText, Image, LoaderCircle, MapPin, Video } from 'lucide-react'
+import {
+  Check,
+  ChevronsUpDown,
+  FileText,
+  Image,
+  LoaderCircle,
+  MapPin,
+  Search,
+  Video,
+} from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Dialog, Input, Pill, Select } from '../ui'
+import { Button, Dialog, Input, Pill } from '../ui'
 import { WhatsAppText } from './WhatsAppText'
 
 interface TemplateExample {
@@ -71,12 +80,14 @@ type ParameterField = {
 export function TemplateMessageDialog({
   open,
   sending,
+  embedded = false,
   loadTemplates,
   onClose,
   onSend,
 }: {
   open: boolean
   sending: boolean
+  embedded?: boolean
   loadTemplates: (after?: string) => Promise<ComposerTemplatePage>
   onClose: () => void
   onSend: (draft: ComposerTemplateDraft) => Promise<void>
@@ -90,6 +101,8 @@ export function TemplateMessageDialog({
   const [headerMedia, setHeaderMedia] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerSearch, setPickerSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -101,6 +114,8 @@ export function TemplateMessageDialog({
     setSelectedLanguage('')
     setValues({})
     setHeaderMedia(null)
+    setPickerOpen(false)
+    setPickerSearch('')
     setError(null)
     setLoading(true)
     void loadTemplates()
@@ -127,33 +142,31 @@ export function TemplateMessageDialog({
     }
   }, [loadTemplates, open, t])
 
-  const names = useMemo(
-    () => Array.from(new Set(templates.map((template) => template.name))),
-    [templates],
+  const selected = templates.find(
+    (template) =>
+      template.name === selectedName && template.language === selectedLanguage,
   )
-  const languages = useMemo(
-    () => templates.filter((template) => template.name === selectedName),
-    [selectedName, templates],
-  )
-  const selected = languages.find(
-    (template) => template.language === selectedLanguage,
-  )
+  const filteredTemplates = useMemo(() => {
+    const query = pickerSearch.trim().toLocaleLowerCase()
+    if (!query) return templates
+    return templates.filter((template) =>
+      `${template.name} ${template.language} ${template.category ?? ''}`
+        .toLocaleLowerCase()
+        .includes(query),
+    )
+  }, [pickerSearch, templates])
   const fields = useMemo(
     () => (selected ? templateParameterFields(selected) : []),
     [selected],
   )
 
-  const selectVariant = (name: string, language?: string) => {
-    const variant = templates.find(
-      (template) =>
-        template.name === name &&
-        (language === undefined || template.language === language),
-    )
-    setSelectedName(name)
-    setSelectedLanguage(variant?.language ?? '')
+  const selectVariant = (template: ComposerTemplateDefinition) => {
+    setSelectedName(template.name)
+    setSelectedLanguage(template.language)
     setValues({})
     setHeaderMedia(null)
     setError(null)
+    setPickerOpen(false)
   }
 
   const loadMore = async () => {
@@ -248,6 +261,217 @@ export function TemplateMessageDialog({
     }
   }
 
+  const form = (
+    <form
+      className={embedded ? 'grid w-full gap-6' : 'grid w-full gap-5'}
+      onSubmit={(event) => void submit(event)}
+    >
+      {error && (
+        <p
+          className="rounded-lg bg-destructive/8 p-3 text-sm text-destructive"
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
+
+      {loading ? (
+        <div
+          className="flex min-h-36 items-center justify-center gap-2 text-sm text-muted-foreground"
+          role="status"
+        >
+          <LoaderCircle className="size-4 animate-spin" aria-hidden />
+          {t('chatComposer.templates.loading')}
+        </div>
+      ) : templates.length === 0 ? (
+        <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+          {t('chatComposer.templates.empty')}
+        </p>
+      ) : (
+        <>
+          <div className="grid gap-1.5 rounded-xl border bg-background p-4 text-sm">
+            <span className="font-semibold">
+              {t('chatComposer.fields.templateName')}
+            </span>
+            <button
+              type="button"
+              className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-4 rounded-lg border bg-card px-4 py-3 text-left shadow-xs transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+              onClick={() => setPickerOpen(true)}
+            >
+              <span className="min-w-0">
+                <span className="block truncate font-semibold">
+                  {selected?.name}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {selected?.language}
+                  {selected?.category ? ` · ${selected.category}` : ''}
+                </span>
+              </span>
+              <ChevronsUpDown
+                className="size-4 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
+            </button>
+          </div>
+
+          {selected && (
+            <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.82fr)]">
+              <section className="grid content-start gap-4 rounded-xl border bg-background p-4 sm:p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-bold">
+                    {t('chatComposer.templates.parameters')}
+                  </h3>
+                  {selected.category && <Pill>{selected.category}</Pill>}
+                </div>
+                {fields.length === 0 ? (
+                  <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+                    {t('chatComposer.templates.noParameters')}
+                  </p>
+                ) : (
+                  fields
+                    .filter((field) => !field.linkedFieldId)
+                    .map((field) => (
+                      <TemplateParameterInput
+                        key={field.id}
+                        field={field}
+                        value={values[field.id] ?? ''}
+                        onChange={(value) =>
+                          setValues((current) => ({
+                            ...current,
+                            [field.id]: value,
+                          }))
+                        }
+                        onFile={setHeaderMedia}
+                      />
+                    ))
+                )}
+              </section>
+              <div className="lg:sticky lg:top-24">
+                <TemplatePreview
+                  template={selected}
+                  fields={fields}
+                  values={values}
+                />
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      <div
+        className={
+          embedded
+            ? 'flex flex-wrap justify-end gap-2 border-t pt-5'
+            : 'flex flex-wrap justify-between gap-2'
+        }
+      >
+        <span />
+        <span className="flex gap-2">
+          {!embedded && (
+            <Button type="button" variant="outline" onClick={onClose}>
+              {t('chatComposer.cancel')}
+            </Button>
+          )}
+          <Button
+            type="submit"
+            disabled={!selected || loading}
+            isLoading={sending}
+          >
+            {t('chatComposer.send')}
+          </Button>
+        </span>
+      </div>
+    </form>
+  )
+
+  const picker = (
+    <Dialog
+      open={pickerOpen}
+      onOpenChange={setPickerOpen}
+      title={t('chatComposer.templates.pickerTitle')}
+      description={t('chatComposer.templates.pickerDescription')}
+      size="lg"
+    >
+      <div className="grid w-full gap-3">
+        <Input
+          leadingIcon={Search}
+          value={pickerSearch}
+          placeholder={t('chatComposer.templates.pickerSearch')}
+          aria-label={t('chatComposer.templates.pickerSearch')}
+          onChange={(event) => setPickerSearch(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.preventDefault()
+          }}
+        />
+        <div
+          className="max-h-[55vh] overflow-y-auto rounded-xl border"
+          role="listbox"
+          aria-label={t('chatComposer.templates.pickerTitle')}
+          onScroll={(event) => {
+            const target = event.currentTarget
+            if (
+              nextCursor &&
+              !loadingMore &&
+              target.scrollHeight - target.scrollTop - target.clientHeight < 96
+            ) {
+              void loadMore()
+            }
+          }}
+        >
+          {filteredTemplates.length ? (
+            filteredTemplates.map((template) => {
+              const isSelected = template.id === selected?.id
+              return (
+                <button
+                  key={template.id}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  className="flex w-full cursor-pointer items-center gap-3 border-b px-4 py-3 text-left last:border-b-0 hover:bg-muted/60 focus-visible:bg-muted focus-visible:outline-none"
+                  onClick={() => selectVariant(template)}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">
+                      {template.name}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {template.language}
+                      {template.category ? ` · ${template.category}` : ''}
+                    </span>
+                  </span>
+                  {isSelected && (
+                    <Check className="size-4 text-primary" aria-hidden />
+                  )}
+                </button>
+              )
+            })
+          ) : (
+            <p className="p-6 text-center text-sm text-muted-foreground">
+              {t('chatComposer.templates.pickerEmpty')}
+            </p>
+          )}
+          {loadingMore && (
+            <p
+              className="flex items-center justify-center gap-2 border-t p-3 text-xs text-muted-foreground"
+              role="status"
+            >
+              <LoaderCircle className="size-4 animate-spin" aria-hidden />
+              {t('chatComposer.templates.loadingMore')}
+            </p>
+          )}
+        </div>
+      </div>
+    </Dialog>
+  )
+
+  if (embedded)
+    return (
+      <>
+        {form}
+        {picker}
+      </>
+    )
+
   return (
     <Dialog
       open={open}
@@ -255,131 +479,10 @@ export function TemplateMessageDialog({
       title={t('chatComposer.dialogs.template.title')}
       description={t('chatComposer.dialogs.template.description')}
       size="lg"
+      dismissible={!pickerOpen}
     >
-      <form
-        className="grid w-full gap-5"
-        onSubmit={(event) => void submit(event)}
-      >
-        {error && (
-          <p
-            className="rounded-lg bg-destructive/8 p-3 text-sm text-destructive"
-            role="alert"
-          >
-            {error}
-          </p>
-        )}
-
-        {loading ? (
-          <div
-            className="flex min-h-36 items-center justify-center gap-2 text-sm text-muted-foreground"
-            role="status"
-          >
-            <LoaderCircle className="size-4 animate-spin" aria-hidden />
-            {t('chatComposer.templates.loading')}
-          </div>
-        ) : templates.length === 0 ? (
-          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-            {t('chatComposer.templates.empty')}
-          </p>
-        ) : (
-          <>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Select
-                label={t('chatComposer.fields.templateName')}
-                value={selectedName}
-                onChange={(event) => selectVariant(event.currentTarget.value)}
-              >
-                {names.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                label={t('chatComposer.fields.language')}
-                value={selectedLanguage}
-                onChange={(event) =>
-                  selectVariant(selectedName, event.currentTarget.value)
-                }
-              >
-                {languages.map((template) => (
-                  <option key={template.id} value={template.language}>
-                    {template.language}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            {selected && (
-              <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(16rem,0.85fr)]">
-                <div className="grid content-start gap-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-bold">
-                      {t('chatComposer.templates.parameters')}
-                    </h3>
-                    {selected.category && <Pill>{selected.category}</Pill>}
-                  </div>
-                  {fields.length === 0 ? (
-                    <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
-                      {t('chatComposer.templates.noParameters')}
-                    </p>
-                  ) : (
-                    fields
-                      .filter((field) => !field.linkedFieldId)
-                      .map((field) => (
-                        <TemplateParameterInput
-                          key={field.id}
-                          field={field}
-                          value={values[field.id] ?? ''}
-                          onChange={(value) =>
-                            setValues((current) => ({
-                              ...current,
-                              [field.id]: value,
-                            }))
-                          }
-                          onFile={setHeaderMedia}
-                        />
-                      ))
-                  )}
-                </div>
-                <TemplatePreview
-                  template={selected}
-                  fields={fields}
-                  values={values}
-                />
-              </div>
-            )}
-          </>
-        )}
-
-        <div className="flex flex-wrap justify-between gap-2">
-          <span>
-            {nextCursor && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                isLoading={loadingMore}
-                onClick={() => void loadMore()}
-              >
-                {t('chatComposer.templates.loadMore')}
-              </Button>
-            )}
-          </span>
-          <span className="flex gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
-              {t('chatComposer.cancel')}
-            </Button>
-            <Button
-              type="submit"
-              disabled={!selected || loading}
-              isLoading={sending}
-            >
-              {t('chatComposer.send')}
-            </Button>
-          </span>
-        </div>
-      </form>
+      {form}
+      {picker}
     </Dialog>
   )
 }

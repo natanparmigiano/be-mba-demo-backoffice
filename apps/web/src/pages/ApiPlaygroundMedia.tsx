@@ -26,9 +26,11 @@ const MEDIA_OPTIONS = {
 
 export function MediaPlayground({
   channelId,
+  phoneNumberId,
   mutationDisabled,
 }: {
   channelId: string
+  phoneNumberId: string
   mutationDisabled: boolean
 }) {
   const { t } = useTranslation()
@@ -39,10 +41,22 @@ export function MediaPlayground({
       role="tabpanel"
       aria-label={t('apiPlayground.media.tab')}
     >
-      <UploadMediaCard channelId={channelId} disabled={mutationDisabled} />
-      <MediaMetadataCard channelId={channelId} disabled={!channelId} />
-      <DownloadMediaCard channelId={channelId} disabled={!channelId} />
-      <DeleteMediaCard channelId={channelId} disabled={mutationDisabled} />
+      <UploadMediaCard
+        {...{ channelId, phoneNumberId }}
+        disabled={mutationDisabled}
+      />
+      <MediaMetadataCard
+        {...{ channelId, phoneNumberId }}
+        disabled={!channelId}
+      />
+      <DownloadMediaCard
+        {...{ channelId, phoneNumberId }}
+        disabled={!channelId}
+      />
+      <DeleteMediaCard
+        {...{ channelId, phoneNumberId }}
+        disabled={mutationDisabled}
+      />
     </div>
   )
 }
@@ -57,6 +71,19 @@ function UploadMediaCard(props: CardProps) {
   return (
     <PlaygroundOperationCard
       method="POST"
+      request={{
+        path: graphMediaPath(props.phoneNumberId || 'PHONE_NUMBER_ID', 'media'),
+        contentType: 'multipart/form-data',
+        body: {
+          messaging_product: 'whatsapp',
+          file: file
+            ? { name: file.name, type: file.type, size: file.size }
+            : {
+                name: `<${kind.toUpperCase()}_FILE>`,
+                type: option.accept.split(',')[0],
+              },
+        },
+      }}
       title={t('apiPlayground.media.upload.title')}
       description={t('apiPlayground.media.upload.description')}
       action={t('apiPlayground.media.upload.action')}
@@ -117,6 +144,10 @@ function MediaMetadataCard(props: CardProps) {
   return (
     <PlaygroundOperationCard
       method="GET"
+      request={{
+        path: graphMediaPath(mediaId || '<MEDIA_ID>'),
+        query: { phone_number_id: props.phoneNumberId || 'PHONE_NUMBER_ID' },
+      }}
       title={t('apiPlayground.media.metadata.title')}
       description={t('apiPlayground.media.metadata.description')}
       action={t('apiPlayground.media.metadata.action')}
@@ -145,6 +176,10 @@ function DownloadMediaCard(props: CardProps) {
   return (
     <PlaygroundOperationCard
       method="GET"
+      request={{
+        path: graphMediaPath(mediaId || '<MEDIA_ID>'),
+        query: { phone_number_id: props.phoneNumberId || 'PHONE_NUMBER_ID' },
+      }}
       title={t('apiPlayground.media.download.title')}
       description={t('apiPlayground.media.download.description')}
       action={t('apiPlayground.media.download.action')}
@@ -197,6 +232,10 @@ function DeleteMediaCard(props: CardProps) {
   return (
     <PlaygroundOperationCard
       method="DELETE"
+      request={{
+        path: graphMediaPath(mediaId || '<MEDIA_ID>'),
+        query: { phone_number_id: props.phoneNumberId || 'PHONE_NUMBER_ID' },
+      }}
       title={t('apiPlayground.media.delete.title')}
       description={t('apiPlayground.media.delete.description')}
       action={t('apiPlayground.media.delete.action')}
@@ -244,7 +283,14 @@ function MediaIdInput({
 
 interface CardProps {
   channelId: string
+  phoneNumberId: string
   disabled: boolean
+}
+
+function graphMediaPath(...segments: string[]) {
+  return `https://graph.facebook.com/v26.0/${segments
+    .map(encodeURIComponent)
+    .join('/')}`
 }
 
 function useOperation() {

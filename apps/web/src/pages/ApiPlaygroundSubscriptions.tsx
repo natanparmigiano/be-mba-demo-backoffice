@@ -8,7 +8,12 @@ import {
 } from '../components/api-playground/PlaygroundOperationCard'
 import { Checkbox, Input } from '../components/ui'
 
-type Props = { channelId: string; mutationDisabled: boolean }
+type Props = {
+  channelId: string
+  appId: string
+  wabaId: string
+  mutationDisabled: boolean
+}
 type T = ReturnType<typeof useTranslation>['t']
 type FieldsResponse = InferResponseType<
   typeof apiClient.api.playground.subscriptions.fields.$get,
@@ -18,6 +23,8 @@ type SubscriptionField = FieldsResponse['fields'][number]
 
 export function SubscriptionsPlayground({
   channelId,
+  appId,
+  wabaId,
   mutationDisabled,
 }: Props) {
   const { t } = useTranslation()
@@ -50,27 +57,50 @@ export function SubscriptionsPlayground({
     >
       <RegisterAppWebhook
         channelId={channelId}
+        appId={appId}
         disabled={mutationDisabled}
         availableFields={availableFields}
         selectedFields={selectedFields}
         onSelectedFieldsChange={setSelectedFields}
       />
-      <ListAppRegistration channelId={channelId} disabled={!channelId} />
-      <Subscribe channelId={channelId} disabled={mutationDisabled} />
-      <ListSubscriptions channelId={channelId} disabled={!channelId} />
-      <OverrideCallback channelId={channelId} disabled={mutationDisabled} />
-      <Unsubscribe channelId={channelId} disabled={mutationDisabled} />
+      <ListAppRegistration
+        channelId={channelId}
+        appId={appId}
+        disabled={!channelId}
+      />
+      <Subscribe
+        channelId={channelId}
+        wabaId={wabaId}
+        disabled={mutationDisabled}
+      />
+      <ListSubscriptions
+        channelId={channelId}
+        wabaId={wabaId}
+        disabled={!channelId}
+      />
+      <OverrideCallback
+        channelId={channelId}
+        wabaId={wabaId}
+        disabled={mutationDisabled}
+      />
+      <Unsubscribe
+        channelId={channelId}
+        wabaId={wabaId}
+        disabled={mutationDisabled}
+      />
     </div>
   )
 }
 
 function RegisterAppWebhook({
   channelId,
+  appId,
   disabled,
   availableFields,
   selectedFields,
   onSelectedFieldsChange,
 }: CardProps & {
+  appId: string
   availableFields: SubscriptionField[]
   selectedFields: SubscriptionField[]
   onSelectedFieldsChange: (fields: SubscriptionField[]) => void
@@ -86,6 +116,18 @@ function RegisterAppWebhook({
       description={t('apiPlayground.subscriptions.appRegistration.description')}
       action={t('apiPlayground.subscriptions.appRegistration.action')}
       state={operation.state}
+      request={{
+        path: `https://graph.facebook.com/v26.0/${appId || 'APP_ID'}/subscriptions`,
+        auth: 'none',
+        contentType: 'application/x-www-form-urlencoded',
+        body: {
+          object: 'whatsapp_business_account',
+          callback_url: callbackUrl,
+          verify_token: verifyToken,
+          fields: selectedFields.join(','),
+          access_token: `${appId || 'APP_ID'}|APP_SECRET`,
+        },
+      }}
       disabled={
         disabled || !callbackUrl || !verifyToken || selectedFields.length === 0
       }
@@ -156,7 +198,7 @@ function RegisterAppWebhook({
   )
 }
 
-function ListAppRegistration({ channelId, disabled }: CardProps) {
+function ListAppRegistration({ channelId, appId, disabled }: CardProps) {
   const { t } = useTranslation()
   const operation = useOperation()
   return (
@@ -166,6 +208,11 @@ function ListAppRegistration({ channelId, disabled }: CardProps) {
       description={t('apiPlayground.subscriptions.appList.description')}
       action={t('apiPlayground.subscriptions.appList.action')}
       state={operation.state}
+      request={{
+        path: `https://graph.facebook.com/v26.0/${appId || 'APP_ID'}/subscriptions`,
+        auth: 'none',
+        query: { access_token: `${appId || 'APP_ID'}|APP_SECRET` },
+      }}
       disabled={disabled}
       resultLabel={t('apiPlayground.result')}
       onSubmit={() =>
@@ -182,7 +229,7 @@ function ListAppRegistration({ channelId, disabled }: CardProps) {
   )
 }
 
-function Subscribe({ channelId, disabled }: CardProps) {
+function Subscribe({ channelId, wabaId, disabled }: CardProps) {
   const { t } = useTranslation()
   const operation = useOperation()
   return (
@@ -192,6 +239,11 @@ function Subscribe({ channelId, disabled }: CardProps) {
       description={t('apiPlayground.subscriptions.subscribe.description')}
       action={t('apiPlayground.subscriptions.subscribe.action')}
       state={operation.state}
+      request={{
+        path: `https://graph.facebook.com/v26.0/${wabaId || 'WABA_ID'}/subscribed_apps`,
+        auth: 'none',
+        headers: { Authorization: 'Bearer ACCESS_TOKEN' },
+      }}
       disabled={disabled}
       resultLabel={t('apiPlayground.result')}
       onSubmit={() =>
@@ -208,7 +260,7 @@ function Subscribe({ channelId, disabled }: CardProps) {
   )
 }
 
-function ListSubscriptions({ channelId, disabled }: CardProps) {
+function ListSubscriptions({ channelId, wabaId, disabled }: CardProps) {
   const { t } = useTranslation()
   const operation = useOperation()
   return (
@@ -218,6 +270,11 @@ function ListSubscriptions({ channelId, disabled }: CardProps) {
       description={t('apiPlayground.subscriptions.list.description')}
       action={t('apiPlayground.subscriptions.list.action')}
       state={operation.state}
+      request={{
+        path: `https://graph.facebook.com/v26.0/${wabaId || 'WABA_ID'}/subscribed_apps`,
+        auth: 'none',
+        headers: { Authorization: 'Bearer ACCESS_TOKEN' },
+      }}
       disabled={disabled}
       resultLabel={t('apiPlayground.result')}
       onSubmit={() =>
@@ -234,7 +291,7 @@ function ListSubscriptions({ channelId, disabled }: CardProps) {
   )
 }
 
-function OverrideCallback({ channelId, disabled }: CardProps) {
+function OverrideCallback({ channelId, wabaId, disabled }: CardProps) {
   const { t } = useTranslation()
   const operation = useOperation()
   const [callbackUrl, setCallbackUrl] = useState('')
@@ -246,6 +303,15 @@ function OverrideCallback({ channelId, disabled }: CardProps) {
       description={t('apiPlayground.subscriptions.override.description')}
       action={t('apiPlayground.subscriptions.override.action')}
       state={operation.state}
+      request={{
+        path: `https://graph.facebook.com/v26.0/${wabaId || 'WABA_ID'}/subscribed_apps`,
+        auth: 'none',
+        headers: { Authorization: 'Bearer ACCESS_TOKEN' },
+        body: {
+          override_callback_uri: callbackUrl,
+          verify_token: verifyToken,
+        },
+      }}
       disabled={disabled || !callbackUrl || !verifyToken}
       resultLabel={t('apiPlayground.result')}
       onSubmit={() =>
@@ -282,7 +348,7 @@ function OverrideCallback({ channelId, disabled }: CardProps) {
   )
 }
 
-function Unsubscribe({ channelId, disabled }: CardProps) {
+function Unsubscribe({ channelId, wabaId, disabled }: CardProps) {
   const { t } = useTranslation()
   const operation = useOperation()
   const [confirmed, setConfirmed] = useState(false)
@@ -293,6 +359,11 @@ function Unsubscribe({ channelId, disabled }: CardProps) {
       description={t('apiPlayground.subscriptions.unsubscribe.description')}
       action={t('apiPlayground.subscriptions.unsubscribe.action')}
       state={operation.state}
+      request={{
+        path: `https://graph.facebook.com/v26.0/${wabaId || 'WABA_ID'}/subscribed_apps`,
+        auth: 'none',
+        headers: { Authorization: 'Bearer ACCESS_TOKEN' },
+      }}
       disabled={disabled || !confirmed}
       buttonVariant="danger"
       resultLabel={t('apiPlayground.result')}
@@ -318,6 +389,8 @@ function Unsubscribe({ channelId, disabled }: CardProps) {
 
 interface CardProps {
   channelId: string
+  appId?: string
+  wabaId?: string
   disabled: boolean
 }
 

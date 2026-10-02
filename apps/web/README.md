@@ -62,10 +62,13 @@ The build command runs TypeScript project validation before creating the product
 | `/channels`                           | Private        | Manages WhatsApp channels and webhook forwarding.                                   |
 | `/contacts`                           | Private        | Searches contacts; owners/admins can create and safely delete them.                 |
 | `/groups`                             | Private        | Searches and filters cursor-paginated WhatsApp groups.                              |
+| `/templates`                          | Private        | Manages WhatsApp message templates and provider approval states.                    |
+| `/templates/new`                      | Private        | Creates and submits a WhatsApp message template.                                    |
+| `/templates/:channelId/:templateId`   | Private        | Previews and edits a provider-backed message template.                              |
 | `/functions`                          | Private        | Manages active-organization JavaScript functions, revisions, and parameters.        |
 | `/mcps`                               | Private        | Manages MCP membership and reviewed MCPX package export/import.                     |
 | `/api-keys`                           | Private        | Manages organization API keys and their function/MCP scopes.                        |
-| `/api-playground`                     | Private        | Runs all WhatsApp library operations and validates webhook payloads for a channel.  |
+| `/playground`                         | Private        | Runs all WhatsApp library operations and validates webhook payloads for a channel.  |
 | `/admin`                              | Admin          | Manages application users, roles, bans, credentials, and sessions.                  |
 | Any other path                        | Fallback       | Redirects to `/`, after which the private guard applies.                            |
 

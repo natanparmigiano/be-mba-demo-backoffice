@@ -13,6 +13,7 @@ import {
   FlaskConical,
   Globe2,
   LoaderCircle,
+  Minus,
   Phone,
   Plug,
   Plus,
@@ -154,10 +155,13 @@ type AgentExportStep = (typeof agentExportSteps)[number]
 const agentImportSteps = [
   'backup',
   'settings',
-  'businessData',
+  'businessInfo',
+  'allowlist',
   'skills',
-  'channelComponents',
-  'knowledge',
+  'qrCodes',
+  'components',
+  'faqs',
+  'websites',
   'files',
   'connectors',
   'finalizing',
@@ -177,6 +181,16 @@ const agentImportResources = [
   'finalizing',
 ] as const
 type AgentImportResource = (typeof agentImportResources)[number]
+type AgentImportComponent = Exclude<AgentImportResource, 'finalizing'>
+const defaultAgentImportComponents = (): Record<
+  AgentImportComponent,
+  boolean
+> =>
+  Object.fromEntries(
+    agentImportResources
+      .filter((resource) => resource !== 'finalizing')
+      .map((resource) => [resource, true]),
+  ) as Record<AgentImportComponent, boolean>
 
 interface AgentImportItemProgress {
   resource: AgentImportResource
@@ -312,6 +326,9 @@ export function AgentPage() {
   const [importFailureMayBePartial, setImportFailureMayBePartial] =
     useState(false)
   const [createBackupBeforeImport, setCreateBackupBeforeImport] = useState(true)
+  const [importComponents, setImportComponents] = useState(
+    defaultAgentImportComponents,
+  )
   const [isSavingRollout, setIsSavingRollout] = useState(false)
   const [isSavingAudience, setIsSavingAudience] = useState(false)
   const [isSavingBehavior, setIsSavingBehavior] = useState(false)
@@ -1035,7 +1052,9 @@ export function AgentPage() {
     setImportFailureMayBePartial(false)
     try {
       const connectorCredentials: Record<string, unknown> = {}
-      for (const connector of importInspection.requirements.connectors) {
+      for (const connector of importComponents.connectors
+        ? importInspection.requirements.connectors
+        : []) {
         const input = importConnectorInputs[connector.name]
         const credential: Record<string, unknown> = {}
         if (connector.authType !== 'NONE') {
@@ -1074,9 +1093,14 @@ export function AgentPage() {
         JSON.stringify({
           connectorCredentials,
           createBackupBeforeImport,
+          components: Object.entries(importComponents).flatMap(
+            ([component, selected]) => (selected ? [component] : []),
+          ),
         }),
       )
-      for (const required of importInspection.requirements.files) {
+      for (const required of importComponents.files
+        ? importInspection.requirements.files
+        : []) {
         const file = importFiles[required.providerFileId]
         if (!file) throw new Error(t('agent.importPanel.filesRequired'))
         form.set(`file:${required.providerFileId}`, file)
@@ -1096,7 +1120,9 @@ export function AgentPage() {
         if (event === 'progress' && typeof payload?.step === 'string') {
           if (isAgentImportStep(payload.step)) {
             activeStep = payload.step
-            if (payload.step !== 'backup') mayHaveAppliedChanges = true
+            if (payload.step !== 'backup' && payload.skipped !== true) {
+              mayHaveAppliedChanges = true
+            }
             setImportStep(payload.step)
             const completed = payload.completed
             const total = payload.resourceTotal
@@ -1933,6 +1959,7 @@ export function AgentPage() {
                 complete={importComplete}
                 connectorInputs={importConnectorInputs}
                 createBackupBeforeImport={createBackupBeforeImport}
+                selectedComponents={importComponents}
                 currentStep={importStep}
                 itemProgress={importItemProgress}
                 error={importError}
@@ -1951,6 +1978,12 @@ export function AgentPage() {
                   }))
                 }
                 onCreateBackupBeforeImportChange={setCreateBackupBeforeImport}
+                onComponentChange={(component, selected) =>
+                  setImportComponents((current) => ({
+                    ...current,
+                    [component]: selected,
+                  }))
+                }
                 onFileChange={(providerFileId, file) =>
                   setImportFiles((current) => {
                     const next = { ...current }
@@ -3348,6 +3381,7 @@ function AgentImportPanel({
   complete,
   connectorInputs,
   createBackupBeforeImport,
+  selectedComponents,
   currentStep,
   itemProgress,
   error,
@@ -3361,6 +3395,7 @@ function AgentImportPanel({
   preview,
   onConnectorInputChange,
   onCreateBackupBeforeImportChange,
+  onComponentChange,
   onFileChange,
   onImport,
   onInspect,
@@ -3369,6 +3404,7 @@ function AgentImportPanel({
   complete: boolean
   connectorInputs: Record<string, AgentImportConnectorInput>
   createBackupBeforeImport: boolean
+  selectedComponents: Record<AgentImportComponent, boolean>
   currentStep: AgentImportStep | null
   itemProgress: AgentImportItemProgress | null
   error: string | null
@@ -3385,6 +3421,10 @@ function AgentImportPanel({
     value: AgentImportConnectorInput,
   ) => void
   onCreateBackupBeforeImportChange: (value: boolean) => void
+  onComponentChange: (
+    component: AgentImportComponent,
+    selected: boolean,
+  ) => void
   onFileChange: (providerFileId: string, file: File | null) => void
   onImport: () => void
   onInspect: () => void
@@ -3406,18 +3446,22 @@ function AgentImportPanel({
       : Math.round(((currentIndex + 1) / visibleSteps.length) * 100)
   const requirementsComplete = Boolean(
     inspection &&
-    inspection.requirements.files.every((file) => files[file.providerFileId]) &&
-    inspection.requirements.connectors.every((connector) => {
-      const input = connectorInputs[connector.name]
-      return (
-        isConnectorAuthConfigComplete(
-          connector.authType,
-          input?.authConfig ?? '',
-        ) &&
-        (!connector.requiresCertificate ||
-          Boolean(input?.clientCertificate.trim() && input.clientKey.trim()))
-      )
-    }),
+    (!selectedComponents.files ||
+      inspection.requirements.files.every(
+        (file) => files[file.providerFileId],
+      )) &&
+    (!selectedComponents.connectors ||
+      inspection.requirements.connectors.every((connector) => {
+        const input = connectorInputs[connector.name]
+        return (
+          isConnectorAuthConfigComplete(
+            connector.authType,
+            input?.authConfig ?? '',
+          ) &&
+          (!connector.requiresCertificate ||
+            Boolean(input?.clientCertificate.trim() && input.clientKey.trim()))
+        )
+      })),
   )
 
   return (
@@ -3583,8 +3627,10 @@ function AgentImportPanel({
                 ))}
               </div>
 
-              {(inspection.requirements.files.length > 0 ||
-                inspection.requirements.connectors.length > 0) && (
+              {((selectedComponents.files &&
+                inspection.requirements.files.length > 0) ||
+                (selectedComponents.connectors &&
+                  inspection.requirements.connectors.length > 0)) && (
                 <div className="border-t pt-5">
                   <h3 className="text-sm font-bold">
                     {t('agent.importPanel.requirementsTitle')}
@@ -3595,100 +3641,102 @@ function AgentImportPanel({
                 </div>
               )}
 
-              {inspection.requirements.files.length > 0 && (
-                <div className="grid gap-3">
-                  <div>
-                    <h3 className="text-sm font-bold">
-                      {t('agent.importPanel.missingFilesTitle')}
-                    </h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {t('agent.importPanel.missingFilesDescription')}
-                    </p>
-                  </div>
-                  {inspection.requirements.files.map((file) => (
-                    <label
-                      key={file.providerFileId}
-                      className="grid gap-2 text-sm font-semibold"
-                    >
-                      {file.fileName}
-                      <Input
-                        type="file"
-                        disabled={importing}
-                        onChange={(event) =>
-                          onFileChange(
-                            file.providerFileId,
-                            event.target.files?.[0] ?? null,
-                          )
-                        }
-                      />
-                    </label>
-                  ))}
-                </div>
-              )}
-
-              {inspection.requirements.connectors.map((connector) => {
-                const input = connectorInputs[connector.name]
-                if (!input) return null
-                return (
-                  <div
-                    key={connector.name}
-                    className="grid gap-3 rounded-xl border p-4"
-                  >
-                    <h3 className="font-bold">{connector.name}</h3>
-                    {connector.authType !== 'NONE' && (
-                      <label className="grid gap-2 text-sm font-semibold">
-                        {t('agent.importPanel.authConfig', {
-                          type: connector.authType,
-                        })}
-                        <Textarea
-                          className="min-h-36 font-mono text-xs"
-                          value={input.authConfig}
+              {selectedComponents.files &&
+                inspection.requirements.files.length > 0 && (
+                  <div className="grid gap-3">
+                    <div>
+                      <h3 className="text-sm font-bold">
+                        {t('agent.importPanel.missingFilesTitle')}
+                      </h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {t('agent.importPanel.missingFilesDescription')}
+                      </p>
+                    </div>
+                    {inspection.requirements.files.map((file) => (
+                      <label
+                        key={file.providerFileId}
+                        className="grid gap-2 text-sm font-semibold"
+                      >
+                        {file.fileName}
+                        <Input
+                          type="file"
+                          disabled={importing}
                           onChange={(event) =>
-                            onConnectorInputChange(connector.name, {
-                              ...input,
-                              authConfig: event.target.value,
-                            })
+                            onFileChange(
+                              file.providerFileId,
+                              event.target.files?.[0] ?? null,
+                            )
                           }
                         />
                       </label>
-                    )}
-                    {connector.requiresCertificate && (
-                      <>
-                        <ImportSecretField
-                          label={t('agent.importPanel.clientCertificate')}
-                          value={input.clientCertificate}
-                          onChange={(value) =>
-                            onConnectorInputChange(connector.name, {
-                              ...input,
-                              clientCertificate: value,
-                            })
-                          }
-                        />
-                        <ImportSecretField
-                          label={t('agent.importPanel.clientKey')}
-                          value={input.clientKey}
-                          onChange={(value) =>
-                            onConnectorInputChange(connector.name, {
-                              ...input,
-                              clientKey: value,
-                            })
-                          }
-                        />
-                        <ImportSecretField
-                          label={t('agent.importPanel.caCertificate')}
-                          value={input.caCertificate}
-                          onChange={(value) =>
-                            onConnectorInputChange(connector.name, {
-                              ...input,
-                              caCertificate: value,
-                            })
-                          }
-                        />
-                      </>
-                    )}
+                    ))}
                   </div>
-                )
-              })}
+                )}
+
+              {selectedComponents.connectors &&
+                inspection.requirements.connectors.map((connector) => {
+                  const input = connectorInputs[connector.name]
+                  if (!input) return null
+                  return (
+                    <div
+                      key={connector.name}
+                      className="grid gap-3 rounded-xl border p-4"
+                    >
+                      <h3 className="font-bold">{connector.name}</h3>
+                      {connector.authType !== 'NONE' && (
+                        <label className="grid gap-2 text-sm font-semibold">
+                          {t('agent.importPanel.authConfig', {
+                            type: connector.authType,
+                          })}
+                          <Textarea
+                            className="min-h-36 font-mono text-xs"
+                            value={input.authConfig}
+                            onChange={(event) =>
+                              onConnectorInputChange(connector.name, {
+                                ...input,
+                                authConfig: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                      )}
+                      {connector.requiresCertificate && (
+                        <>
+                          <ImportSecretField
+                            label={t('agent.importPanel.clientCertificate')}
+                            value={input.clientCertificate}
+                            onChange={(value) =>
+                              onConnectorInputChange(connector.name, {
+                                ...input,
+                                clientCertificate: value,
+                              })
+                            }
+                          />
+                          <ImportSecretField
+                            label={t('agent.importPanel.clientKey')}
+                            value={input.clientKey}
+                            onChange={(value) =>
+                              onConnectorInputChange(connector.name, {
+                                ...input,
+                                clientKey: value,
+                              })
+                            }
+                          />
+                          <ImportSecretField
+                            label={t('agent.importPanel.caCertificate')}
+                            value={input.caCertificate}
+                            onChange={(value) =>
+                              onConnectorInputChange(connector.name, {
+                                ...input,
+                                caCertificate: value,
+                              })
+                            }
+                          />
+                        </>
+                      )}
+                    </div>
+                  )
+                })}
 
               <Checkbox
                 checked={createBackupBeforeImport}
@@ -3699,6 +3747,32 @@ function AgentImportPanel({
                   onCreateBackupBeforeImportChange(event.target.checked)
                 }
               />
+
+              <details className="rounded-xl border bg-muted/10 p-4">
+                <summary className="cursor-pointer text-sm font-bold">
+                  {t('agent.importPanel.customizeImport')}
+                </summary>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {t('agent.importPanel.customizeImportDescription')}
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {(
+                    agentImportResources.filter(
+                      (resource) => resource !== 'finalizing',
+                    ) as AgentImportComponent[]
+                  ).map((component) => (
+                    <Checkbox
+                      key={component}
+                      checked={selectedComponents[component]}
+                      disabled={importing}
+                      label={t(`agent.importPanel.resources.${component}`)}
+                      onChange={(event) =>
+                        onComponentChange(component, event.target.checked)
+                      }
+                    />
+                  ))}
+                </div>
+              </details>
 
               <p className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm leading-6 text-foreground">
                 {t('agent.importPanel.replaceWarning')}
@@ -3750,8 +3824,19 @@ function AgentImportPanel({
           )}
           <ol className="grid gap-2" aria-live="polite">
             {visibleSteps.map((step, index) => {
-              const isComplete = complete || index < currentIndex
-              const isCurrent = importing && index === currentIndex
+              const component =
+                step === 'backup'
+                  ? null
+                  : step === 'finalizing'
+                    ? 'settings'
+                    : step
+              const isSkipped =
+                (step === 'backup' && !createBackupBeforeImport) ||
+                (component !== null && !selectedComponents[component])
+              const isComplete =
+                !isSkipped && (complete || index < currentIndex)
+              const isCurrent =
+                !isSkipped && importing && index === currentIndex
               return (
                 <li
                   key={step}
@@ -3766,7 +3851,9 @@ function AgentImportPanel({
                           : 'text-muted-foreground'
                     }
                   >
-                    {isComplete ? (
+                    {isSkipped ? (
+                      <Minus className="size-4" aria-hidden />
+                    ) : isComplete ? (
                       <Check className="size-4" aria-hidden />
                     ) : isCurrent ? (
                       <LoaderCircle
@@ -3784,6 +3871,11 @@ function AgentImportPanel({
                   >
                     {t(`agent.importPanel.steps.${step}`)}
                   </span>
+                  {isSkipped && (
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {t('agent.importPanel.skipped')}
+                    </span>
+                  )}
                   {isCurrent && itemProgress && (
                     <span className="shrink-0 text-xs font-semibold text-muted-foreground">
                       {t('agent.importPanel.itemProgress', {
@@ -3804,15 +3896,17 @@ function AgentImportPanel({
               <p className="rounded-lg bg-success/10 p-3 text-sm font-semibold text-success">
                 {t('agent.importPanel.complete')}
               </p>
-              <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-3">
-                <AlertTriangle
-                  className="mt-0.5 size-4 shrink-0 text-warning-foreground"
-                  aria-hidden
-                />
-                <p className="text-sm leading-6 font-medium">
-                  {t('agent.importPanel.completeDisabled')}
-                </p>
-              </div>
+              {selectedComponents.settings && (
+                <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-3">
+                  <AlertTriangle
+                    className="mt-0.5 size-4 shrink-0 text-warning-foreground"
+                    aria-hidden
+                  />
+                  <p className="text-sm leading-6 font-medium">
+                    {t('agent.importPanel.completeDisabled')}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

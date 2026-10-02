@@ -89,7 +89,7 @@ export const mbaMutationActions = [
 const actions = [...mbaReadActions, ...mbaMutationActions] as const
 const requestSchema = z.object({
   action: z.enum(actions),
-  arguments: z.array(z.unknown()).max(2).default([]),
+  arguments: z.array(z.unknown()).max(3).default([]),
   options: z.record(z.string(), z.unknown()).default({}),
 })
 

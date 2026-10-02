@@ -74,6 +74,12 @@ composition chained in `src/app.ts`.
 | `GET`                    | `/api/playground/waba/:channelId/*`                                 | Retrieves WABAs or lists owned and shared accounts                       |
 | `POST`                   | `/api/playground/webhooks/:channelId/validate`                      | Validates a webhook callback through the shared WhatsApp schema          |
 | `POST`                   | `/api/playground/messaging/:channelId/send`                         | Sends a typed WhatsApp message for an owner/admin                        |
+| `POST`                   | `/api/playground/marketing/:channelId/send`                         | Sends an optimized marketing template for an owner/admin                 |
+| `GET`                    | `/api/templates?channelId=:channelId`                               | Lists provider templates for an organization-owned channel               |
+| `POST`                   | `/api/templates/:channelId`                                         | Creates and submits a template for provider review                       |
+| `POST`                   | `/api/templates/:channelId/media`                                   | Uploads validated template example media through the channel             |
+| `GET`, `PATCH`, `DELETE` | `/api/templates/:channelId/:templateId`                             | Reads, updates, or deletes one provider template                         |
+| `GET`, `POST`            | `/api/template-sends`                                               | Lists and sends persisted template messages through the selected API     |
 | `POST`                   | `/api/playground/messaging/:channelId/mark-read`                    | Marks an incoming WhatsApp message as read                               |
 | `POST`                   | `/api/playground/messaging/:channelId/typing-indicator`             | Marks a message read and displays a typing indicator                     |
 | `POST`                   | `/api/playground/messaging/:channelId/media-upload`                 | Creates scoped upload and download URLs for playground media             |
@@ -267,9 +273,9 @@ second, 2 seconds, 5 seconds, and 10 seconds. Before retrying a mutation, the
 importer reads the affected resource and continues without replaying the write
 when the requested state already persisted. If that consistency read cannot
 establish the resource state, import stops instead of risking a duplicate.
-The manifest's exported rollout value is provenance only: import forces the
-destination rollout off at both the beginning and successful end of the
-workflow, so a manager must review and enable the agent manually.
+The manifest's exported rollout value is provenance only. Import snapshots and
+preserves the destination rollout state: an enabled destination stays enabled,
+while a disabled destination cannot be enabled by the package.
 Knowledge files are re-archived through `@mba-demo/files`. Evaluation cases are
 deliberately outside AGTX because Meta does not expose a creation operation for
 them. Meta operations are not transactional; a provider failure can leave an
@@ -283,13 +289,18 @@ logs never include supplied connector credentials or certificate contents.
 Import `progress` SSE events also include `resource`, `completed`, and
 `resourceTotal` while a resource collection is being reconciled, allowing the
 browser to show item-level progress such as `FAQs: 3/6 completed`.
+The multipart `options.components` array can restrict reconciliation to
+settings, business information, allowlist, skills, QR codes, conversational
+components, FAQs, websites, files, and/or connectors. It defaults to every
+component for backward compatibility. Unselected stages emit progress with
+`skipped: true` and do not require their files or connector credentials.
 When `createBackupBeforeImport` is selected, the API completes and persists a
 full backup before the first import mutation. A backup failure stops the import
 without reporting partial provider changes.
 
 Group reads use the same organization boundary and cursor contract, ordered by most recently updated groups. Search covers group subjects, descriptions, provider IDs, invitation links, and event types; full raw group events are returned only by the detail endpoint.
 
-Chat inbox reads use the denormalized `chats.organization_id` tenant key and the `(organization_id, updated_at, id)` index. The detail endpoint applies the same tenant boundary but resolves one chat independently of the current cursor page, allowing browser deep links without changing list semantics. Timeline reads perform separate bounded index scans over messages and chat events, merge at most two page-sized result sets, and return them chronologically with one opaque cursor. Message results include their type-specific projections and forwarding markers, and archived media paths are converted to short-lived download URLs without exposing storage keys. This avoids offset scans and an unbounded union sort as chat history grows. The chat read mutation resolves the latest inbound provider message and channel credentials server-side, marks it read through `@mba-demo/wa-messaging`, and only then transactionally advances the local cursor, resets the unread count, and promotes delivered inbound message projections to `read`. Handoff mutations similarly resolve the organization-owned chat and channel credentials server-side, transfer Meta thread control, then update the local owner projection after the provider accepts the request.
+Chat inbox reads use the denormalized `chats.organization_id` tenant key and the `(organization_id, updated_at, id)` index. The detail endpoint applies the same tenant boundary but resolves one chat independently of the current cursor page, allowing browser deep links without changing list semantics. Inbox summaries recover a missing or historically unknown message discriminator from the preserved provider payload before returning the localized-preview input. Timeline reads perform separate bounded index scans over messages and chat events, merge at most two page-sized result sets, and return them chronologically with one opaque cursor. Message results include their type-specific projections and forwarding markers, and archived media paths are converted to short-lived download URLs without exposing storage keys. This avoids offset scans and an unbounded union sort as chat history grows. The chat read mutation resolves the latest inbound provider message and channel credentials server-side, marks it read through `@mba-demo/wa-messaging`, and only then transactionally advances the local cursor, resets the unread count, and promotes delivered inbound message projections to `read`. Handoff mutations similarly resolve the organization-owned chat and channel credentials server-side, transfer Meta thread control, then update the local owner projection after the provider accepts the request.
 
 Composer sends are accepted only while the conversation is owned by the human
 application. The server resolves and overwrites the provider recipient, marks
@@ -337,6 +348,8 @@ API and worker processes; memory mode only serves in-process development.
 | `src/routes/admin-organizations.ts`  | Application-admin organization operations                 |
 | `src/routes/api-playground.ts`       | Organization-scoped WhatsApp API playground               |
 | `src/routes/messaging-playground.ts` | Messaging playground and signed media upload URLs         |
+| `src/routes/marketing-playground.ts` | Marketing Messages API playground route                   |
+| `src/routes/templates.ts`            | Product template CRUD and approval-state reads            |
 | `src/routes/media-playground.ts`     | WhatsApp media upload, lookup, download, and deletion     |
 | `src/routes/qr-playground.ts`        | WhatsApp message QR-code lifecycle playground             |
 | `src/routes/channels.ts`             | Organization-scoped channel administration                |

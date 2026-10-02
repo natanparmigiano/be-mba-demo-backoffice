@@ -568,8 +568,26 @@ const agentImportManifestSchema = z.object({
     .strict(),
 })
 
+const agentImportComponentSchema = z.enum([
+  'settings',
+  'businessInfo',
+  'allowlist',
+  'skills',
+  'qrCodes',
+  'components',
+  'faqs',
+  'websites',
+  'files',
+  'connectors',
+])
+const allAgentImportComponents = agentImportComponentSchema.options
+
 const agentImportOptionsSchema = z.object({
   createBackupBeforeImport: z.boolean().default(false),
+  components: z
+    .array(agentImportComponentSchema)
+    .default([...allAgentImportComponents])
+    .transform((components) => [...new Set(components)]),
   connectorCredentials: z.record(
     z.string(),
     z.object({
@@ -589,10 +607,13 @@ type AgentImportManifest = z.infer<typeof agentImportManifestSchema>
 type AgentImportProgressStep =
   | 'backup'
   | 'settings'
-  | 'businessData'
+  | 'businessInfo'
+  | 'allowlist'
   | 'skills'
-  | 'channelComponents'
-  | 'knowledge'
+  | 'qrCodes'
+  | 'components'
+  | 'faqs'
+  | 'websites'
   | 'files'
   | 'connectors'
   | 'finalizing'
@@ -1730,7 +1751,7 @@ export const createChannelManagementRoute = ({
       return streamSSE(c, async (stream) => {
         const includeBackup = prepared.options.createBackupBeforeImport
         const positionOffset = includeBackup ? 1 : 0
-        const total = 8 + positionOffset
+        const total = 11 + positionOffset
         const startedAt = Date.now()
         let currentStep: AgentImportProgressStep = includeBackup
           ? 'backup'
@@ -1739,6 +1760,7 @@ export const createChannelManagementRoute = ({
         const progress = async (
           step: AgentImportProgressStep,
           position: number,
+          skipped = false,
         ) => {
           currentStep = step
           currentPosition = position
@@ -1751,12 +1773,13 @@ export const createChannelManagementRoute = ({
           })
           await stream.writeSSE({
             event: 'progress',
-            data: JSON.stringify({ step, position, total }),
+            data: JSON.stringify({ step, position, total, skipped }),
           })
         }
 
         try {
           const { manifest, files, options } = prepared
+          const selected = new Set(options.components)
           const importLog: AgentImportLog = (event, details, error) =>
             reportImportLog(
               event,
@@ -1857,154 +1880,202 @@ export const createChannelManagementRoute = ({
             agentImportRetryBackoffMs,
             importLog,
           )
-          await progress('settings', 1 + positionOffset)
-          await resourceProgress('settings', 0, 1)
-          const importedSettings = manifest.agent.settings
-          const disabledSettingsInput: AgentSettingsInput = {
-            rollout: { enabled: false },
-            ai_audience: importedSettings.audience,
-            handoff: {
-              enabled: importedSettings.handoff.enabled,
-              message_selection: importedSettings.handoff.messageSelection,
-              ...(importedSettings.handoff.messageSelection === 'CUSTOM'
-                ? { message: importedSettings.handoff.message }
-                : {}),
-            },
-            never_say_phrases: importedSettings.neverSayPhrases,
+          let rolloutEnabledBeforeImport = false
+          if (selected.has('settings')) {
+            const settingsBeforeImport = await runAgentImportRead(
+              'Initial agent settings read',
+              runProviderRequest,
+              () => getAgentSettings(configuration),
+            )
+            rolloutEnabledBeforeImport =
+              settingsBeforeImport[0]?.rollout.enabled === true
           }
-          await runAgentImportMutation(
-            'Agent settings update',
-            runProviderRequest,
-            () => updateAgentSettings(configuration, disabledSettingsInput),
-            async () => {
-              const settings = await getAgentSettings(configuration)
-              const current = settings[0]
-              return current &&
-                agentSettingsMatch(current, disabledSettingsInput)
-                ? agentImportMatches(current)
-                : agentImportDoesNotMatch<AgentSettings>()
-            },
+          await progress(
+            'settings',
+            1 + positionOffset,
+            !selected.has('settings'),
           )
-          await resourceProgress('settings', 1, 1)
-
-          await progress('businessData', 2 + positionOffset)
-          await resourceProgress('businessInfo', 0, 1)
-          const desiredBusinessInfo = toMetaBusinessInfo(
-            manifest.agent.businessInfo,
-          )
-          await runAgentImportMutation(
-            'Business information update',
-            runProviderRequest,
-            () => replaceAgentBusinessInfo(configuration, desiredBusinessInfo),
-            async () => {
-              const current = await getAgentBusinessInfo(configuration)
-              return businessInfoMatches(current, desiredBusinessInfo)
-                ? agentImportMatches(current)
-                : agentImportDoesNotMatch<BusinessInfo>()
-            },
-          )
-          await resourceProgress('businessInfo', 1, 1)
-          await reconcileAllowlist(
-            configuration,
-            manifest.agent.allowlist,
-            listAgentAllowlist,
-            addAgentAllowlistEntry,
-            removeAgentAllowlistEntry,
-            runProviderRequest,
-            resourceProgress,
-          )
-
-          await progress('skills', 3 + positionOffset)
-          await reconcileSkills(
-            configuration,
-            manifest.agent.skills,
-            agentSkills,
-            runProviderRequest,
-            resourceProgress,
-          )
-
-          await progress('channelComponents', 4 + positionOffset)
-          await reconcileChannelComponents(
-            configuration,
-            manifest.agent.qrCodes,
-            manifest.agent.components,
-            agentQrCodes,
-            agentComponents,
-            runProviderRequest,
-            resourceProgress,
-          )
-
-          await progress('knowledge', 5 + positionOffset)
-          await reconcileKnowledge(
-            configuration,
-            manifest.agent.knowledge,
-            agentKnowledge,
-            runProviderRequest,
-            resourceProgress,
-          )
-
-          await progress('files', 6 + positionOffset)
-          const currentFiles = await runAgentImportRead(
-            'Knowledge file listing',
-            runProviderRequest,
-            () => agentKnowledge.listFiles(configuration),
-          )
-          const fileOperationTotal = currentFiles.length + files.length
-          let completedFileOperations = 0
-          await resourceProgress('files', 0, fileOperationTotal)
-          for (const current of currentFiles) {
+          if (selected.has('settings')) {
+            await resourceProgress('settings', 0, 1)
+            const importedSettings = manifest.agent.settings
+            const importedSettingsInput: AgentSettingsInput = {
+              rollout: { enabled: rolloutEnabledBeforeImport },
+              ai_audience: importedSettings.audience,
+              handoff: {
+                enabled: importedSettings.handoff.enabled,
+                message_selection: importedSettings.handoff.messageSelection,
+                ...(importedSettings.handoff.messageSelection === 'CUSTOM'
+                  ? { message: importedSettings.handoff.message }
+                  : {}),
+              },
+              never_say_phrases: importedSettings.neverSayPhrases,
+            }
             await runAgentImportMutation(
-              `Knowledge file deletion (${current.file_name})`,
+              'Agent settings update',
               runProviderRequest,
+              () => updateAgentSettings(configuration, importedSettingsInput),
               async () => {
-                await agentKnowledge.deleteFile(configuration, current.id)
-              },
-              async () => {
-                const filesAfterDelete =
-                  await agentKnowledge.listFiles(configuration)
-                return filesAfterDelete.some((file) => file.id === current.id)
-                  ? agentImportDoesNotMatch<void>()
-                  : agentImportMatches(undefined)
+                const settings = await getAgentSettings(configuration)
+                const current = settings[0]
+                return current &&
+                  agentSettingsMatch(current, importedSettingsInput)
+                  ? agentImportMatches(current)
+                  : agentImportDoesNotMatch<AgentSettings>()
               },
             )
-            await knowledgeArchive.delete(access.organizationId, current.id)
-            importLog('local_archive_deleted', {
-              providerFileId: current.id,
-              fileName: current.file_name,
-            })
-            completedFileOperations += 1
-            await resourceProgress(
-              'files',
-              completedFileOperations,
-              fileOperationTotal,
+            await resourceProgress('settings', 1, 1)
+          }
+
+          await progress(
+            'businessInfo',
+            2 + positionOffset,
+            !selected.has('businessInfo'),
+          )
+          if (selected.has('businessInfo')) {
+            await resourceProgress('businessInfo', 0, 1)
+            const desiredBusinessInfo = toMetaBusinessInfo(
+              manifest.agent.businessInfo,
+            )
+            await runAgentImportMutation(
+              'Business information update',
+              runProviderRequest,
+              () =>
+                replaceAgentBusinessInfo(configuration, desiredBusinessInfo),
+              async () => {
+                const current = await getAgentBusinessInfo(configuration)
+                return businessInfoMatches(current, desiredBusinessInfo)
+                  ? agentImportMatches(current)
+                  : agentImportDoesNotMatch<BusinessInfo>()
+              },
+            )
+            await resourceProgress('businessInfo', 1, 1)
+          }
+
+          await progress(
+            'allowlist',
+            3 + positionOffset,
+            !selected.has('allowlist'),
+          )
+          if (selected.has('allowlist')) {
+            await reconcileAllowlist(
+              configuration,
+              manifest.agent.allowlist,
+              listAgentAllowlist,
+              addAgentAllowlistEntry,
+              removeAgentAllowlistEntry,
+              runProviderRequest,
+              resourceProgress,
             )
           }
-          for (const importedFile of files) {
-            const uploaded = await runAgentImportMutation(
-              `Knowledge file upload (${importedFile.name})`,
+
+          await progress('skills', 4 + positionOffset, !selected.has('skills'))
+          if (selected.has('skills')) {
+            await reconcileSkills(
+              configuration,
+              manifest.agent.skills,
+              agentSkills,
               runProviderRequest,
-              () => agentKnowledge.uploadFile(configuration, importedFile),
-              async () => {
-                const current = await agentKnowledge.listFiles(configuration)
-                const matching = current.find(
-                  (file) => file.file_name === importedFile.name,
-                )
-                return matching
-                  ? agentImportMatches(matching)
-                  : agentImportDoesNotMatch<KnowledgeFile>()
-              },
+              resourceProgress,
             )
-            try {
-              await knowledgeArchive.put(
-                access.organizationId,
-                channelId,
-                uploaded,
-                importedFile,
+          }
+
+          await progress(
+            'qrCodes',
+            5 + positionOffset,
+            !selected.has('qrCodes'),
+          )
+          if (selected.has('qrCodes')) {
+            await reconcileChannelComponents(
+              configuration,
+              manifest.agent.qrCodes,
+              manifest.agent.components,
+              agentQrCodes,
+              agentComponents,
+              runProviderRequest,
+              resourceProgress,
+              true,
+              false,
+            )
+          }
+
+          await progress(
+            'components',
+            6 + positionOffset,
+            !selected.has('components'),
+          )
+          if (selected.has('components')) {
+            await reconcileChannelComponents(
+              configuration,
+              manifest.agent.qrCodes,
+              manifest.agent.components,
+              agentQrCodes,
+              agentComponents,
+              runProviderRequest,
+              resourceProgress,
+              false,
+              true,
+            )
+          }
+
+          await progress('faqs', 7 + positionOffset, !selected.has('faqs'))
+          if (selected.has('faqs')) {
+            await reconcileKnowledge(
+              configuration,
+              manifest.agent.knowledge,
+              agentKnowledge,
+              runProviderRequest,
+              resourceProgress,
+              true,
+              false,
+            )
+          }
+
+          await progress(
+            'websites',
+            8 + positionOffset,
+            !selected.has('websites'),
+          )
+          if (selected.has('websites')) {
+            await reconcileKnowledge(
+              configuration,
+              manifest.agent.knowledge,
+              agentKnowledge,
+              runProviderRequest,
+              resourceProgress,
+              false,
+              true,
+            )
+          }
+
+          await progress('files', 9 + positionOffset, !selected.has('files'))
+          if (selected.has('files')) {
+            const currentFiles = await runAgentImportRead(
+              'Knowledge file listing',
+              runProviderRequest,
+              () => agentKnowledge.listFiles(configuration),
+            )
+            const fileOperationTotal = currentFiles.length + files.length
+            let completedFileOperations = 0
+            await resourceProgress('files', 0, fileOperationTotal)
+            for (const current of currentFiles) {
+              await runAgentImportMutation(
+                `Knowledge file deletion (${current.file_name})`,
+                runProviderRequest,
+                async () => {
+                  await agentKnowledge.deleteFile(configuration, current.id)
+                },
+                async () => {
+                  const filesAfterDelete =
+                    await agentKnowledge.listFiles(configuration)
+                  return filesAfterDelete.some((file) => file.id === current.id)
+                    ? agentImportDoesNotMatch<void>()
+                    : agentImportMatches(undefined)
+                },
               )
-              importLog('local_archive_saved', {
-                providerFileId: uploaded.id,
-                fileName: importedFile.name,
-                byteSize: importedFile.size,
+              await knowledgeArchive.delete(access.organizationId, current.id)
+              importLog('local_archive_deleted', {
+                providerFileId: current.id,
+                fileName: current.file_name,
               })
               completedFileOperations += 1
               await resourceProgress(
@@ -2012,60 +2083,109 @@ export const createChannelManagementRoute = ({
                 completedFileOperations,
                 fileOperationTotal,
               )
-            } catch (error) {
-              importLog(
-                'local_archive_save_failed',
-                {
-                  providerFileId: uploaded.id,
-                  fileName: importedFile.name,
-                },
-                error,
-              )
-              await runAgentImportMutation(
-                `Knowledge file rollback (${importedFile.name})`,
+            }
+            for (const importedFile of files) {
+              const uploaded = await runAgentImportMutation(
+                `Knowledge file upload (${importedFile.name})`,
                 runProviderRequest,
-                async () => {
-                  await agentKnowledge.deleteFile(configuration, uploaded.id)
-                },
+                () => agentKnowledge.uploadFile(configuration, importedFile),
                 async () => {
                   const current = await agentKnowledge.listFiles(configuration)
-                  return current.some((file) => file.id === uploaded.id)
-                    ? agentImportDoesNotMatch<void>()
-                    : agentImportMatches(undefined)
+                  const matching = current.find(
+                    (file) => file.file_name === importedFile.name,
+                  )
+                  return matching
+                    ? agentImportMatches(matching)
+                    : agentImportDoesNotMatch<KnowledgeFile>()
                 },
-              ).catch(() => undefined)
-              throw error
+              )
+              try {
+                await knowledgeArchive.put(
+                  access.organizationId,
+                  channelId,
+                  uploaded,
+                  importedFile,
+                )
+                importLog('local_archive_saved', {
+                  providerFileId: uploaded.id,
+                  fileName: importedFile.name,
+                  byteSize: importedFile.size,
+                })
+                completedFileOperations += 1
+                await resourceProgress(
+                  'files',
+                  completedFileOperations,
+                  fileOperationTotal,
+                )
+              } catch (error) {
+                importLog(
+                  'local_archive_save_failed',
+                  {
+                    providerFileId: uploaded.id,
+                    fileName: importedFile.name,
+                  },
+                  error,
+                )
+                await runAgentImportMutation(
+                  `Knowledge file rollback (${importedFile.name})`,
+                  runProviderRequest,
+                  async () => {
+                    await agentKnowledge.deleteFile(configuration, uploaded.id)
+                  },
+                  async () => {
+                    const current =
+                      await agentKnowledge.listFiles(configuration)
+                    return current.some((file) => file.id === uploaded.id)
+                      ? agentImportDoesNotMatch<void>()
+                      : agentImportMatches(undefined)
+                  },
+                ).catch(() => undefined)
+                throw error
+              }
             }
           }
 
-          await progress('connectors', 7 + positionOffset)
-          await reconcileConnectors(
-            configuration,
-            manifest.agent.connectors,
-            options.connectorCredentials,
-            agentConnectors,
-            runProviderRequest,
-            resourceProgress,
+          await progress(
+            'connectors',
+            10 + positionOffset,
+            !selected.has('connectors'),
           )
-
-          await progress('finalizing', 8 + positionOffset)
-          await resourceProgress('finalizing', 0, 1)
-          const finalSettingsInput: AgentSettingsInput = {
-            rollout: { enabled: false },
+          if (selected.has('connectors')) {
+            await reconcileConnectors(
+              configuration,
+              manifest.agent.connectors,
+              options.connectorCredentials,
+              agentConnectors,
+              runProviderRequest,
+              resourceProgress,
+            )
           }
-          await runAgentImportMutation(
-            'Final agent rollout update',
-            runProviderRequest,
-            () => updateAgentSettings(configuration, finalSettingsInput),
-            async () => {
-              const settings = await getAgentSettings(configuration)
-              const current = settings[0]
-              return current && agentSettingsMatch(current, finalSettingsInput)
-                ? agentImportMatches(current)
-                : agentImportDoesNotMatch<AgentSettings>()
-            },
+
+          await progress(
+            'finalizing',
+            11 + positionOffset,
+            !selected.has('settings'),
           )
-          await resourceProgress('finalizing', 1, 1)
+          if (selected.has('settings')) {
+            await resourceProgress('finalizing', 0, 1)
+            const finalSettingsInput: AgentSettingsInput = {
+              rollout: { enabled: rolloutEnabledBeforeImport },
+            }
+            await runAgentImportMutation(
+              'Final agent rollout update',
+              runProviderRequest,
+              () => updateAgentSettings(configuration, finalSettingsInput),
+              async () => {
+                const settings = await getAgentSettings(configuration)
+                const current = settings[0]
+                return current &&
+                  agentSettingsMatch(current, finalSettingsInput)
+                  ? agentImportMatches(current)
+                  : agentImportDoesNotMatch<AgentSettings>()
+              },
+            )
+            await resourceProgress('finalizing', 1, 1)
+          }
           await stream.writeSSE({
             event: 'complete',
             data: JSON.stringify({
@@ -5273,8 +5393,11 @@ async function prepareAgentImport(
         },
   )
   const requirements = getAgentImportRequirements(imported)
+  const selected = new Set(options.components)
 
-  for (const connector of requirements.connectors) {
+  for (const connector of selected.has('connectors')
+    ? requirements.connectors
+    : []) {
     const supplied = options.connectorCredentials[connector.name]
     if (connector.authType !== 'NONE' && !supplied?.authConfig) {
       throw new TypeError(`Credentials are required for ${connector.name}`)
@@ -5284,7 +5407,9 @@ async function prepareAgentImport(
     }
   }
 
-  const files = imported.manifest.agent.knowledge.files.map((descriptor) => {
+  const files = (
+    selected.has('files') ? imported.manifest.agent.knowledge.files : []
+  ).map((descriptor) => {
     const archivedBody = descriptor.path
       ? imported.entries.get(descriptor.path)
       : undefined
@@ -5306,7 +5431,9 @@ async function prepareAgentImport(
     return file
   })
 
-  for (const connector of imported.manifest.agent.connectors) {
+  for (const connector of selected.has('connectors')
+    ? imported.manifest.agent.connectors
+    : []) {
     const supplied = options.connectorCredentials[connector.name]
     createConnectorSchema.parse({
       name: connector.name,
@@ -5772,78 +5899,84 @@ async function reconcileChannelComponents(
   components: AgentComponentsService,
   runProviderRequest: RunAgentImportProviderRequest,
   reportProgress: AgentImportResourceProgress,
+  includeQrCodes = true,
+  includeComponents = true,
 ): Promise<void> {
-  const currentQrCodes = await runAgentImportRead(
-    'QR code listing',
-    runProviderRequest,
-    () => qrCodes.list(configuration),
-  )
-  const qrOperationTotal = currentQrCodes.length + desiredQrCodes.length
-  let completedQrOperations = 0
-  await reportProgress('qrCodes', 0, qrOperationTotal)
-  for (const qrCode of currentQrCodes) {
-    await runAgentImportMutation(
-      `QR code deletion (${qrCode.code})`,
+  if (includeQrCodes) {
+    const currentQrCodes = await runAgentImportRead(
+      'QR code listing',
       runProviderRequest,
-      () => qrCodes.delete(configuration, qrCode.code),
-      async () =>
-        (await qrCodes.list(configuration)).some(
-          (candidate) => candidate.code === qrCode.code,
-        )
-          ? agentImportDoesNotMatch<void>()
-          : agentImportMatches(undefined),
+      () => qrCodes.list(configuration),
     )
-    completedQrOperations += 1
-    await reportProgress('qrCodes', completedQrOperations, qrOperationTotal)
-  }
-  for (const desired of desiredQrCodes) {
-    await runAgentImportMutation(
-      `QR code creation (${desired.prefilledMessage})`,
-      runProviderRequest,
-      () => qrCodes.create(configuration, desired.prefilledMessage),
-      async () => {
-        const matching = (await qrCodes.list(configuration)).find(
-          (candidate) =>
-            candidate.prefilled_message === desired.prefilledMessage,
-        )
-        return matching
-          ? agentImportMatches(matching)
-          : agentImportDoesNotMatch<MessageQrCode>()
-      },
-    )
-    completedQrOperations += 1
-    await reportProgress('qrCodes', completedQrOperations, qrOperationTotal)
+    const qrOperationTotal = currentQrCodes.length + desiredQrCodes.length
+    let completedQrOperations = 0
+    await reportProgress('qrCodes', 0, qrOperationTotal)
+    for (const qrCode of currentQrCodes) {
+      await runAgentImportMutation(
+        `QR code deletion (${qrCode.code})`,
+        runProviderRequest,
+        () => qrCodes.delete(configuration, qrCode.code),
+        async () =>
+          (await qrCodes.list(configuration)).some(
+            (candidate) => candidate.code === qrCode.code,
+          )
+            ? agentImportDoesNotMatch<void>()
+            : agentImportMatches(undefined),
+      )
+      completedQrOperations += 1
+      await reportProgress('qrCodes', completedQrOperations, qrOperationTotal)
+    }
+    for (const desired of desiredQrCodes) {
+      await runAgentImportMutation(
+        `QR code creation (${desired.prefilledMessage})`,
+        runProviderRequest,
+        () => qrCodes.create(configuration, desired.prefilledMessage),
+        async () => {
+          const matching = (await qrCodes.list(configuration)).find(
+            (candidate) =>
+              candidate.prefilled_message === desired.prefilledMessage,
+          )
+          return matching
+            ? agentImportMatches(matching)
+            : agentImportDoesNotMatch<MessageQrCode>()
+        },
+      )
+      completedQrOperations += 1
+      await reportProgress('qrCodes', completedQrOperations, qrOperationTotal)
+    }
   }
 
-  const desiredConfiguration: WriteConversationalComponentsInput = {
-    prompts: desiredComponents.prompts,
-    commands: desiredComponents.commands.map((command) => ({
-      command_name: command.commandName,
-      command_description: command.commandDescription,
-    })),
+  if (includeComponents) {
+    const desiredConfiguration: WriteConversationalComponentsInput = {
+      prompts: desiredComponents.prompts,
+      commands: desiredComponents.commands.map((command) => ({
+        command_name: command.commandName,
+        command_description: command.commandDescription,
+      })),
+    }
+    await reportProgress('components', 0, 1)
+    await runAgentImportMutation(
+      'Conversational components update',
+      runProviderRequest,
+      () => components.set(configuration, desiredConfiguration),
+      async () => {
+        const current = await components.get(configuration)
+        return equalJson(
+          {
+            prompts: current.prompts ?? [],
+            commands: (current.commands ?? []).map((command) => ({
+              command_name: command.command_name,
+              command_description: command.command_description,
+            })),
+          },
+          desiredConfiguration,
+        )
+          ? agentImportMatches(undefined)
+          : agentImportDoesNotMatch<void>()
+      },
+    )
+    await reportProgress('components', 1, 1)
   }
-  await reportProgress('components', 0, 1)
-  await runAgentImportMutation(
-    'Conversational components update',
-    runProviderRequest,
-    () => components.set(configuration, desiredConfiguration),
-    async () => {
-      const current = await components.get(configuration)
-      return equalJson(
-        {
-          prompts: current.prompts ?? [],
-          commands: (current.commands ?? []).map((command) => ({
-            command_name: command.command_name,
-            command_description: command.command_description,
-          })),
-        },
-        desiredConfiguration,
-      )
-        ? agentImportMatches(undefined)
-        : agentImportDoesNotMatch<void>()
-    },
-  )
-  await reportProgress('components', 1, 1)
 }
 
 async function reconcileKnowledge(
@@ -5852,137 +5985,144 @@ async function reconcileKnowledge(
   service: AgentKnowledgeService,
   runProviderRequest: RunAgentImportProviderRequest,
   reportProgress: AgentImportResourceProgress,
+  includeFaqs = true,
+  includeWebsites = true,
 ): Promise<void> {
-  const currentFaqs = await runAgentImportRead(
-    'FAQ listing',
-    runProviderRequest,
-    () => service.listFaqs(configuration),
-  )
-  const currentFaqByQuestion = new Map(
-    currentFaqs.map((faq) => [faq.question, faq]),
-  )
-  const desiredQuestions = new Set(desired.faqs.map((faq) => faq.question))
-  const faqRemovals = currentFaqs.filter(
-    (faq) => !desiredQuestions.has(faq.question),
-  )
-  const faqOperationTotal = desired.faqs.length + faqRemovals.length
-  let completedFaqs = 0
-  await reportProgress('faqs', completedFaqs, faqOperationTotal)
-  for (const faq of desired.faqs) {
-    const input = { question: faq.question, answer: faq.answer }
-    const existing = currentFaqByQuestion.get(faq.question)
-    if (existing) {
-      await runAgentImportMutation(
-        `FAQ update (${faq.question})`,
-        runProviderRequest,
-        () => service.updateFaq(configuration, existing.id, input),
-        async () => {
-          const matching = (await service.listFaqs(configuration)).find(
-            (candidate) => candidate.question === faq.question,
-          )
-          return matching && matching.answer === faq.answer
-            ? agentImportMatches(matching)
-            : agentImportDoesNotMatch<Faq>()
-        },
-      )
-    } else {
-      await runAgentImportMutation(
-        `FAQ creation (${faq.question})`,
-        runProviderRequest,
-        () => service.createFaq(configuration, input),
-        async () => {
-          const matching = (await service.listFaqs(configuration)).find(
-            (candidate) => candidate.question === faq.question,
-          )
-          return matching && matching.answer === faq.answer
-            ? agentImportMatches(matching)
-            : agentImportDoesNotMatch<Faq>()
-        },
-      )
-    }
-    completedFaqs += 1
-    await reportProgress('faqs', completedFaqs, faqOperationTotal)
-  }
-  for (const faq of faqRemovals) {
-    await runAgentImportMutation(
-      `FAQ deletion (${faq.question})`,
+  if (includeFaqs) {
+    const currentFaqs = await runAgentImportRead(
+      'FAQ listing',
       runProviderRequest,
-      () => service.deleteFaq(configuration, faq.id),
-      async () => {
-        const afterDeletion = await service.listFaqs(configuration)
-        return afterDeletion.some((candidate) => candidate.id === faq.id)
-          ? agentImportDoesNotMatch<void>()
-          : agentImportMatches(undefined)
-      },
+      () => service.listFaqs(configuration),
     )
-    completedFaqs += 1
+    const currentFaqByQuestion = new Map(
+      currentFaqs.map((faq) => [faq.question, faq]),
+    )
+    const desiredQuestions = new Set(desired.faqs.map((faq) => faq.question))
+    const faqRemovals = currentFaqs.filter(
+      (faq) => !desiredQuestions.has(faq.question),
+    )
+    const faqOperationTotal = desired.faqs.length + faqRemovals.length
+    let completedFaqs = 0
     await reportProgress('faqs', completedFaqs, faqOperationTotal)
+    for (const faq of desired.faqs) {
+      const input = { question: faq.question, answer: faq.answer }
+      const existing = currentFaqByQuestion.get(faq.question)
+      if (existing) {
+        await runAgentImportMutation(
+          `FAQ update (${faq.question})`,
+          runProviderRequest,
+          () => service.updateFaq(configuration, existing.id, input),
+          async () => {
+            const matching = (await service.listFaqs(configuration)).find(
+              (candidate) => candidate.question === faq.question,
+            )
+            return matching && matching.answer === faq.answer
+              ? agentImportMatches(matching)
+              : agentImportDoesNotMatch<Faq>()
+          },
+        )
+      } else {
+        await runAgentImportMutation(
+          `FAQ creation (${faq.question})`,
+          runProviderRequest,
+          () => service.createFaq(configuration, input),
+          async () => {
+            const matching = (await service.listFaqs(configuration)).find(
+              (candidate) => candidate.question === faq.question,
+            )
+            return matching && matching.answer === faq.answer
+              ? agentImportMatches(matching)
+              : agentImportDoesNotMatch<Faq>()
+          },
+        )
+      }
+      completedFaqs += 1
+      await reportProgress('faqs', completedFaqs, faqOperationTotal)
+    }
+    for (const faq of faqRemovals) {
+      await runAgentImportMutation(
+        `FAQ deletion (${faq.question})`,
+        runProviderRequest,
+        () => service.deleteFaq(configuration, faq.id),
+        async () => {
+          const afterDeletion = await service.listFaqs(configuration)
+          return afterDeletion.some((candidate) => candidate.id === faq.id)
+            ? agentImportDoesNotMatch<void>()
+            : agentImportMatches(undefined)
+        },
+      )
+      completedFaqs += 1
+      await reportProgress('faqs', completedFaqs, faqOperationTotal)
+    }
   }
 
-  const currentWebsites = await runAgentImportRead(
-    'Knowledge website listing',
-    runProviderRequest,
-    () => service.listWebsites(configuration),
-  )
-  const currentWebsiteByUrl = new Map(
-    currentWebsites.map((website) => [website.url, website]),
-  )
-  const desiredUrls = new Set(desired.websites.map((website) => website.url))
-  const websiteRemovals = currentWebsites.filter(
-    (website) => !desiredUrls.has(website.url),
-  )
-  const websiteOperationTotal = desired.websites.length + websiteRemovals.length
-  let completedWebsites = 0
-  await reportProgress('websites', completedWebsites, websiteOperationTotal)
-  for (const website of desired.websites) {
-    const input = toKnowledgeWebsiteInput(website)
-    const existing = currentWebsiteByUrl.get(website.url)
-    if (existing) {
-      await runAgentImportMutation(
-        `Knowledge website update (${website.url})`,
-        runProviderRequest,
-        () => service.updateWebsite(configuration, existing.id, input),
-        async () => {
-          const matching = (await service.listWebsites(configuration)).find(
-            (candidate) => candidate.url === website.url,
-          )
-          return matching && knowledgeWebsiteMatches(matching, input)
-            ? agentImportMatches(matching)
-            : agentImportDoesNotMatch<KnowledgeWebsite>()
-        },
-      )
-    } else {
-      await runAgentImportMutation(
-        `Knowledge website creation (${website.url})`,
-        runProviderRequest,
-        () => service.createWebsite(configuration, input),
-        async () => {
-          const matching = (await service.listWebsites(configuration)).find(
-            (candidate) => candidate.url === website.url,
-          )
-          return matching && knowledgeWebsiteMatches(matching, input)
-            ? agentImportMatches(matching)
-            : agentImportDoesNotMatch<KnowledgeWebsite>()
-        },
-      )
-    }
-    completedWebsites += 1
-    await reportProgress('websites', completedWebsites, websiteOperationTotal)
-  }
-  for (const website of websiteRemovals) {
-    await runAgentImportMutation(
-      `Knowledge website deletion (${website.url})`,
+  if (includeWebsites) {
+    const currentWebsites = await runAgentImportRead(
+      'Knowledge website listing',
       runProviderRequest,
-      () => service.deleteWebsite(configuration, website.id),
-      async () => {
-        const afterDeletion = await service.listWebsites(configuration)
-        return afterDeletion.some((candidate) => candidate.id === website.id)
-          ? agentImportDoesNotMatch<void>()
-          : agentImportMatches(undefined)
-      },
+      () => service.listWebsites(configuration),
     )
-    completedWebsites += 1
+    const currentWebsiteByUrl = new Map(
+      currentWebsites.map((website) => [website.url, website]),
+    )
+    const desiredUrls = new Set(desired.websites.map((website) => website.url))
+    const websiteRemovals = currentWebsites.filter(
+      (website) => !desiredUrls.has(website.url),
+    )
+    const websiteOperationTotal =
+      desired.websites.length + websiteRemovals.length
+    let completedWebsites = 0
     await reportProgress('websites', completedWebsites, websiteOperationTotal)
+    for (const website of desired.websites) {
+      const input = toKnowledgeWebsiteInput(website)
+      const existing = currentWebsiteByUrl.get(website.url)
+      if (existing) {
+        await runAgentImportMutation(
+          `Knowledge website update (${website.url})`,
+          runProviderRequest,
+          () => service.updateWebsite(configuration, existing.id, input),
+          async () => {
+            const matching = (await service.listWebsites(configuration)).find(
+              (candidate) => candidate.url === website.url,
+            )
+            return matching && knowledgeWebsiteMatches(matching, input)
+              ? agentImportMatches(matching)
+              : agentImportDoesNotMatch<KnowledgeWebsite>()
+          },
+        )
+      } else {
+        await runAgentImportMutation(
+          `Knowledge website creation (${website.url})`,
+          runProviderRequest,
+          () => service.createWebsite(configuration, input),
+          async () => {
+            const matching = (await service.listWebsites(configuration)).find(
+              (candidate) => candidate.url === website.url,
+            )
+            return matching && knowledgeWebsiteMatches(matching, input)
+              ? agentImportMatches(matching)
+              : agentImportDoesNotMatch<KnowledgeWebsite>()
+          },
+        )
+      }
+      completedWebsites += 1
+      await reportProgress('websites', completedWebsites, websiteOperationTotal)
+    }
+    for (const website of websiteRemovals) {
+      await runAgentImportMutation(
+        `Knowledge website deletion (${website.url})`,
+        runProviderRequest,
+        () => service.deleteWebsite(configuration, website.id),
+        async () => {
+          const afterDeletion = await service.listWebsites(configuration)
+          return afterDeletion.some((candidate) => candidate.id === website.id)
+            ? agentImportDoesNotMatch<void>()
+            : agentImportMatches(undefined)
+        },
+      )
+      completedWebsites += 1
+      await reportProgress('websites', completedWebsites, websiteOperationTotal)
+    }
   }
 }
 

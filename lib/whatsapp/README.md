@@ -17,6 +17,7 @@ directly.
 | [`@mba-demo/wa-flows`](flows/README.md)                 | Manage Flows, assets, previews, metrics, and endpoint encryption | WABA ID; phone number ID for encryption  |
 | [`@mba-demo/wa-media`](media/README.md)                 | Upload, retrieve, download, and delete media                     | Phone number ID                          |
 | [`@mba-demo/wa-messaging`](messaging/README.md)         | Send messages and update read/typing state                       | Phone number ID                          |
+| [`@mba-demo/wa-marketing`](marketing/README.md)         | Send optimized marketing template messages                       | Phone number ID                          |
 | [`@mba-demo/wa-moderation`](moderation/README.md)       | List, block, and unblock WhatsApp users                          | Phone number ID                          |
 | [`@mba-demo/wa-qr`](qr/README.md)                       | Create and manage message QR codes and generated images          | Phone number ID                          |
 | [`@mba-demo/wa-components`](components/README.md)       | Manage icebreakers, commands, and conversational automation      | Phone number ID                          |
@@ -28,6 +29,11 @@ The packages intentionally separate resource management from message delivery.
 For example, `wa-flows` creates and publishes a Flow, while `wa-messaging`
 sends that Flow to a recipient. Similarly, `wa-templates` manages templates and
 `wa-messaging` sends approved templates.
+
+`wa-marketing` sends approved marketing templates through Meta's dedicated
+`marketing_messages` edge. Use `wa-messaging` for Cloud API message delivery
+and `wa-marketing` when the WABA is eligible and onboarded for Marketing
+Messages optimization.
 
 ## Shared client conventions
 

@@ -578,6 +578,10 @@ export const messages = mbaSchema.table(
     buttonData: jsonb('button_data').$type<StoredMessageButtonData>(),
     orderData: jsonb('order_data').$type<StoredMessageOrderData>(),
     reactionData: jsonb('reaction_data').$type<StoredMessageReactionData>(),
+    // Provider template name projected from outbound template messages for filtering and joins.
+    templateName: text('template_name'),
+    // True for Marketing Messages API sends, false for regular template sends, null otherwise.
+    isMarketingTemplate: boolean('is_marketing_template'),
     templateData: jsonb('template_data').$type<StoredMessageTemplateData>(),
     systemData: jsonb('system_data').$type<StoredMessageSystemData>(),
     editData: jsonb('edit_data').$type<StoredMessageEditData>(),

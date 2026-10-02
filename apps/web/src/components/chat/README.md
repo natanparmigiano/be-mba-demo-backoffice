@@ -174,6 +174,11 @@ produce `ChatMessage` values with stable IDs, direction, localized display
 metadata, reactions, and normalized statuses. This keeps provider-version
 changes out of UI code.
 
+Inbox rows preserve text and caption previews when available. All stored
+WhatsApp message types otherwise use a localized, sender-aware fallback such
+as “Maya sent a sticker”; unrecognized future types use the unknown-message
+fallback.
+
 When adding a message type:
 
 1. Add its interface and include it in `ChatMessage`.

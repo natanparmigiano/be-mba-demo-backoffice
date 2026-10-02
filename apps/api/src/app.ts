@@ -26,6 +26,10 @@ import {
   type MessagingPlaygroundRouteOptions,
 } from './routes/messaging-playground.js'
 import {
+  createMarketingPlaygroundRoute,
+  type MarketingPlaygroundRouteOptions,
+} from './routes/marketing-playground.js'
+import {
   createMbaPlaygroundRoute,
   type MbaPlaygroundRouteOptions,
 } from './routes/mba-playground.js'
@@ -49,6 +53,11 @@ import {
   createTemplatesPlaygroundRoute,
   type TemplatesPlaygroundRouteOptions,
 } from './routes/templates-playground.js'
+import {
+  createTemplatesRoute,
+  type TemplatesRouteOptions,
+} from './routes/templates.js'
+import { createTemplateSendsRoute } from './routes/template-sends.js'
 import {
   createChannelManagementRoute,
   type ChannelManagementRouteOptions,
@@ -94,6 +103,7 @@ interface CreateAppOptions {
   groups?: GroupsRouteOptions
   hasSsoProviders?: () => Promise<boolean>
   messagingPlayground?: MessagingPlaygroundRouteOptions
+  marketingPlayground?: MarketingPlaygroundRouteOptions
   mbaPlayground?: MbaPlaygroundRouteOptions
   moderationPlayground?: ModerationPlaygroundRouteOptions
   mediaPlayground?: MediaPlaygroundRouteOptions
@@ -101,6 +111,7 @@ interface CreateAppOptions {
   qrPlayground?: QrPlaygroundRouteOptions
   subscriptionsPlayground?: SubscriptionsPlaygroundRouteOptions
   templatesPlayground?: TemplatesPlaygroundRouteOptions
+  templates?: TemplatesRouteOptions
   runner?: RunnerRouteOptions
   stickers?: StickersRouteOptions
   waCloudWebhook?: WaCloudWebhookRouteOptions
@@ -123,6 +134,7 @@ export const createApp = ({
   groups,
   hasSsoProviders = defaultHasSsoProviders,
   messagingPlayground,
+  marketingPlayground,
   mbaPlayground,
   moderationPlayground,
   mediaPlayground,
@@ -130,6 +142,7 @@ export const createApp = ({
   qrPlayground,
   subscriptionsPlayground,
   templatesPlayground,
+  templates,
   runner,
   stickers,
   waCloudWebhook,
@@ -178,6 +191,10 @@ export const createApp = ({
       '/api/playground/messaging',
       createMessagingPlaygroundRoute({ fileStore, ...messagingPlayground }),
     )
+    .route(
+      '/api/playground/marketing',
+      createMarketingPlaygroundRoute(marketingPlayground),
+    )
     .route('/api/playground/media', createMediaPlaygroundRoute(mediaPlayground))
     .route('/api/playground/mba', createMbaPlaygroundRoute(mbaPlayground))
     .route(
@@ -198,6 +215,8 @@ export const createApp = ({
       '/api/playground/templates',
       createTemplatesPlaygroundRoute(templatesPlayground),
     )
+    .route('/api/templates', createTemplatesRoute(templates))
+    .route('/api/template-sends', createTemplateSendsRoute())
     .route('/api/playground/waba', createWabaPlaygroundRoute(wabaPlayground))
     .route(
       '/api/playground/webhooks',

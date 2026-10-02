@@ -12,31 +12,31 @@ import { Button, Input, Pill, Table } from '../components/ui'
 
 ## Component catalog
 
-| Component                 | Main contract                                                                                         |
-| ------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `Alert`                   | Dismissible `primary`, `success`, or `warning` status with icon, title, and description.              |
-| `Avatar`                  | Initials avatar with `sm`, `md`, `lg`, or `xl` sizing and optional presence status.                   |
-| `Button`                  | `primary`, `secondary`, `outline`, `ghost`, `success`, or `danger`; four sizes; supports `isLoading`. |
-| `Checkbox`                | Native checkbox with required label and optional description.                                         |
-| `ColorSwatch`             | Design-system display helper for a named CSS variable.                                                |
-| `Dialog`                  | Portaled controlled modal surface with Escape and backdrop dismissal.                                 |
-| `EmptyState`              | Icon, title, description, and optional action.                                                        |
-| `Input`                   | Forwarded native input with label, hint, error, and optional Lucide leading icon.                     |
-| `Menu`                    | Composable popover menu with outside-click dismissal and keyboard navigation.                         |
-| `Pagination`              | Controlled page navigation with a compact three-page window.                                          |
-| `Pill`                    | Neutral, primary, success, warning, or danger status label with optional dot.                         |
-| `SearchBox`               | Styled native search input with a leading search icon.                                                |
-| `SectionCard`             | Titled card used to organize design-system examples.                                                  |
-| `SectionHeading`          | Eyebrow, title, and description for catalog sections.                                                 |
-| `Select`                  | Forwarded native select with label and hint.                                                          |
-| `StatCard`                | Metric, label, change, and icon presentation.                                                         |
-| `Switch`                  | Native checkbox rendered as a switch with label and optional description.                             |
-| `Table` and subcomponents | Responsive table wrapper and semantic table building blocks.                                          |
-| `Tabs`                    | Controlled typed `underline` or `pills` tab list with optional icons and right-aligned items.         |
-| `TagInput`                | Controlled string-list input with keyboard entry, paste, backspace, and removable tags.               |
-| `Textarea`                | Forwarded native textarea with label, hint, and error.                                                |
-| `Toast`                   | Presentational status notification.                                                                   |
-| `useTimedToast`           | Local toast lifecycle with configurable auto-dismiss duration.                                        |
+| Component                 | Main contract                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `Alert`                   | Dismissible `primary`, `success`, or `warning` status with icon, title, and description.                                  |
+| `Avatar`                  | Initials avatar with `sm`, `md`, `lg`, or `xl` sizing and optional presence status.                                       |
+| `Button`                  | `primary`, `secondary`, `outline`, `ghost`, `success`, or `danger`; four sizes; supports `isLoading`.                     |
+| `Checkbox`                | Native checkbox with required label and optional description.                                                             |
+| `ColorSwatch`             | Design-system display helper for a named CSS variable.                                                                    |
+| `Dialog`                  | Portaled controlled modal surface with Escape and backdrop dismissal.                                                     |
+| `EmptyState`              | Icon, title, description, and optional action.                                                                            |
+| `Input`                   | Forwarded native input with label, hint, error, and optional Lucide leading icon.                                         |
+| `Menu`                    | Composable popover menu with outside-click dismissal and keyboard navigation.                                             |
+| `Pagination`              | Controlled page navigation with a compact three-page window.                                                              |
+| `Pill`                    | Neutral, primary, success, warning, or danger status label with optional dot.                                             |
+| `SearchBox`               | Styled native search input with a leading search icon.                                                                    |
+| `SectionCard`             | Titled card used to organize design-system examples.                                                                      |
+| `SectionHeading`          | Eyebrow, title, and description for catalog sections.                                                                     |
+| `Select`                  | Forwarded native select with label and hint.                                                                              |
+| `StatCard`                | Metric, label, change, and icon presentation.                                                                             |
+| `Switch`                  | Native checkbox rendered as a switch with label and optional description.                                                 |
+| `Table` and subcomponents | Responsive table wrapper and semantic table building blocks.                                                              |
+| `Tabs`                    | Controlled typed `underline` or `pills` tab list with optional icons, right-aligned items, and inset horizontal overflow. |
+| `TagInput`                | Controlled string-list input with keyboard entry, paste, backspace, and removable tags.                                   |
+| `Textarea`                | Forwarded native textarea with label, hint, and error.                                                                    |
+| `Toast`                   | Presentational status notification.                                                                                       |
+| `useTimedToast`           | Local toast lifecycle with configurable auto-dismiss duration.                                                            |
 
 ## Usage patterns
 

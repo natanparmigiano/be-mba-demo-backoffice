@@ -28,6 +28,9 @@
   --chat-incoming: oklch(1 0 0);
   --chat-outgoing: oklch(0.925 0.035 250);
   --status-read: oklch(0.58 0.22 257);
+  --scrollbar-thumb: rgb(3.1% 40% 100% / 72%);
+  --scrollbar-thumb-hover: rgb(3.1% 40% 100% / 92%);
+  --scrollbar-track: rgb(3.1% 40% 100% / 6%);
   --lightbox: oklch(0.08 0.006 255);
   --lightbox-foreground: oklch(0.98 0.002 255);
   --lightbox-surface: oklch(0.17 0.008 255);
@@ -61,6 +64,9 @@
   --chat-incoming: oklch(0.27 0.015 255);
   --chat-outgoing: oklch(0.32 0.055 255);
   --status-read: oklch(0.72 0.16 245);
+  --scrollbar-thumb: rgb(18% 51% 100% / 78%);
+  --scrollbar-thumb-hover: rgb(27% 57% 100% / 96%);
+  --scrollbar-track: rgb(100% 100% 100% / 7%);
   --lightbox: oklch(0.08 0.006 255);
   --lightbox-foreground: oklch(0.98 0.002 255);
   --lightbox-surface: oklch(0.17 0.008 255);
@@ -109,6 +115,30 @@
 @layer base {
   * {
     @apply border-border;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-width: thin;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
   }
 
   html {
@@ -128,6 +158,18 @@
 }
 
 @layer utilities {
+  .app-sidebar-scrollbar {
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  .app-sidebar-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .app-sidebar-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
   .bg-brand-gradient {
     background-color: #0064e0;
     background-image: radial-gradient(

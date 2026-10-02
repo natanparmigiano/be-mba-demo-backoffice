@@ -10,6 +10,7 @@ import {
   encodeChatCursor,
   encodeTimelineCursor,
   messageTextExpression,
+  messageTypeExpression,
   markChatMessageRead,
   resolveChatMediaUrl,
   timelineBoundary,
@@ -85,6 +86,8 @@ const timelineMessage: ChatTimelineItem = {
   buttonData: null,
   orderData: null,
   reactionData: null,
+  templateName: null,
+  isMarketingTemplate: null,
   templateData: null,
   systemData: null,
   editData: null,
@@ -133,6 +136,14 @@ describe('chats route', () => {
 
     assert.match(query.sql, /text_content/)
     assert.match(query.sql, /message,text,body/)
+  })
+
+  it('recovers missing projected message types from preserved payloads', () => {
+    const query = new PgDialect().sqlToQuery(messageTypeExpression())
+
+    assert.match(query.sql, /message_type/)
+    assert.match(query.sql, /message,type/)
+    assert.deepEqual(query.params, [])
   })
 
   it('lists organization chats with a parsed keyset cursor', async () => {

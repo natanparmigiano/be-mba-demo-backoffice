@@ -199,7 +199,7 @@ export interface ChatSummary {
   latestMessage: {
     id: number
     direction: 'inbound' | 'outbound'
-    messageType: string | null
+    messageType: string
     occurredAt: string | null
     preview: string | null
   } | null
@@ -234,6 +234,8 @@ export interface ChatMessageTimelineItem {
   buttonData: StoredMessage['buttonData']
   orderData: StoredMessage['orderData']
   reactionData: StoredMessage['reactionData']
+  templateName: StoredMessage['templateName']
+  isMarketingTemplate: StoredMessage['isMarketingTemplate']
   templateData: StoredMessage['templateData']
   systemData: StoredMessage['systemData']
   editData: StoredMessage['editData']
@@ -1093,7 +1095,7 @@ async function queryChatSummaryRows(conditions: SQL[], limit: number) {
       groupProviderId: groups.providerGroupId,
       groupSubject: groups.subject,
       latestMessageDirection: messages.direction,
-      latestMessageType: messages.messageType,
+      latestMessageType: messageTypeExpression(),
       latestMessageOccurredAt: messages.occurredAt,
       latestMessagePreview: messageTextExpression(240),
       latestInboundMessageAt: sql<Date | null>`(
@@ -1559,6 +1561,8 @@ async function getChatTimeline(
         buttonData: messages.buttonData,
         orderData: messages.orderData,
         reactionData: messages.reactionData,
+        templateName: messages.templateName,
+        isMarketingTemplate: messages.isMarketingTemplate,
         templateData: messages.templateData,
         systemData: messages.systemData,
         editData: messages.editData,
@@ -1638,6 +1642,8 @@ async function getChatTimeline(
                 buttonData: row.buttonData,
                 orderData: row.orderData,
                 reactionData: row.reactionData,
+                templateName: row.templateName,
+                isMarketingTemplate: row.isMarketingTemplate,
                 templateData: row.templateData,
                 systemData: row.systemData,
                 editData: row.editData,
@@ -1737,6 +1743,15 @@ export function messageTextExpression(maxLength: number): SQL<string | null> {
     ${messages.rawMessage} #>> '{location,address}',
     ${messages.rawMessage} #>> '{reaction,emoji}'
   ), ${maxLength})`
+}
+
+export function messageTypeExpression(): SQL<string> {
+  return sql<string>`coalesce(
+    nullif(${messages.messageType}, 'unknown'),
+    nullif(${messages.rawMessage} #>> '{type}', ''),
+    nullif(${messages.rawMessage} #>> '{message,type}', ''),
+    'unknown'
+  )`
 }
 
 function compareTimelineItemsDescending(

@@ -10,6 +10,9 @@ import { Input, Textarea } from '../components/ui'
 type Props = { channelId: string; mutationDisabled: boolean }
 type T = ReturnType<typeof useTranslation>['t']
 
+const graphBlockUsersPath =
+  'https://graph.facebook.com/v26.0/PHONE_NUMBER_ID/block_users'
+
 export function ModerationPlayground({ channelId, mutationDisabled }: Props) {
   const { t } = useTranslation()
   return (
@@ -47,6 +50,14 @@ function ListBlockedUsers({ channelId, disabled }: CardProps) {
       action={t('apiPlayground.moderation.list.action')}
       state={request.state}
       disabled={disabled}
+      request={{
+        path: graphBlockUsersPath,
+        query: {
+          ...(limit ? { limit } : {}),
+          ...(before ? { before } : {}),
+          ...(after ? { after } : {}),
+        },
+      }}
       defaultOpen
       resultLabel={t('apiPlayground.result')}
       onSubmit={() =>
@@ -102,14 +113,25 @@ function ModerateUsers({
   const request = useOperation()
   const [users, setUsers] = useState('')
   const prefix = `apiPlayground.moderation.${operation}` as const
+  const parsedUsers = users
+    .split(/[\n,]/)
+    .map((user) => user.trim())
+    .filter(Boolean)
   return (
     <PlaygroundOperationCard
-      method="POST"
+      method={operation === 'block' ? 'POST' : 'DELETE'}
       title={t(`${prefix}.title`)}
       description={t(`${prefix}.description`)}
       action={t(`${prefix}.action`)}
       state={request.state}
       disabled={disabled}
+      request={{
+        path: graphBlockUsersPath,
+        body: {
+          messaging_product: 'whatsapp',
+          block_users: parsedUsers,
+        },
+      }}
       resultLabel={t('apiPlayground.result')}
       onSubmit={() =>
         void request.run(async () => {

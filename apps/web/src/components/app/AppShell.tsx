@@ -7,10 +7,12 @@ import {
   Package,
   ContactRound,
   FlaskConical,
+  FileText,
   Home,
   KeyRound,
   LogOut,
   RadioTower,
+  SendHorizontal,
   ShieldCheck,
   Users,
 } from 'lucide-react'
@@ -113,6 +115,20 @@ export function AppShell() {
       end: false,
     },
   ]
+  const templateNavigation = [
+    {
+      to: '/templates',
+      label: t('shell.templates'),
+      icon: FileText,
+      end: false,
+    },
+    {
+      to: '/template-sending',
+      label: t('shell.sending'),
+      icon: SendHorizontal,
+      end: false,
+    },
+  ]
   const workspaceNavigation = [
     {
       to: '/organization',
@@ -147,7 +163,7 @@ export function AppShell() {
             </p>
           </div>
         </div>
-        <nav className="mt-8 grid gap-1">
+        <nav className="app-sidebar-scrollbar mt-8 grid gap-1 overflow-y-auto pr-2">
           {navigation.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
@@ -264,6 +280,38 @@ export function AppShell() {
               )}
             </div>
           </div>
+          <div
+            className="mt-4"
+            role="group"
+            aria-labelledby="template-navigation-label"
+          >
+            <p
+              id="template-navigation-label"
+              className="px-3 text-[11px] font-bold tracking-[0.12em] text-muted-foreground uppercase"
+            >
+              {t('shell.templateMessages')}
+            </p>
+            <div className="mt-1 grid gap-1 pl-2">
+              {templateNavigation.map(({ to, label, icon: Icon, end }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors',
+                      isActive
+                        ? 'bg-primary/12 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )
+                  }
+                >
+                  <Icon className="size-4" />
+                  {label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
         </nav>
         <div className="mt-auto rounded-2xl border bg-card p-2 shadow-xs">
           <OrganizationSwitcher />
@@ -305,10 +353,10 @@ export function AppShell() {
           )}
           <Button
             variant={
-              location.pathname === '/api-playground' ? 'secondary' : 'ghost'
+              location.pathname === '/playground' ? 'secondary' : 'ghost'
             }
             size="sm"
-            onClick={() => void navigate('/api-playground')}
+            onClick={() => void navigate('/playground')}
             aria-label={t('shell.apiPlayground')}
           >
             <FlaskConical className="size-4" aria-hidden />

@@ -51,10 +51,13 @@ BrowserRouter
 │           ├── /channels -> ChannelsPage
 │           ├── /contacts -> ContactsPage
 │           ├── /groups -> GroupsPage
+│           ├── /templates -> TemplatesPage
+│           ├── /templates/new -> TemplatesPage
+│           ├── /templates/:channelId/:templateId -> TemplatesPage
 │           ├── /functions -> FunctionsPage
 │           ├── /mcps -> McpsPage
 │           ├── /api-keys -> ApiKeysPage
-│           ├── /api-playground -> ApiPlaygroundPage
+│           ├── /playground -> ApiPlaygroundPage
 │           └── /admin -> AdminPage (AdminRoute)
 └── * -> /
 ```

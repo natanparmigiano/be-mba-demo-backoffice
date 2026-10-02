@@ -5,6 +5,7 @@ import {
   PlaygroundOperationCard,
   type PlaygroundOperationState,
 } from '../components/api-playground/PlaygroundOperationCard'
+import type { PlaygroundRequestExample } from '../components/api-playground/PlaygroundRequestActions'
 import { Input, Textarea } from '../components/ui'
 
 type Action =
@@ -104,9 +105,13 @@ const operations: Array<{
 
 export function FlowsPlayground({
   channelId,
+  wabaId,
+  phoneNumberId,
   mutationDisabled,
 }: {
   channelId: string
+  wabaId: string
+  phoneNumberId: string
   mutationDisabled: boolean
 }) {
   const { t } = useTranslation()
@@ -121,6 +126,8 @@ export function FlowsPlayground({
           key={operation.action}
           {...operation}
           channelId={channelId}
+          wabaId={wabaId}
+          phoneNumberId={phoneNumberId}
           mutationDisabled={mutationDisabled}
           defaultOpen={index === 0}
         />
@@ -135,10 +142,14 @@ function FlowOperation({
   flowId: needsFlowId = false,
   payload: initialPayload,
   channelId,
+  wabaId,
+  phoneNumberId,
   mutationDisabled,
   defaultOpen,
 }: (typeof operations)[number] & {
   channelId: string
+  wabaId: string
+  phoneNumberId: string
   mutationDisabled: boolean
   defaultOpen: boolean
 }) {
@@ -149,6 +160,7 @@ function FlowOperation({
     JSON.stringify(initialPayload, null, 2),
   )
   const readOnly = method === 'GET'
+  const examplePayload = parseExamplePayload(payload)
   return (
     <PlaygroundOperationCard
       method={method}
@@ -164,6 +176,13 @@ function FlowOperation({
       }
       defaultOpen={defaultOpen}
       resultLabel={t('apiPlayground.result')}
+      request={graphRequest(
+        action,
+        flowId,
+        examplePayload,
+        wabaId,
+        phoneNumberId,
+      )}
       onSubmit={() =>
         void request.run(async () =>
           readResult(
@@ -199,6 +218,123 @@ function FlowOperation({
   )
 }
 
+const GRAPH_BASE = 'https://graph.facebook.com/v26.0'
+
+function graphRequest(
+  action: Action,
+  flowId: string,
+  payload: unknown,
+  wabaId: string,
+  phoneNumberId: string,
+): PlaygroundRequestExample {
+  const input = asRecord(payload)
+  const flowNode = `${GRAPH_BASE}/${encodeURIComponent(flowId || 'FLOW_ID')}`
+  const wabaNode = `${GRAPH_BASE}/${encodeURIComponent(wabaId || 'WABA_ID')}`
+  const phoneNode = `${GRAPH_BASE}/${encodeURIComponent(phoneNumberId || 'PHONE_NUMBER_ID')}`
+  switch (action) {
+    case 'create':
+      return multipart(`${wabaNode}/flows`, {
+        name: input.name,
+        categories: JSON.stringify(input.categories ?? []),
+        ...defined(input, ['clone_flow_id', 'endpoint_uri']),
+      })
+    case 'list':
+      return {
+        method: 'GET',
+        path: `${wabaNode}/flows`,
+        query: defined(input, ['fields', 'limit', 'before', 'after']),
+      }
+    case 'get':
+      return {
+        method: 'GET',
+        path: flowNode,
+        query: defined(input, ['fields']),
+      }
+    case 'preview':
+      return {
+        method: 'GET',
+        path: flowNode,
+        query: {
+          fields: `preview.invalidate(${input.invalidate ?? false})`,
+          ...(input.unixTimestamp ? { date_format: 'U' } : {}),
+        },
+      }
+    case 'migrate':
+      return multipart(`${wabaNode}/migrate_flows`, {
+        source_waba_id: input.source_waba_id,
+        ...(input.source_flow_names === undefined
+          ? {}
+          : { source_flow_names: JSON.stringify(input.source_flow_names) }),
+      })
+    case 'updateMetadata':
+      return multipart(flowNode, {
+        ...defined(input, ['name', 'endpoint_uri']),
+        ...(input.categories === undefined
+          ? {}
+          : { categories: JSON.stringify(input.categories) }),
+      })
+    case 'uploadJson':
+      return multipart(`${flowNode}/assets`, {
+        file: { name: 'flow.json' },
+        name: 'flow.json',
+        asset_type: 'FLOW_JSON',
+      })
+    case 'listAssets':
+      return {
+        method: 'GET',
+        path: `${flowNode}/assets`,
+        query: defined(input, ['fields', 'limit', 'before', 'after']),
+      }
+    case 'publish':
+      return { method: 'POST', path: `${flowNode}/publish` }
+    case 'deprecate':
+      return { method: 'POST', path: `${flowNode}/deprecate` }
+    case 'delete':
+      return { method: 'DELETE', path: flowNode }
+    case 'metric':
+      return {
+        method: 'GET',
+        path: flowNode,
+        query: {
+          fields: `metric.name(${String(input.name ?? '')}).granularity(${String(input.granularity ?? '')}).since(${String(input.since ?? '')}).until(${String(input.until ?? '')})`,
+        },
+      }
+    case 'getEncryptionKey':
+      return {
+        method: 'GET',
+        path: `${phoneNode}/whatsapp_business_encryption`,
+      }
+    case 'setEncryptionKey':
+      return multipart(`${phoneNode}/whatsapp_business_encryption`, {
+        business_public_key: input.business_public_key,
+      })
+  }
+}
+
+function multipart(
+  path: string,
+  body: Record<string, unknown>,
+): PlaygroundRequestExample {
+  return { method: 'POST', path, body, contentType: 'multipart/form-data' }
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {}
+}
+
+function defined(
+  input: Record<string, unknown>,
+  keys: string[],
+): Record<string, unknown> {
+  return Object.fromEntries(
+    keys.flatMap((key) =>
+      input[key] === undefined ? [] : [[key, input[key]]],
+    ),
+  )
+}
+
 function useOperation() {
   const { t } = useTranslation()
   const [state, setState] = useState<PlaygroundOperationState>({
@@ -231,6 +367,13 @@ function parsePayload(value: string, t: T): Record<string, unknown> {
     /* localized below */
   }
   throw new Error(t('apiPlayground.flows.validJson'))
+}
+function parseExamplePayload(value: string): unknown {
+  try {
+    return JSON.parse(value) as unknown
+  } catch {
+    return value
+  }
 }
 async function readResult(response: Response, t: T) {
   const body: unknown = await response.json()

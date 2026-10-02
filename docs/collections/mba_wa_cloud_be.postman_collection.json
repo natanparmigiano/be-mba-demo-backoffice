@@ -1,0 +1,4547 @@
+{
+  "info": {
+    "name": "API Playground",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "MBA",
+      "item": [
+        {
+          "name": "Agent Configuration",
+          "item": [
+            {
+              "name": "Get Agent Eligibility",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_eligibility"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Onboard Agent",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_onboarding"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Agent Settings",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/settings?agent_id={{MBA-Agent-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Agent Settings",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/settings?agent_id={{MBA-Agent-ID}}"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rollout\": {\n    \"enabled\": false\n  },\n  \"ai_audience\": \"ALLOWLISTED_ONLY\",\n  \"handoff\": {\n    \"enabled\": true,\n    \"message_selection\": \"DEFAULT\"\n  },\n  \"followup\": {\n    \"enabled\": false,\n    \"followup_interval_in_seconds\": 0\n  },\n  \"never_say_phrases\": []\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Allowlist Entries",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/allowlist"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Add Allowlist Entry",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/allowlist"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"consumer_phone_number\": \"{{Recipient-Phone-Number}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Remove Allowlist Entry",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/allowlist/{{MBA-Allowlist-Entry-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Agent Budgets",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Business-ID}}/agent_budget"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Replace Agent Budgets",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Business-ID}}/agent_budget"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"budgets\": [\n    {\n      \"unit_type\": \"ai_turn\",\n      \"time_window\": \"one_day\",\n      \"max_budget\": 1000\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Agent",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/delete_agent"
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Connectors",
+          "item": [
+            {
+              "name": "List Connectors",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Connector",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create Connector",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Order Management API\",\n  \"description\": \"Looks up orders and helps customers manage them.\",\n  \"base_url\": \"https://api.example.com\",\n  \"connector_protocol\": \"HTTP\",\n  \"auth_type\": \"NONE\",\n  \"requires_certificate\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Connector",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Order Management API\",\n  \"description\": \"Looks up orders and helps customers manage them.\",\n  \"base_url\": \"https://api.example.com\",\n  \"connector_protocol\": \"HTTP\",\n  \"auth_type\": \"NONE\",\n  \"requires_certificate\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Connector",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Connector Logs",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/logs?tool_id={{MBA-Tool-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Refresh MCP Tools",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/refreshMCPTools"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Upsert Connector API Key",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/upsertApiKey"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"api_key_config\": {\n    \"headers\": [\n      {\n        \"field_name\": \"X-API-Key\",\n        \"value\": \"{{Connector-API-Key}}\",\n        \"prefix\": \"\"\n      }\n    ],\n    \"query_params\": [],\n    \"body_params\": []\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Upsert Connector OAuth Credentials",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/upsertOAuth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"oauth_config\": {\n    \"token_url\": \"https://api.example.com/oauth/token\",\n    \"scopes_to_request\": [\n      \"read\"\n    ],\n    \"token_request_content_type\": \"application/x-www-form-urlencoded\",\n    \"client_id\": \"{{OAuth-Client-ID}}\",\n    \"client_secret\": \"{{OAuth-Client-Secret}}\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Upsert Connector Certificate",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/upsertCertificate"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"client_certificate\": \"{{Client-Certificate}}\",\n  \"client_key\": \"{{Client-Private-Key}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Connector Tools",
+          "item": [
+            {
+              "name": "List Connector Tools",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/tools"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Connector Tool",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/tools/{{MBA-Tool-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create Connector Tool",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/tools"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"lookup_order\",\n  \"description\": \"Use when a customer asks for an order status. Requires an order ID and returns status and delivery information.\",\n  \"request_definition\": {\n    \"method\": \"GET\",\n    \"path\": \"/orders/{order_id}\",\n    \"path_parameters\": {\n      \"order_id\": {\n        \"type\": \"string\",\n        \"description\": \"The customer’s order identifier.\"\n      }\n    },\n    \"query_parameters\": {},\n    \"headers\": {}\n  },\n  \"user_auth_required\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Connector Tool",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/tools/{{MBA-Tool-ID}}"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"lookup_order\",\n  \"description\": \"Use when a customer asks for an order status. Requires an order ID and returns status and delivery information.\",\n  \"request_definition\": {\n    \"method\": \"GET\",\n    \"path\": \"/orders/{order_id}\",\n    \"path_parameters\": {\n      \"order_id\": {\n        \"type\": \"string\",\n        \"description\": \"The customer’s order identifier.\"\n      }\n    },\n    \"query_parameters\": {},\n    \"headers\": {}\n  },\n  \"user_auth_required\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Run Connector Tool",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/tools/{{MBA-Tool-ID}}/run"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"input\": \"{\\\"order_id\\\":\\\"12345\\\"}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Connector Tool",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_connectors/{{MBA-Connector-ID}}/tools/{{MBA-Tool-ID}}"
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Instructions",
+          "item": [
+            {
+              "name": "List Agent Instructions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/skills?agent_id={{MBA-Agent-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Agent Instruction",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/skills/{{MBA-Skill-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create Agent Instruction",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/skills?agent_id={{MBA-Agent-ID}}"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"greeting-skill\",\n  \"description\": \"Apply when the customer first messages the agent.\",\n  \"skill\": \"Greet the customer warmly, identify the business, and ask how you can help.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Agent Instruction",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/skills/{{MBA-Skill-ID}}"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"greeting-skill\",\n  \"description\": \"Apply when the customer first messages the agent.\",\n  \"skill\": \"Greet the customer warmly, identify the business, and ask how you can help.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Agent Instruction",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/skills/{{MBA-Skill-ID}}"
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Interactive Messages",
+          "item": [
+            {
+              "name": "List UI Skills",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent-ui-skills"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get UI Skill",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent-ui-skills/{{MBA-UI-Skill-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create UI Skill",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent-ui-skills"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"component_type\": \"cta_url\",\n  \"title\": \"Learn more button\",\n  \"status\": \"enabled\",\n  \"instruction\": \"When a customer asks to learn more, send a button labeled Learn more that opens https://www.example.com.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update UI Skill",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent-ui-skills/{{MBA-UI-Skill-ID}}"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Learn more button\",\n  \"status\": \"enabled\",\n  \"instruction\": \"When a customer asks to learn more, send a button labeled Learn more that opens https://www.example.com.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete UI Skill",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent-ui-skills/{{MBA-UI-Skill-ID}}"
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Knowledge",
+          "item": [
+            {
+              "name": "Get Business Info",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/business_info"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Replace Business Info",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/business_info"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"payment_method\": \"Credit card\",\n  \"return_policy\": \"Returns are accepted within 30 days.\",\n  \"purchase_info\": \"Purchase online or contact our team.\",\n  \"delivery_and_shipping\": \"Standard delivery takes 3-5 business days.\",\n  \"business_description\": \"Describe your business here.\",\n  \"contact_info\": {\n    \"email\": \"support@example.com\",\n    \"hours_of_operation\": \"Monday-Friday, 09:00-17:00\",\n    \"address\": \"Business address\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Reset Business Info",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/business_info"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List FAQs",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/faq"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get FAQ",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/faq/{{MBA-FAQ-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create FAQ",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/faq"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"question\": \"What is your return policy?\",\n  \"answer\": \"Returns are accepted within 30 days with proof of purchase.\",\n  \"metadata\": {\n    \"category\": \"returns\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update FAQ",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/faq/{{MBA-FAQ-ID}}"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"question\": \"What is your return policy?\",\n  \"answer\": \"Returns are accepted within 30 days with proof of purchase.\",\n  \"metadata\": {\n    \"category\": \"returns\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete FAQ",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/faq/{{MBA-FAQ-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Knowledge Files",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/files"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Knowledge File",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/files/{{MBA-File-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Upload Knowledge File",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/files"
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file_name",
+                      "type": "text",
+                      "value": "knowledge.pdf"
+                    },
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "{{MBA-Knowledge-File-Path}}"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Knowledge File",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/files/{{MBA-File-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Knowledge Websites",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/websites"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Knowledge Website",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/websites/{{MBA-Website-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Add Knowledge Website",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/websites"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"url\": \"https://www.example.com\",\n  \"included_sub_domains\": [],\n  \"included_url_patterns\": [],\n  \"excluded_sub_domains\": [],\n  \"excluded_url_patterns\": [],\n  \"single_urls\": []\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Knowledge Website",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/websites/{{MBA-Website-ID}}"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"url\": \"https://www.example.com\",\n  \"included_sub_domains\": [],\n  \"included_url_patterns\": [],\n  \"excluded_sub_domains\": [],\n  \"excluded_url_patterns\": [],\n  \"single_urls\": []\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Knowledge Website",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_config/websites/{{MBA-Website-ID}}"
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Operations",
+          "item": [
+            {
+              "name": "Run Agent Test",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_test"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user_msg\": \"What are your opening hours?\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Send Agent Event",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_event"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"to\": \"{{Recipient-Phone-Number}}\",\n  \"event\": {\n    \"type\": \"order_shipped\",\n    \"description\": \"The customer's order has shipped.\",\n    \"payload\": \"{\\\"order_id\\\":\\\"12345\\\",\\\"tracking_status\\\":\\\"in_transit\\\"}\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Agent Event Status",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent_event/{{MBA-Agent-Event-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Evaluation Cases",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent-eval/cases"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Run Evaluation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent-eval/run?eval_case_ids={{MBA-Eval-Case-IDs}}"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Evaluation Job",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent-eval/run?job_id={{MBA-Eval-Job-ID}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Evaluation Details",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent-eval/details?eval_ids={{MBA-Eval-IDs}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Evaluation Summary",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/agent-eval/summary?summary_ids={{MBA-Eval-Summary-IDs}}"
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Insights",
+          "item": [
+            {
+              "name": "Get Agent Event Insights",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/insights/agent_events?start_date={{MBA-Start-Date}}&end_date={{MBA-End-Date}}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Conversation Turns",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/insights/conversations/turns?user_phone_number={{MBA-Consumer-ID}}&limit=25"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Conversation Insights",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/insights/conversations?start_date={{MBA-Start-Date}}&end_date={{MBA-End-Date}}&metrics=ai_threads%2Cai_handoffs"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Tool Call Insights",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "2.0.0",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/{{Phone-Number-ID}}/insights/tool_calls?start_date={{MBA-Start-Date}}&end_date={{MBA-End-Date}}"
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Thread Control",
+          "item": [
+            {
+              "name": "Transfer Thread Control",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "1.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/business/whatsapp/phone_numbers/{{Phone-Number-ID}}/thread_control"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"action\": \"release\",\n  \"to\": \"{{MBA-Consumer-ID}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Take Thread Control",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Version",
+                    "value": "1.0.0",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{User-Access-Token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "https://api.facebook.com/business/whatsapp/phone_numbers/{{Phone-Number-ID}}/thread_control"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"action\": \"take\",\n  \"to\": \"{{MBA-Consumer-ID}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Registration",
+      "item": [
+        {
+          "name": "Get phone number",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/38902596294742?fields=display_phone_number%2Cverified_name%2Cquality_rating%2Ccode_verification_status%2Cname_status%2Cstatus"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Request verification code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/38902596294742/request_code"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code_method\": \"SMS\",\n  \"language\": \"en_US\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/38902596294742/verify_code"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register phone number",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/38902596294742/register"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"pin\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change two-step PIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/38902596294742"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pin\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deregister phone number",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/38902596294742/deregister"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Messaging",
+      "item": [
+        {
+          "name": "Send text message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/messages"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"\",\n    \"preview_url\": false\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/messages"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"\",\n  \"type\": \"image\",\n  \"image\": {\n    \"link\": \"<uploaded-media-url>\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send video",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/messages"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"\",\n  \"type\": \"video\",\n  \"video\": {\n    \"link\": \"<uploaded-media-url>\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send audio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/messages"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"\",\n  \"type\": \"audio\",\n  \"audio\": {\n    \"link\": \"<uploaded-media-url>\",\n    \"voice\": false\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/messages"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"\",\n  \"type\": \"document\",\n  \"document\": {\n    \"link\": \"<uploaded-media-url>\",\n    \"filename\": \"<filename>\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send sticker",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/messages"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"\",\n  \"type\": \"sticker\",\n  \"sticker\": {\n    \"link\": \"<uploaded-media-url>\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send location",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/messages"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"\",\n  \"type\": \"location\",\n  \"location\": {\n    \"latitude\": 0,\n    \"longitude\": 0\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send contacts",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/messages"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"\",\n  \"type\": \"contacts\",\n  \"contacts\": [\n    {\n      \"name\": {\n        \"formatted_name\": \"Ada Lovelace\",\n        \"first_name\": \"Ada\"\n      },\n      \"phones\": [\n        {\n          \"phone\": \"+15551234567\",\n          \"type\": \"CELL\"\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send interactive message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/messages"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"\",\n  \"type\": \"interactive\",\n  \"interactive\": {\n    \"type\": \"button\",\n    \"body\": {\n      \"text\": \"Choose an option\"\n    },\n    \"action\": {\n      \"buttons\": [\n        {\n          \"type\": \"reply\",\n          \"reply\": {\n            \"id\": \"confirm\",\n            \"title\": \"Confirm\"\n          }\n        }\n      ]\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send template message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/messages"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"\",\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"\",\n    \"language\": {\n      \"code\": \"en_US\"\n    },\n    \"components\": []\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send reaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/messages"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"\",\n  \"type\": \"reaction\",\n  \"reaction\": {\n    \"message_id\": \"\",\n    \"emoji\": \"👍\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mark message as read",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/messages"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"status\": \"read\",\n  \"message_id\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Show typing indicator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/messages"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"status\": \"read\",\n  \"message_id\": \"\",\n  \"typing_indicator\": {\n    \"type\": \"text\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Marketing",
+      "item": [
+        {
+          "name": "Send marketing template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/marketing_messages"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"recipient_type\": \"individual\",\n  \"to\": \"\",\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"\",\n    \"language\": {\n      \"code\": \"en_US\"\n    },\n    \"components\": []\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Media",
+      "item": [
+        {
+          "name": "Upload media",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/38902596294742/media"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "messaging_product",
+                  "type": "text",
+                  "value": "whatsapp"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{Image-File}}",
+                  "contentType": "image/jpeg"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Retrieve media URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/%3CMEDIA_ID%3E?phone_number_id=38902596294742"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Download media",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/%3CMEDIA_ID%3E?phone_number_id=38902596294742"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete media",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/%3CMEDIA_ID%3E?phone_number_id=38902596294742"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "QR codes",
+      "item": [
+        {
+          "name": "Create QR code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/message_qrdls"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prefilled_message\": \"\",\n  \"generate_qr_image\": \"svg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get QR code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/message_qrdls/{{QR-Code}}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get QR code image URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/message_qrdls?fields=code%2Cprefilled_message%2Cdeep_link_url%2Cqr_image_url.format%28SVG%29&code={{QR-Code}}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List QR codes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/message_qrdls?fields=code%2Cprefilled_message%2Cdeep_link_url&limit=100"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update QR code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/message_qrdls"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{QR-Code}}\",\n  \"prefilled_message\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete QR code",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/message_qrdls/{{QR-Code}}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Components",
+      "item": [
+        {
+          "name": "Get components",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/38902596294742?fields=conversational_automation"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set component configuration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/38902596294742/conversational_automation"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompts\": [\n    \"Track my order\",\n    \"Show me current offers\"\n  ],\n  \"commands\": [\n    {\n      \"command_name\": \"shipping_options\",\n      \"command_description\": \"Show available shipping options\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Flows",
+      "item": [
+        {
+          "name": "Create or clone Flow",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/26102592928997/flows"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "Book an appointment"
+                },
+                {
+                  "key": "categories",
+                  "type": "text",
+                  "value": "[\"APPOINTMENT_BOOKING\"]"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Flows",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/26102592928997/flows?fields=id%2Cname%2Cstatus%2Ccategories&limit=50"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Flow",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Flow-ID}}?fields=id%2Cname%2Cstatus%2Ccategories%2Cvalidation_errors"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get or invalidate preview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Flow-ID}}?fields=preview.invalidate%28false%29"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Migrate Flows",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/26102592928997/migrate_flows"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "source_waba_id",
+                  "type": "text",
+                  "value": "{{Source-WABA-ID}}"
+                },
+                {
+                  "key": "source_flow_names",
+                  "type": "text",
+                  "value": "[\"Flow name\"]"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Flow metadata",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Flow-ID}}"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "Updated flow name"
+                },
+                {
+                  "key": "categories",
+                  "type": "text",
+                  "value": "[\"OTHER\"]"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload flow.json",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Flow-ID}}/assets"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{File-Path}}"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "flow.json"
+                },
+                {
+                  "key": "asset_type",
+                  "type": "text",
+                  "value": "FLOW_JSON"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Flow assets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Flow-ID}}/assets"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Publish Flow",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Flow-ID}}/publish"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deprecate Flow",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Flow-ID}}/deprecate"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete draft Flow",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Flow-ID}}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get endpoint metric",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Flow-ID}}?fields=metric.name%28ENDPOINT_AVAILABILITY%29.granularity%28DAY%29.since%282026-09-01%29.until%282026-10-01%29"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get encryption public key",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/38902596294742/whatsapp_business_encryption"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set encryption public key",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/38902596294742/whatsapp_business_encryption"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "business_public_key",
+                  "type": "text",
+                  "value": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Templates",
+      "item": [
+        {
+          "name": "Create template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/26102592928997/message_templates"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"order_ready\",\n  \"language\": \"en_US\",\n  \"category\": \"UTILITY\",\n  \"components\": [\n    {\n      \"type\": \"BODY\",\n      \"text\": \"Your order {{1}} is ready.\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List templates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/26102592928997/message_templates?fields=id%2Cname%2Clanguage%2Cstatus%2Ccategory%2Ccomponents&limit=50"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get template",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Template-ID}}?fields=id%2Cname%2Clanguage%2Cstatus%2Ccategory%2Ccomponents"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get template namespace",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/26102592928997?fields=message_template_namespace"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Template-ID}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message_send_ttl_seconds\": 7200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete template",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/26102592928997/message_templates?hsm_id={{Template-ID}}&name={{Template-Name}}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Messaging analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{WABA-ID}}?fields=analytics.start%281790812800%29.end%281793404800%29.granularity%28DAY%29"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Conversation analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{WABA-ID}}?fields=conversation_analytics.start%281790812800%29.end%281793404800%29.granularity%28DAILY%29.metric_types%28%5B%22CONVERSATION%22%2C%22COST%22%5D%29"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Pricing analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{WABA-ID}}?fields=pricing_analytics.start%281790812800%29.end%281793404800%29.granularity%28DAILY%29.metric_types%28%5B%22COST%22%2C%22VOLUME%22%5D%29.dimensions%28%5B%22PRICING_CATEGORY%22%2C%22COUNTRY%22%2C%22TIER%22%5D%29"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Template analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{WABA-ID}}/template_analytics?start=2026-10-01&end=2026-10-31&granularity=daily&use_waba_timezone=true&template_ids=%5B{{Template-ID}}%5D&metric_types=sent%2Cdelivered%2Cread%2Cclicked"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Template group analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{WABA-ID}}/template_group_analytics?start=2026-10-01&end=2026-10-31&granularity=daily&use_waba_timezone=true&template_group_ids=%5B{{Template-Group-ID}}%5D&metric_types=sent%2Cdelivered%2Cread"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Call analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{WABA-ID}}?fields=call_analytics.start%281790812800%29.end%281793404800%29.granularity%28DAILY%29.metric_types%28%5B%22COUNT%22%2C%22AVERAGE_DURATION%22%5D%29"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Group analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{WABA-ID}}/group_analytics?start=1790812800&end=1793404800&granularity=daily&group_ids=%5B%22{{Group-ID}}%22%5D&metric_types=%5B%22SENT%22%2C%22DELIVERED%22%2C%22READ%22%5D"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Enable template insights",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{WABA-ID}}?is_enabled_for_insights=true"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Moderation",
+      "item": [
+        {
+          "name": "List blocked users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/block_users?limit=100"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Block users",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/block_users"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"block_users\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unblock users",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/{{Phone-Number-ID}}/block_users"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messaging_product\": \"whatsapp\",\n  \"block_users\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Subscriptions",
+      "item": [
+        {
+          "name": "Register app webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/25302593662454/subscriptions"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "object",
+                  "value": "whatsapp_business_account",
+                  "type": "text"
+                },
+                {
+                  "key": "callback_url",
+                  "value": "",
+                  "type": "text"
+                },
+                {
+                  "key": "verify_token",
+                  "value": "",
+                  "type": "text"
+                },
+                {
+                  "key": "fields",
+                  "value": "account_alerts,account_review_update,account_update,calls,flows,message_template_components_update,message_template_quality_update,message_template_status_update,messages,messaging_handovers,phone_number_name_update,phone_number_quality_update,security,standby,template_category_update",
+                  "type": "text"
+                },
+                {
+                  "key": "access_token",
+                  "value": "25302593662454|{{App-Secret}}",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Inspect app webhook fields",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/25302593662454/subscriptions?access_token=25302593662454%7C{{App-Secret}}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Subscribe app",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer ACCESS_TOKEN",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/26102592928997/subscribed_apps"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List subscriptions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer ACCESS_TOKEN",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/26102592928997/subscribed_apps"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Override callback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer ACCESS_TOKEN",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/26102592928997/subscribed_apps"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"override_callback_uri\": \"\",\n  \"verify_token\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unsubscribe app",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer ACCESS_TOKEN",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/26102592928997/subscribed_apps"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "WABA",
+      "item": [
+        {
+          "name": "Get WABA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/26102592928997"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List owned WABAs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/45902595206912/owned_whatsapp_business_accounts?limit=100"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List shared WABAs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{User-Access-Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://graph.facebook.com/v26.0/45902595206912/client_whatsapp_business_accounts?limit=100"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Validate webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "https://your-domain.example/webhooks/whatsapp"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"object\": \"whatsapp_business_account\",\n  \"entry\": [\n    {\n      \"id\": \"{{WABA-ID}}\",\n      \"changes\": [\n        {\n          \"field\": \"messages\",\n          \"value\": {\n            \"messaging_product\": \"whatsapp\",\n            \"metadata\": {\n              \"display_phone_number\": \"15551234567\",\n              \"phone_number_id\": \"{{Phone-Number-ID}}\"\n            },\n            \"contacts\": [\n              {\n                \"wa_id\": \"15557654321\"\n              }\n            ],\n            \"messages\": [\n              {\n                \"from\": \"15557654321\",\n                \"id\": \"wamid.MESSAGE_ID\",\n                \"timestamp\": \"1790899200\",\n                \"type\": \"text\",\n                \"text\": {\n                  \"body\": \"Hello\"\n                }\n              }\n            ]\n          }\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "1",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "App-Secret",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "Business-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "Client-Certificate",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "Client-Private-Key",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "Connector-API-Key",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "File-Path",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "Flow-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "Group-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "Image-File",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-Agent-Event-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-Agent-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-Allowlist-Entry-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-Connector-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-Consumer-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-End-Date",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-Eval-Case-IDs",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-Eval-IDs",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-Eval-Job-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-Eval-Summary-IDs",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-FAQ-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-File-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-Knowledge-File-Path",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-Skill-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-Start-Date",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-Tool-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-UI-Skill-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MBA-Website-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "OAuth-Client-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "OAuth-Client-Secret",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "Phone-Number-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "QR-Code",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "Recipient-Phone-Number",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "Source-WABA-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "Template-Group-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "Template-ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "Template-Name",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "User-Access-Token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "WABA-ID",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

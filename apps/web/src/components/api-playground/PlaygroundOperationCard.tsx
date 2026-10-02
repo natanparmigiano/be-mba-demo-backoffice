@@ -1,6 +1,16 @@
 import { ChevronDown, Play } from 'lucide-react'
 import { useState, type ReactNode, type SubmitEvent } from 'react'
 import { Button } from '../ui'
+import {
+  PlaygroundRequestActions,
+  type PlaygroundRequestExample,
+} from './PlaygroundRequestActions'
+import {
+  usePlaygroundPostmanVariableReplacements,
+  useRegisterPlaygroundPostmanEntry,
+} from './PlaygroundPostmanRegistry'
+
+export type { PlaygroundRequestExample } from './PlaygroundRequestActions'
 
 export type PlaygroundOperationState =
   | { status: 'idle' }
@@ -18,10 +28,11 @@ export function PlaygroundOperationCard({
   buttonVariant = 'primary',
   onSubmit,
   resultLabel,
+  request,
   defaultOpen = false,
   children,
 }: {
-  method: 'GET' | 'POST' | 'DELETE'
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE'
   title: string
   description: string
   action: string
@@ -30,10 +41,17 @@ export function PlaygroundOperationCard({
   buttonVariant?: 'primary' | 'danger'
   onSubmit: () => void
   resultLabel: string
+  request: PlaygroundRequestExample
   defaultOpen?: boolean
   children?: ReactNode
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
+  const variableReplacements = usePlaygroundPostmanVariableReplacements()
+  useRegisterPlaygroundPostmanEntry({
+    title,
+    request,
+    defaultMethod: method,
+  })
   const submit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     onSubmit()
@@ -83,6 +101,12 @@ export function PlaygroundOperationCard({
             <Play className="size-4" aria-hidden />
             {action}
           </Button>
+          <PlaygroundRequestActions
+            request={request}
+            defaultMethod={method}
+            title={title}
+            variableReplacements={variableReplacements}
+          />
         </form>
         <div className="mt-4" aria-live="polite">
           {state.status === 'success' && (

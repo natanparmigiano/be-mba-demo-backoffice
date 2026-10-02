@@ -62,6 +62,11 @@ export function WebhooksPlayground({ channelId }: { channelId: string }) {
         disabled={!channelId}
         defaultOpen
         resultLabel={t('apiPlayground.result')}
+        request={{
+          path: 'https://your-domain.example/webhooks/whatsapp',
+          body: parsePayloadExample(payload),
+          auth: 'none',
+        }}
         onSubmit={() =>
           void request.run(async () =>
             readResult(
@@ -117,6 +122,14 @@ function parsePayload(value: string, t: T): unknown {
     return JSON.parse(value) as unknown
   } catch {
     throw new Error(t('apiPlayground.webhooks.invalidJson'))
+  }
+}
+
+function parsePayloadExample(value: string): unknown {
+  try {
+    return JSON.parse(value) as unknown
+  } catch {
+    return value
   }
 }
 

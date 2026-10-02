@@ -874,6 +874,7 @@ describe('channel management route', () => {
     }> = []
     let allowlistAddAttempts = 0
     let businessAttempts = 0
+    let destinationRolloutEnabled = false
     const importedQrCodes: Array<{
       code: string
       prefilled_message: string
@@ -898,7 +899,7 @@ describe('channel management route', () => {
         {
           agent_id: 'agent-target',
           channel: 'whatsapp',
-          rollout: { enabled: false },
+          rollout: { enabled: destinationRolloutEnabled },
         },
       ],
       agentBackups: {
@@ -918,6 +919,8 @@ describe('channel management route', () => {
       },
       updateAgentSettings: async (_configuration, input) => {
         calls.push(`settings:${input.rollout?.enabled}`)
+        destinationRolloutEnabled =
+          input.rollout?.enabled ?? destinationRolloutEnabled
         return {
           agent_id: 'agent-target',
           channel: 'whatsapp',
@@ -1097,10 +1100,13 @@ describe('channel management route', () => {
       [
         'backup',
         'settings',
-        'businessData',
+        'businessInfo',
+        'allowlist',
         'skills',
-        'channelComponents',
-        'knowledge',
+        'qrCodes',
+        'components',
+        'faqs',
+        'websites',
         'files',
         'connectors',
         'finalizing',
@@ -1201,6 +1207,75 @@ describe('channel management route', () => {
       ),
       true,
     )
+
+    const selectiveCallsStart = calls.length
+    const selectiveForm = new FormData()
+    selectiveForm.set('package', packageFile)
+    selectiveForm.set(
+      'options',
+      JSON.stringify({
+        connectorCredentials: {},
+        createBackupBeforeImport: false,
+        components: ['skills'],
+      }),
+    )
+    const selectiveResponse = await route.request('/7/agent-import', {
+      method: 'POST',
+      body: selectiveForm,
+    })
+    const selectiveStream = await selectiveResponse.text()
+    assert.equal(selectiveResponse.status, 200)
+    assert.deepEqual(calls.slice(selectiveCallsStart), ['skill:order-status'])
+    assert.deepEqual(
+      readSseDataAll(selectiveStream, 'progress')
+        .map(
+          (data) =>
+            JSON.parse(data) as {
+              step: string
+              skipped?: boolean
+              resource?: string
+            },
+        )
+        .filter(({ resource }) => resource === undefined)
+        .filter(({ skipped }) => skipped)
+        .map(({ step }) => step),
+      [
+        'settings',
+        'businessInfo',
+        'allowlist',
+        'qrCodes',
+        'components',
+        'faqs',
+        'websites',
+        'files',
+        'connectors',
+        'finalizing',
+      ],
+    )
+
+    destinationRolloutEnabled = true
+    const enabledCallsStart = calls.length
+    const enabledForm = new FormData()
+    enabledForm.set('package', packageFile)
+    enabledForm.set(
+      'options',
+      JSON.stringify({
+        connectorCredentials: {},
+        createBackupBeforeImport: false,
+        components: ['settings'],
+      }),
+    )
+    const enabledResponse = await route.request('/7/agent-import', {
+      method: 'POST',
+      body: enabledForm,
+    })
+    assert.equal(enabledResponse.status, 200)
+    assert.ok(readSseData(await enabledResponse.text(), 'complete'))
+    assert.deepEqual(calls.slice(enabledCallsStart), [
+      'settings:true',
+      'settings:true',
+    ])
+    assert.equal(destinationRolloutEnabled, true)
   })
 
   it('keeps the documented AGTX and MCPX Dunder Mifflin samples paired', async () => {
@@ -1308,6 +1383,16 @@ describe('channel management route', () => {
       agentImportRequestIntervalMs: 25,
       agentImportRetryBackoffMs: [0, 0, 0, 0, 0],
       reportImportLog: () => undefined,
+      getAgentSettings: async () => {
+        providerRequestTimes.push(Date.now())
+        return [
+          {
+            agent_id: 'agent-target',
+            channel: 'whatsapp',
+            rollout: { enabled: false },
+          },
+        ]
+      },
       updateAgentSettings: async (_configuration, input) => {
         providerRequestTimes.push(Date.now())
         return {
@@ -1346,7 +1431,7 @@ describe('channel management route', () => {
 
     assert.equal(response.status, 200)
     assert.deepEqual(failure, {
-      step: 'businessData',
+      step: 'businessInfo',
       message:
         'Business information update did not reach the requested state after 6 attempts: Meta rejected the business profile: field too long',
       partial: true,
@@ -1355,7 +1440,7 @@ describe('channel management route', () => {
       {
         organizationId: 'org-one',
         channelId: 7,
-        step: 'businessData',
+        step: 'businessInfo',
         errorName: 'Error',
         message:
           'Business information update did not reach the requested state after 6 attempts: Meta rejected the business profile: field too long',
@@ -1365,7 +1450,7 @@ describe('channel management route', () => {
       loggedError instanceof Error ? loggedError.message : undefined,
       'Business information update did not reach the requested state after 6 attempts: Meta rejected the business profile: field too long',
     )
-    assert.equal(providerRequestTimes.length, 13)
+    assert.equal(providerRequestTimes.length, 14)
     for (let index = 1; index < providerRequestTimes.length; index += 1) {
       assert.ok(
         providerRequestTimes[index]! - providerRequestTimes[index - 1]! >= 20,

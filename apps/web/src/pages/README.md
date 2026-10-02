@@ -50,8 +50,17 @@ switcher. Each page then owns one route-level workflow:
 - `ApiKeysPage`: organization-scoped API key creation, function/MCP
   allow-lists, and revocation.
 - `ApiPlaygroundPage`: channel-scoped request forms for WhatsApp registration,
-  messaging, media, message QR codes, conversational components, Flows, and
+  messaging, marketing messages, media, message QR codes, conversational components, Flows, and
   templates, including direct presigned uploads.
+- `TemplatesPage`: channel-scoped provider template CRUD, WhatsApp previews,
+  filtering, cursor pagination, visual header/body/footer/button component
+  editing with operation-specific validation, template example media uploads
+  through `wa-media`, advanced carousel/LTO JSON, and Meta approval lifecycle
+  status.
+- `TemplateSendingPage`: channel-scoped template composition with parameter and
+  media inputs, WhatsApp preview, explicit Messages or Marketing Messages API
+  selection, plus a separate filtered, cursor-paginated table of persisted
+  template sends.
 - `AdminPage`: global user administration for Better Auth `admin` users.
 
 - `/organization` is available to authenticated users; Better Auth enforces owner/admin permissions for mutations.
@@ -74,14 +83,17 @@ switcher. Each page then owns one route-level workflow:
   package, previews `agent.yaml` locally in expandable resource sections before
   upload, then replaces that preview with explicit server inspection results.
   The inspected state identifies the selected package, summarizes its
-  resources, prompts for missing files, credentials, and certificates, and
-  confirms when every requirement is complete before displaying import
-  progress while reconciling the selected agent. Import failures identify the
+  resources, lets the manager customize which components to import, prompts
+  only for missing files, credentials, and certificates needed by that
+  selection, and confirms when every requirement is complete before displaying
+  separate progress stages for each action. Unselected stages remain visible
+  as skipped while reconciling the selected agent. Import failures identify the
   failed reconciliation step and preserve the sanitized provider or validation
   reason both in the page alert and browser console; the page separately warns
   when earlier steps may already have changed provider state. The package
-  preview states that exported rollout is ignored, and successful import warns
-  that the agent remains disabled until a manager enables it manually.
+  preview states that exported rollout is ignored. Import preserves the
+  destination rollout state so an enabled agent stays enabled while a disabled
+  agent cannot be unintentionally enabled by the package.
 - `/agents/:id/connectors/:connectorId` provides the full connector form,
   connector-tool CRUD, and recent connector logs. The `new` connector ID opens
   the creation form. Connector names are normalized to snake_case while skill
@@ -91,6 +103,10 @@ switcher. Each page then owns one route-level workflow:
   asynchronous run for organization managers, polls the job, and presents its
   progress, scores, summary, highlights, and failures.
 - `/groups` is available to authenticated organization members and only displays groups owned through channels in the active organization.
+- `/templates`, `/templates/new`, and `/templates/:channelId/:templateId`
+  provide provider-backed template browsing and route-backed create/edit
+  workflows. Members can inspect templates and approval states; organization
+  owners and admins can create, update, and delete them.
 - `/functions` lists active-organization functions for members. Function
   mutations and UI test execution require an owner or administrator and are
   enforced again by the API. Test execution is disabled while editor changes
@@ -105,7 +121,7 @@ switcher. Each page then owns one route-level workflow:
 - `/api-keys` provides organization API-key management to owners and
   administrators. Restricted keys authorize the union of selected individual
   functions and the live membership of selected MCP packs.
-- `/api-playground` lets members inspect registration, media, message QR code,
+- `/playground` lets members inspect registration, media, message QR code,
   conversational-component, and template state and lets organization
   owners/admins run registration, messaging, media, QR-code, component, and
   template mutations using server-side channel credentials. Messaging
@@ -118,6 +134,8 @@ switcher. Each page then owns one route-level workflow:
   metrics, migration, previews, and encryption keys.
   The Templates tab covers create, list, get, namespace, update, and delete
   operations from `@mba-demo/wa-templates`.
+  The Marketing tab sends approved templates through `@mba-demo/wa-marketing`
+  with product policy, activity-sharing, and per-message bid controls.
 - `/admin` is guarded in the client and every admin endpoint independently enforces permissions on the server.
 - Application admin roles and organization member roles are separate concepts.
 

@@ -15,6 +15,8 @@ import { GroupsPage } from '../pages/GroupsPage'
 import { HomePage } from '../pages/HomePage'
 import { LoginPage } from '../pages/LoginPage'
 import { OrganizationPage } from '../pages/OrganizationPage'
+import { TemplatesPage } from '../pages/TemplatesPage'
+import { TemplateSendingPage } from '../pages/TemplateSendingPage'
 import {
   AdminRoute,
   AuthSessionRoute,
@@ -72,6 +74,16 @@ export function AppRouter() {
               <Route path="/channels/:channelId" element={<ChannelsPage />} />
               <Route path="/contacts" element={<ContactsPage />} />
               <Route path="/groups" element={<GroupsPage />} />
+              <Route path="/templates" element={<TemplatesPage />} />
+              <Route
+                path="/template-sending"
+                element={<TemplateSendingPage />}
+              />
+              <Route path="/templates/new" element={<TemplatesPage />} />
+              <Route
+                path="/templates/:channelId/:templateId"
+                element={<TemplatesPage />}
+              />
               <Route
                 path="/functions"
                 element={
@@ -96,7 +108,7 @@ export function AppRouter() {
                   </Suspense>
                 }
               />
-              <Route path="/api-playground" element={<ApiPlaygroundPage />} />
+              <Route path="/playground" element={<ApiPlaygroundPage />} />
               <Route element={<AdminRoute />}>
                 <Route path="/admin" element={<AdminPage />} />
               </Route>

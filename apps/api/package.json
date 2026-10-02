@@ -28,6 +28,7 @@
     "@mba-demo/wa-components": "0.0.0",
     "@mba-demo/wa-flows": "0.0.0",
     "@mba-demo/wa-media": "0.0.0",
+    "@mba-demo/wa-marketing": "0.0.0",
     "@mba-demo/wa-messaging": "0.0.0",
     "@mba-demo/wa-mba": "0.0.0",
     "@mba-demo/wa-moderation": "0.0.0",

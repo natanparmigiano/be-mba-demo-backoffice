@@ -7,7 +7,11 @@ import {
 } from '../components/api-playground/PlaygroundOperationCard'
 import { Textarea } from '../components/ui'
 
-type Props = { channelId: string; mutationDisabled: boolean }
+type Props = {
+  channelId: string
+  phoneNumberId: string
+  mutationDisabled: boolean
+}
 type T = ReturnType<typeof useTranslation>['t']
 
 const defaultPayload = JSON.stringify(
@@ -24,7 +28,11 @@ const defaultPayload = JSON.stringify(
   2,
 )
 
-export function ComponentsPlayground({ channelId, mutationDisabled }: Props) {
+export function ComponentsPlayground({
+  channelId,
+  phoneNumberId,
+  mutationDisabled,
+}: Props) {
   const { t } = useTranslation()
   return (
     <div
@@ -32,17 +40,27 @@ export function ComponentsPlayground({ channelId, mutationDisabled }: Props) {
       role="tabpanel"
       aria-label={t('apiPlayground.components.tab')}
     >
-      <GetComponents channelId={channelId} disabled={!channelId} />
-      <SetComponents channelId={channelId} disabled={mutationDisabled} />
+      <GetComponents
+        channelId={channelId}
+        phoneNumberId={phoneNumberId}
+        disabled={!channelId}
+      />
+      <SetComponents
+        channelId={channelId}
+        phoneNumberId={phoneNumberId}
+        disabled={mutationDisabled}
+      />
     </div>
   )
 }
 
 function SetComponents({
   channelId,
+  phoneNumberId,
   disabled,
 }: {
   channelId: string
+  phoneNumberId: string
   disabled: boolean
 }) {
   const { t } = useTranslation()
@@ -51,6 +69,10 @@ function SetComponents({
   return (
     <PlaygroundOperationCard
       method="POST"
+      request={{
+        path: `${phoneNumberGraphUrl(phoneNumberId)}/conversational_automation`,
+        body: toMetaPayload(parsePayloadPreview(payload)),
+      }}
       title={t('apiPlayground.components.set.title')}
       description={t('apiPlayground.components.set.description')}
       action={t('apiPlayground.components.set.action')}
@@ -82,9 +104,11 @@ function SetComponents({
 
 function GetComponents({
   channelId,
+  phoneNumberId,
   disabled,
 }: {
   channelId: string
+  phoneNumberId: string
   disabled: boolean
 }) {
   const { t } = useTranslation()
@@ -92,6 +116,10 @@ function GetComponents({
   return (
     <PlaygroundOperationCard
       method="GET"
+      request={{
+        path: phoneNumberGraphUrl(phoneNumberId),
+        query: { fields: 'conversational_automation' },
+      }}
       title={t('apiPlayground.components.get.title')}
       description={t('apiPlayground.components.get.description')}
       action={t('apiPlayground.components.get.action')}
@@ -154,6 +182,54 @@ function parsePayload(value: string, t: T) {
     /* use the localized validation message */
   }
   throw new Error(t('apiPlayground.components.validJson'))
+}
+
+function phoneNumberGraphUrl(phoneNumberId: string) {
+  return `https://graph.facebook.com/v26.0/${encodeURIComponent(phoneNumberId || 'PHONE_NUMBER_ID')}`
+}
+
+function parsePayloadPreview(value: string): unknown {
+  try {
+    return JSON.parse(value) as unknown
+  } catch {
+    return value
+  }
+}
+
+function toMetaPayload(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return value
+  }
+  const payload = value as {
+    prompts?: unknown
+    commands?: unknown
+  }
+  return {
+    ...(payload.prompts === undefined ? {} : { prompts: payload.prompts }),
+    ...(Array.isArray(payload.commands)
+      ? {
+          commands: payload.commands.map((command) => {
+            if (
+              typeof command !== 'object' ||
+              command === null ||
+              Array.isArray(command)
+            ) {
+              return command
+            }
+            const fields = command as {
+              commandName?: unknown
+              commandDescription?: unknown
+            }
+            return {
+              command_name: fields.commandName,
+              command_description: fields.commandDescription,
+            }
+          }),
+        }
+      : payload.commands === undefined
+        ? {}
+        : { commands: payload.commands }),
+  }
 }
 
 async function readResult(response: Response, t: T) {

@@ -155,7 +155,7 @@ $defs:
         minLength: 1
       rolloutEnabled:
         type: boolean
-        description: 'Source rollout state retained for provenance; import always leaves the destination disabled.'
+        description: 'Source rollout state retained for provenance; import preserves the destination rollout state.'
       audience:
         enum:
           - EVERYONE

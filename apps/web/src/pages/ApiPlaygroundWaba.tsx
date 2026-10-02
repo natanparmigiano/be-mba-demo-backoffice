@@ -7,31 +7,39 @@ import {
 } from '../components/api-playground/PlaygroundOperationCard'
 import { Input } from '../components/ui'
 
-type Props = { channelId: string }
+type Props = {
+  channelId: string
+  initialWabaId: string
+  initialBusinessId: string
+}
 type T = ReturnType<typeof useTranslation>['t']
 
-export function WabaPlayground({ channelId }: Props) {
+export function WabaPlayground(props: Props) {
   const { t } = useTranslation()
+  const { channelId } = props
   return (
     <div
       className="grid gap-4"
       role="tabpanel"
       aria-label={t('apiPlayground.waba.tab')}
     >
-      <GetAccount channelId={channelId} />
-      <ListAccounts channelId={channelId} kind="owned" />
-      <ListAccounts channelId={channelId} kind="shared" />
+      <GetAccount {...props} />
+      <ListAccounts {...props} kind="owned" />
+      <ListAccounts {...props} kind="shared" />
     </div>
   )
 }
 
-function GetAccount({ channelId }: Props) {
+function GetAccount({ channelId, initialWabaId }: Props) {
   const { t } = useTranslation()
   const operation = useOperation()
-  const [wabaId, setWabaId] = useState('')
+  const [wabaId, setWabaId] = useState(initialWabaId)
   return (
     <PlaygroundOperationCard
       method="GET"
+      request={{
+        path: `https://graph.facebook.com/v26.0/${wabaId || 'WABA_ID'}`,
+      }}
       title={t('apiPlayground.waba.get.title')}
       description={t('apiPlayground.waba.get.description')}
       action={t('apiPlayground.waba.get.action')}
@@ -63,11 +71,12 @@ function GetAccount({ channelId }: Props) {
 
 function ListAccounts({
   channelId,
+  initialBusinessId,
   kind,
 }: Props & { kind: 'owned' | 'shared' }) {
   const { t } = useTranslation()
   const operation = useOperation()
-  const [businessId, setBusinessId] = useState('')
+  const [businessId, setBusinessId] = useState(initialBusinessId)
   const [limit, setLimit] = useState('100')
   const [before, setBefore] = useState('')
   const [after, setAfter] = useState('')
@@ -75,6 +84,18 @@ function ListAccounts({
   return (
     <PlaygroundOperationCard
       method="GET"
+      request={{
+        path: `https://graph.facebook.com/v26.0/${businessId || 'BUSINESS_ID'}/${
+          kind === 'owned'
+            ? 'owned_whatsapp_business_accounts'
+            : 'client_whatsapp_business_accounts'
+        }`,
+        query: {
+          ...(limit ? { limit } : {}),
+          ...(before ? { before } : {}),
+          ...(after ? { after } : {}),
+        },
+      }}
       title={t(`${prefix}.title`)}
       description={t(`${prefix}.description`)}
       action={t(`${prefix}.action`)}

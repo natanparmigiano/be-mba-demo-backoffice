@@ -2,11 +2,12 @@ import type { InferResponseType } from 'hono/client'
 import {
   AlertTriangle,
   CheckCircle2,
+  Download,
   Phone,
   RadioTower,
   RefreshCw,
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
@@ -14,14 +15,21 @@ import {
   PlaygroundOperationCard as OperationCard,
   type PlaygroundOperationState as OperationState,
 } from '../components/api-playground/PlaygroundOperationCard'
+import {
+  PlaygroundPostmanRegistryProvider,
+  postmanFoldersFromRegistry,
+  type PlaygroundPostmanRegistry,
+} from '../components/api-playground/PlaygroundPostmanRegistry'
+import { buildMergedPostmanCollection } from '../components/api-playground/PlaygroundRequestActions'
 import { MessagingPlayground } from './ApiPlaygroundMessaging'
+import { MarketingPlayground } from './ApiPlaygroundMarketing'
 import { AnalyticsPlayground } from './ApiPlaygroundAnalytics'
 import { MediaPlayground } from './ApiPlaygroundMedia'
 import { QrPlayground } from './ApiPlaygroundQr'
 import { ComponentsPlayground } from './ApiPlaygroundComponents'
 import { FlowsPlayground } from './ApiPlaygroundFlows'
 import { TemplatesPlayground } from './ApiPlaygroundTemplates'
-import { MbaPlayground } from './ApiPlaygroundMba'
+import { MbaPlayground } from './ApiPlaygroundMbaFolders'
 import { ModerationPlayground } from './ApiPlaygroundModeration'
 import { SubscriptionsPlayground } from './ApiPlaygroundSubscriptions'
 import { WabaPlayground } from './ApiPlaygroundWaba'
@@ -44,6 +52,7 @@ type PackageTab =
   | 'analytics'
   | 'registration'
   | 'messaging'
+  | 'marketing'
   | 'media'
   | 'mba'
   | 'moderation'
@@ -123,7 +132,7 @@ export function ApiPlaygroundPage() {
     .some((role) => role === 'owner' || role === 'admin')
 
   const [channels, setChannels] = useState<ChannelSummary[]>([])
-  const [activeTab, setActiveTab] = useState<PackageTab>('registration')
+  const [activeTab, setActiveTab] = useState<PackageTab>('mba')
   const [selectedChannelId, setSelectedChannelId] = useState('')
   const [isLoadingChannels, setIsLoadingChannels] = useState(true)
   const [channelsError, setChannelsError] = useState<string | null>(null)
@@ -138,6 +147,7 @@ export function ApiPlaygroundPage() {
   const [localizationRegion, setLocalizationRegion] = useState('')
   const [newPin, setNewPin] = useState('')
   const [confirmDeregister, setConfirmDeregister] = useState(false)
+  const postmanRegistry = useRef<PlaygroundPostmanRegistry>(new Map())
 
   useEffect(() => {
     document.title = `${t('apiPlayground.title')} · ${t('design.brand')}`
@@ -234,20 +244,78 @@ export function ApiPlaygroundPage() {
   const selectedChannel = channels.find(
     (channel) => String(channel.id) === selectedChannelId,
   )
+  const registrationGraphUrl = `https://graph.facebook.com/v26.0/${selectedChannel?.waPhoneNumberId ?? 'PHONE_NUMBER_ID'}`
   const mutationDisabled = !selectedChannel || !canMutate
+  const postmanVariableReplacements = Object.fromEntries(
+    [
+      [selectedChannel?.waPhoneNumberId, 'Phone-Number-ID'],
+      [selectedChannel?.waWabaId, 'WABA-ID'],
+      [selectedChannel?.waBusinessId, 'Business-ID'],
+      [selectedChannel?.waAppId, 'App-ID'],
+    ].filter((entry): entry is [string, string] => Boolean(entry[0])),
+  )
+
+  const downloadPostmanCollection = () => {
+    const folderOrder: string[] = [
+      t('apiPlayground.mba.tab'),
+      t('apiPlayground.registration.tab'),
+      t('apiPlayground.messaging.tab'),
+      t('apiPlayground.marketing.tab'),
+      t('apiPlayground.media.tab'),
+      t('apiPlayground.qr.tab'),
+      t('apiPlayground.components.tab'),
+      t('apiPlayground.flows.tab'),
+      t('apiPlayground.templates.tab'),
+      t('apiPlayground.analytics.tab'),
+      t('apiPlayground.moderation.tab'),
+      t('apiPlayground.subscriptions.tab'),
+      t('apiPlayground.waba.tab'),
+      t('apiPlayground.webhooks.tab'),
+    ]
+    const folders = postmanFoldersFromRegistry(postmanRegistry.current).sort(
+      (left, right) =>
+        folderOrder.indexOf(left.name) - folderOrder.indexOf(right.name),
+    )
+    const collection = buildMergedPostmanCollection(
+      t('apiPlayground.title'),
+      folders,
+    )
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(collection, null, 2)], {
+        type: 'application/json;charset=utf-8',
+      }),
+    )
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = 'mba_wa_cloud_be.postman_collection.json'
+    document.body.append(anchor)
+    anchor.click()
+    anchor.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 0)
+  }
 
   return (
     <div className="grid gap-6">
-      <header>
-        <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
-          {t('apiPlayground.eyebrow')}
-        </p>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
-          {t('apiPlayground.title')}
-        </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          {t('apiPlayground.description')}
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
+            {t('apiPlayground.eyebrow')}
+          </p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
+            {t('apiPlayground.title')}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+            {t('apiPlayground.description')}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={downloadPostmanCollection}
+        >
+          <Download className="size-4" aria-hidden />
+          {t('apiPlayground.downloadPostmanCollection')}
+        </Button>
       </header>
 
       <section className="overflow-hidden rounded-2xl border bg-card shadow-xs">
@@ -372,6 +440,10 @@ export function ApiPlaygroundPage() {
       <Tabs
         items={[
           {
+            value: 'mba',
+            label: t('apiPlayground.mba.tab'),
+          },
+          {
             value: 'registration',
             label: t('apiPlayground.registration.tab'),
           },
@@ -382,6 +454,10 @@ export function ApiPlaygroundPage() {
           {
             value: 'media',
             label: t('apiPlayground.media.tab'),
+          },
+          {
+            value: 'marketing',
+            label: t('apiPlayground.marketing.tab'),
           },
           {
             value: 'qr',
@@ -419,375 +495,523 @@ export function ApiPlaygroundPage() {
             value: 'webhooks',
             label: t('apiPlayground.webhooks.tab'),
           },
-          {
-            value: 'mba',
-            label: t('apiPlayground.mba.tab'),
-          },
         ]}
         value={activeTab}
         onValueChange={setActiveTab}
         ariaLabel={t('apiPlayground.tabsLabel')}
+        variant="pills"
       />
 
-      {activeTab === 'registration' ? (
-        <div
-          className="grid gap-4"
-          role="tabpanel"
-          aria-label={t('apiPlayground.registration.tab')}
+      <PlaygroundPostmanRegistryProvider
+        registry={postmanRegistry.current}
+        variableReplacements={postmanVariableReplacements}
+      >
+        <PlaygroundPostmanRegistryProvider
+          folder={t('apiPlayground.registration.tab')}
         >
-          <OperationCard
-            method="GET"
-            title={t('apiPlayground.registration.phoneNumber.title')}
-            description={t(
-              'apiPlayground.registration.phoneNumber.description',
-            )}
-            action={t('apiPlayground.registration.phoneNumber.action')}
-            state={operationStates.phoneNumber}
-            disabled={!selectedChannel}
-            onSubmit={() => {
-              void runOperation('phoneNumber', (channelId) =>
-                apiClient.api.playground.registration[':channelId'][
-                  'phone-number'
-                ].$get({
-                  param: { channelId },
-                  query: { fields: selectedFields.join(',') },
-                }),
-              )
-            }}
-            resultLabel={t('apiPlayground.result')}
-            defaultOpen
+          <div
+            className="grid gap-4"
+            role="tabpanel"
+            aria-label={t('apiPlayground.registration.tab')}
+            hidden={activeTab !== 'registration'}
           >
-            <fieldset className="grid gap-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <legend className="text-sm font-semibold">
-                    {t('apiPlayground.registration.phoneNumber.fields')}
-                  </legend>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {t('apiPlayground.registration.phoneNumber.fieldsHint')}
-                  </p>
+            <OperationCard
+              method="GET"
+              request={{
+                path: registrationGraphUrl,
+                query: { fields: selectedFields.join(',') },
+              }}
+              title={t('apiPlayground.registration.phoneNumber.title')}
+              description={t(
+                'apiPlayground.registration.phoneNumber.description',
+              )}
+              action={t('apiPlayground.registration.phoneNumber.action')}
+              state={operationStates.phoneNumber}
+              disabled={!selectedChannel}
+              onSubmit={() => {
+                void runOperation('phoneNumber', (channelId) =>
+                  apiClient.api.playground.registration[':channelId'][
+                    'phone-number'
+                  ].$get({
+                    param: { channelId },
+                    query: { fields: selectedFields.join(',') },
+                  }),
+                )
+              }}
+              resultLabel={t('apiPlayground.result')}
+              defaultOpen
+            >
+              <fieldset className="grid gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <legend className="text-sm font-semibold">
+                      {t('apiPlayground.registration.phoneNumber.fields')}
+                    </legend>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {t('apiPlayground.registration.phoneNumber.fieldsHint')}
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setSelectedFields(
+                          PHONE_NUMBER_FIELDS.map((field) => field.value),
+                        )
+                      }
+                    >
+                      {t('apiPlayground.registration.phoneNumber.selectAll')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedFields([])}
+                    >
+                      {t('apiPlayground.registration.phoneNumber.clear')}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setSelectedFields(
-                        PHONE_NUMBER_FIELDS.map((field) => field.value),
-                      )
-                    }
-                  >
-                    {t('apiPlayground.registration.phoneNumber.selectAll')}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedFields([])}
-                  >
-                    {t('apiPlayground.registration.phoneNumber.clear')}
-                  </Button>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {PHONE_NUMBER_FIELDS.map((field) => (
+                    <Checkbox
+                      key={field.value}
+                      className="w-full rounded-xl border bg-background p-3 transition-colors hover:border-primary/40"
+                      label={t(field.labelKey)}
+                      description={field.value}
+                      checked={selectedFields.includes(field.value)}
+                      onChange={(event) =>
+                        togglePhoneNumberField(
+                          field.value,
+                          event.currentTarget.checked,
+                        )
+                      }
+                    />
+                  ))}
                 </div>
+              </fieldset>
+            </OperationCard>
+
+            <OperationCard
+              method="POST"
+              request={{
+                path: `${registrationGraphUrl}/request_code`,
+                body: { code_method: codeMethod, language },
+              }}
+              title={t('apiPlayground.registration.requestCode.title')}
+              description={t(
+                'apiPlayground.registration.requestCode.description',
+              )}
+              action={t('apiPlayground.registration.requestCode.action')}
+              state={operationStates.requestCode}
+              disabled={mutationDisabled}
+              onSubmit={() => {
+                void runOperation('requestCode', (channelId) =>
+                  apiClient.api.playground.registration[':channelId'][
+                    'request-code'
+                  ].$post({
+                    param: { channelId },
+                    json: { codeMethod, language },
+                  }),
+                )
+              }}
+              resultLabel={t('apiPlayground.result')}
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Select
+                  label={t('apiPlayground.registration.requestCode.method')}
+                  value={codeMethod}
+                  onChange={(event) =>
+                    setCodeMethod(event.currentTarget.value as 'SMS' | 'VOICE')
+                  }
+                >
+                  <option value="SMS">SMS</option>
+                  <option value="VOICE">
+                    {t('apiPlayground.registration.requestCode.voice')}
+                  </option>
+                </Select>
+                <Input
+                  label={t('apiPlayground.registration.requestCode.language')}
+                  hint={t(
+                    'apiPlayground.registration.requestCode.languageHint',
+                  )}
+                  value={language}
+                  required
+                  onChange={(event) => setLanguage(event.currentTarget.value)}
+                />
               </div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {PHONE_NUMBER_FIELDS.map((field) => (
-                  <Checkbox
-                    key={field.value}
-                    className="w-full rounded-xl border bg-background p-3 transition-colors hover:border-primary/40"
-                    label={t(field.labelKey)}
-                    description={field.value}
-                    checked={selectedFields.includes(field.value)}
-                    onChange={(event) =>
-                      togglePhoneNumberField(
-                        field.value,
-                        event.currentTarget.checked,
-                      )
-                    }
-                  />
-                ))}
-              </div>
-            </fieldset>
-          </OperationCard>
+            </OperationCard>
 
-          <OperationCard
-            method="POST"
-            title={t('apiPlayground.registration.requestCode.title')}
-            description={t(
-              'apiPlayground.registration.requestCode.description',
-            )}
-            action={t('apiPlayground.registration.requestCode.action')}
-            state={operationStates.requestCode}
-            disabled={mutationDisabled}
-            onSubmit={() => {
-              void runOperation('requestCode', (channelId) =>
-                apiClient.api.playground.registration[':channelId'][
-                  'request-code'
-                ].$post({
-                  param: { channelId },
-                  json: { codeMethod, language },
-                }),
-              )
-            }}
-            resultLabel={t('apiPlayground.result')}
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Select
-                label={t('apiPlayground.registration.requestCode.method')}
-                value={codeMethod}
-                onChange={(event) =>
-                  setCodeMethod(event.currentTarget.value as 'SMS' | 'VOICE')
-                }
-              >
-                <option value="SMS">SMS</option>
-                <option value="VOICE">
-                  {t('apiPlayground.registration.requestCode.voice')}
-                </option>
-              </Select>
+            <OperationCard
+              method="POST"
+              request={{
+                path: `${registrationGraphUrl}/verify_code`,
+                body: { code: verificationCode },
+              }}
+              title={t('apiPlayground.registration.verifyCode.title')}
+              description={t(
+                'apiPlayground.registration.verifyCode.description',
+              )}
+              action={t('apiPlayground.registration.verifyCode.action')}
+              state={operationStates.verifyCode}
+              disabled={mutationDisabled}
+              onSubmit={() => {
+                void runOperation('verifyCode', (channelId) =>
+                  apiClient.api.playground.registration[':channelId'][
+                    'verify-code'
+                  ].$post({
+                    param: { channelId },
+                    json: { code: verificationCode },
+                  }),
+                )
+              }}
+              resultLabel={t('apiPlayground.result')}
+            >
               <Input
-                label={t('apiPlayground.registration.requestCode.language')}
-                hint={t('apiPlayground.registration.requestCode.languageHint')}
-                value={language}
-                required
-                onChange={(event) => setLanguage(event.currentTarget.value)}
-              />
-            </div>
-          </OperationCard>
-
-          <OperationCard
-            method="POST"
-            title={t('apiPlayground.registration.verifyCode.title')}
-            description={t('apiPlayground.registration.verifyCode.description')}
-            action={t('apiPlayground.registration.verifyCode.action')}
-            state={operationStates.verifyCode}
-            disabled={mutationDisabled}
-            onSubmit={() => {
-              void runOperation('verifyCode', (channelId) =>
-                apiClient.api.playground.registration[':channelId'][
-                  'verify-code'
-                ].$post({
-                  param: { channelId },
-                  json: { code: verificationCode },
-                }),
-              )
-            }}
-            resultLabel={t('apiPlayground.result')}
-          >
-            <Input
-              label={t('apiPlayground.registration.verificationCode')}
-              hint={t('apiPlayground.registration.sixDigits')}
-              value={verificationCode}
-              inputMode="numeric"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              required
-              onChange={(event) =>
-                setVerificationCode(event.currentTarget.value)
-              }
-            />
-          </OperationCard>
-
-          <OperationCard
-            method="POST"
-            title={t('apiPlayground.registration.register.title')}
-            description={t('apiPlayground.registration.register.description')}
-            action={t('apiPlayground.registration.register.action')}
-            state={operationStates.register}
-            disabled={mutationDisabled}
-            onSubmit={() => {
-              void runOperation('register', (channelId) =>
-                apiClient.api.playground.registration[
-                  ':channelId'
-                ].register.$post({
-                  param: { channelId },
-                  json: {
-                    pin: registrationPin,
-                    ...(localizationRegion
-                      ? {
-                          dataLocalizationRegion:
-                            localizationRegion as (typeof DATA_LOCALIZATION_REGIONS)[number],
-                        }
-                      : {}),
-                  },
-                }),
-              )
-            }}
-            resultLabel={t('apiPlayground.result')}
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Input
-                type="password"
-                autoComplete="new-password"
-                label={t('apiPlayground.registration.pin')}
+                label={t('apiPlayground.registration.verificationCode')}
                 hint={t('apiPlayground.registration.sixDigits')}
-                value={registrationPin}
+                value={verificationCode}
                 inputMode="numeric"
                 pattern="[0-9]{6}"
                 maxLength={6}
                 required
                 onChange={(event) =>
-                  setRegistrationPin(event.currentTarget.value)
+                  setVerificationCode(event.currentTarget.value)
                 }
               />
-              <Select
-                label={t('apiPlayground.registration.register.region')}
-                hint={t('apiPlayground.registration.register.regionHint')}
-                value={localizationRegion}
-                onChange={(event) =>
-                  setLocalizationRegion(event.currentTarget.value)
-                }
-              >
-                <option value="">
-                  {t('apiPlayground.registration.register.noRegion')}
-                </option>
-                {DATA_LOCALIZATION_REGIONS.map((region) => (
-                  <option key={region} value={region}>
-                    {region}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </OperationCard>
+            </OperationCard>
 
-          <OperationCard
-            method="POST"
-            title={t('apiPlayground.registration.twoStepPin.title')}
-            description={t('apiPlayground.registration.twoStepPin.description')}
-            action={t('apiPlayground.registration.twoStepPin.action')}
-            state={operationStates.twoStepPin}
-            disabled={mutationDisabled}
-            onSubmit={() => {
-              void runOperation('twoStepPin', (channelId) =>
-                apiClient.api.playground.registration[':channelId'][
-                  'two-step-pin'
-                ].$post({
-                  param: { channelId },
-                  json: { pin: newPin },
-                }),
-              )
-            }}
-            resultLabel={t('apiPlayground.result')}
-          >
-            <Input
-              type="password"
-              autoComplete="new-password"
-              label={t('apiPlayground.registration.twoStepPin.newPin')}
-              hint={t('apiPlayground.registration.sixDigits')}
-              value={newPin}
-              inputMode="numeric"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              required
-              onChange={(event) => setNewPin(event.currentTarget.value)}
-            />
-          </OperationCard>
-
-          <OperationCard
-            method="POST"
-            title={t('apiPlayground.registration.deregister.title')}
-            description={t('apiPlayground.registration.deregister.description')}
-            action={t('apiPlayground.registration.deregister.action')}
-            state={operationStates.deregister}
-            disabled={mutationDisabled || !confirmDeregister}
-            buttonVariant="danger"
-            onSubmit={() => {
-              void runOperation('deregister', (channelId) =>
-                apiClient.api.playground.registration[
-                  ':channelId'
-                ].deregister.$post({ param: { channelId } }),
-              )
-            }}
-            resultLabel={t('apiPlayground.result')}
-          >
-            <div className="rounded-xl border border-warning/30 bg-warning/8 p-3">
-              <div className="flex gap-2 text-sm font-semibold">
-                <AlertTriangle
-                  className="mt-0.5 size-4 shrink-0 text-warning"
-                  aria-hidden
+            <OperationCard
+              method="POST"
+              request={{
+                path: `${registrationGraphUrl}/register`,
+                body: {
+                  messaging_product: 'whatsapp',
+                  pin: registrationPin,
+                  ...(localizationRegion
+                    ? { data_localization_region: localizationRegion }
+                    : {}),
+                },
+              }}
+              title={t('apiPlayground.registration.register.title')}
+              description={t('apiPlayground.registration.register.description')}
+              action={t('apiPlayground.registration.register.action')}
+              state={operationStates.register}
+              disabled={mutationDisabled}
+              onSubmit={() => {
+                void runOperation('register', (channelId) =>
+                  apiClient.api.playground.registration[
+                    ':channelId'
+                  ].register.$post({
+                    param: { channelId },
+                    json: {
+                      pin: registrationPin,
+                      ...(localizationRegion
+                        ? {
+                            dataLocalizationRegion:
+                              localizationRegion as (typeof DATA_LOCALIZATION_REGIONS)[number],
+                          }
+                        : {}),
+                    },
+                  }),
+                )
+              }}
+              resultLabel={t('apiPlayground.result')}
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  type="password"
+                  autoComplete="new-password"
+                  label={t('apiPlayground.registration.pin')}
+                  hint={t('apiPlayground.registration.sixDigits')}
+                  value={registrationPin}
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  required
+                  onChange={(event) =>
+                    setRegistrationPin(event.currentTarget.value)
+                  }
                 />
-                <span>
-                  {t('apiPlayground.registration.deregister.warning')}
-                </span>
+                <Select
+                  label={t('apiPlayground.registration.register.region')}
+                  hint={t('apiPlayground.registration.register.regionHint')}
+                  value={localizationRegion}
+                  onChange={(event) =>
+                    setLocalizationRegion(event.currentTarget.value)
+                  }
+                >
+                  <option value="">
+                    {t('apiPlayground.registration.register.noRegion')}
+                  </option>
+                  {DATA_LOCALIZATION_REGIONS.map((region) => (
+                    <option key={region} value={region}>
+                      {region}
+                    </option>
+                  ))}
+                </Select>
               </div>
-            </div>
-            <Checkbox
-              label={t('apiPlayground.registration.deregister.confirm')}
-              checked={confirmDeregister}
-              onChange={(event) =>
-                setConfirmDeregister(event.currentTarget.checked)
-              }
-            />
-          </OperationCard>
-        </div>
-      ) : activeTab === 'messaging' ? (
-        <MessagingPlayground
-          key={selectedChannelId}
-          channelId={selectedChannelId}
-          disabled={mutationDisabled}
-        />
-      ) : activeTab === 'media' ? (
-        <MediaPlayground
-          key={selectedChannelId}
-          channelId={selectedChannelId}
-          mutationDisabled={mutationDisabled}
-        />
-      ) : activeTab === 'qr' ? (
-        <QrPlayground
-          key={selectedChannelId}
-          channelId={selectedChannelId}
-          mutationDisabled={mutationDisabled}
-        />
-      ) : activeTab === 'components' ? (
-        <ComponentsPlayground
-          key={selectedChannelId}
-          channelId={selectedChannelId}
-          mutationDisabled={mutationDisabled}
-        />
-      ) : activeTab === 'flows' ? (
-        <FlowsPlayground
-          key={selectedChannelId}
-          channelId={selectedChannelId}
-          mutationDisabled={mutationDisabled}
-        />
-      ) : activeTab === 'templates' ? (
-        <TemplatesPlayground
-          key={selectedChannelId}
-          channelId={selectedChannelId}
-          mutationDisabled={mutationDisabled}
-        />
-      ) : activeTab === 'analytics' ? (
-        <AnalyticsPlayground
-          key={selectedChannelId}
-          channelId={selectedChannelId}
-          mutationDisabled={mutationDisabled}
-        />
-      ) : activeTab === 'moderation' ? (
-        <ModerationPlayground
-          key={selectedChannelId}
-          channelId={selectedChannelId}
-          mutationDisabled={mutationDisabled}
-        />
-      ) : activeTab === 'subscriptions' ? (
-        <SubscriptionsPlayground
-          key={selectedChannelId}
-          channelId={selectedChannelId}
-          mutationDisabled={mutationDisabled}
-        />
-      ) : activeTab === 'waba' ? (
-        <WabaPlayground key={selectedChannelId} channelId={selectedChannelId} />
-      ) : activeTab === 'webhooks' ? (
-        <WebhooksPlayground
-          key={selectedChannelId}
-          channelId={selectedChannelId}
-        />
-      ) : (
-        <MbaPlayground
-          key={selectedChannelId}
-          channelId={selectedChannelId}
-          mutationDisabled={mutationDisabled}
-        />
-      )}
+            </OperationCard>
+
+            <OperationCard
+              method="POST"
+              request={{
+                path: registrationGraphUrl,
+                body: { pin: newPin },
+              }}
+              title={t('apiPlayground.registration.twoStepPin.title')}
+              description={t(
+                'apiPlayground.registration.twoStepPin.description',
+              )}
+              action={t('apiPlayground.registration.twoStepPin.action')}
+              state={operationStates.twoStepPin}
+              disabled={mutationDisabled}
+              onSubmit={() => {
+                void runOperation('twoStepPin', (channelId) =>
+                  apiClient.api.playground.registration[':channelId'][
+                    'two-step-pin'
+                  ].$post({
+                    param: { channelId },
+                    json: { pin: newPin },
+                  }),
+                )
+              }}
+              resultLabel={t('apiPlayground.result')}
+            >
+              <Input
+                type="password"
+                autoComplete="new-password"
+                label={t('apiPlayground.registration.twoStepPin.newPin')}
+                hint={t('apiPlayground.registration.sixDigits')}
+                value={newPin}
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                required
+                onChange={(event) => setNewPin(event.currentTarget.value)}
+              />
+            </OperationCard>
+
+            <OperationCard
+              method="POST"
+              request={{
+                path: `${registrationGraphUrl}/deregister`,
+              }}
+              title={t('apiPlayground.registration.deregister.title')}
+              description={t(
+                'apiPlayground.registration.deregister.description',
+              )}
+              action={t('apiPlayground.registration.deregister.action')}
+              state={operationStates.deregister}
+              disabled={mutationDisabled || !confirmDeregister}
+              buttonVariant="danger"
+              onSubmit={() => {
+                void runOperation('deregister', (channelId) =>
+                  apiClient.api.playground.registration[
+                    ':channelId'
+                  ].deregister.$post({ param: { channelId } }),
+                )
+              }}
+              resultLabel={t('apiPlayground.result')}
+            >
+              <div className="rounded-xl border border-warning/30 bg-warning/8 p-3">
+                <div className="flex gap-2 text-sm font-semibold">
+                  <AlertTriangle
+                    className="mt-0.5 size-4 shrink-0 text-warning"
+                    aria-hidden
+                  />
+                  <span>
+                    {t('apiPlayground.registration.deregister.warning')}
+                  </span>
+                </div>
+              </div>
+              <Checkbox
+                label={t('apiPlayground.registration.deregister.confirm')}
+                checked={confirmDeregister}
+                onChange={(event) =>
+                  setConfirmDeregister(event.currentTarget.checked)
+                }
+              />
+            </OperationCard>
+          </div>
+        </PlaygroundPostmanRegistryProvider>
+
+        <PlaygroundTabPanel
+          active={activeTab === 'mba'}
+          label={t('apiPlayground.mba.tab')}
+          registry={postmanRegistry.current}
+        >
+          <MbaPlayground
+            key={selectedChannelId}
+            channelId={selectedChannelId}
+            phoneNumberId={selectedChannel?.waPhoneNumberId ?? ''}
+            businessId={selectedChannel?.waBusinessId ?? ''}
+            mutationDisabled={mutationDisabled}
+          />
+        </PlaygroundTabPanel>
+        <PlaygroundTabPanel
+          active={activeTab === 'messaging'}
+          label={t('apiPlayground.messaging.tab')}
+          registry={postmanRegistry.current}
+        >
+          <MessagingPlayground
+            key={selectedChannelId}
+            channelId={selectedChannelId}
+            disabled={mutationDisabled}
+          />
+        </PlaygroundTabPanel>
+        <PlaygroundTabPanel
+          active={activeTab === 'media'}
+          label={t('apiPlayground.media.tab')}
+          registry={postmanRegistry.current}
+        >
+          <MediaPlayground
+            key={selectedChannelId}
+            channelId={selectedChannelId}
+            phoneNumberId={selectedChannel?.waPhoneNumberId ?? ''}
+            mutationDisabled={mutationDisabled}
+          />
+        </PlaygroundTabPanel>
+        <PlaygroundTabPanel
+          active={activeTab === 'marketing'}
+          label={t('apiPlayground.marketing.tab')}
+          registry={postmanRegistry.current}
+        >
+          <MarketingPlayground
+            key={selectedChannelId}
+            channelId={selectedChannelId}
+            disabled={mutationDisabled}
+          />
+        </PlaygroundTabPanel>
+        <PlaygroundTabPanel
+          active={activeTab === 'qr'}
+          label={t('apiPlayground.qr.tab')}
+          registry={postmanRegistry.current}
+        >
+          <QrPlayground
+            key={selectedChannelId}
+            channelId={selectedChannelId}
+            mutationDisabled={mutationDisabled}
+          />
+        </PlaygroundTabPanel>
+        <PlaygroundTabPanel
+          active={activeTab === 'components'}
+          label={t('apiPlayground.components.tab')}
+          registry={postmanRegistry.current}
+        >
+          <ComponentsPlayground
+            key={selectedChannelId}
+            channelId={selectedChannelId}
+            phoneNumberId={selectedChannel?.waPhoneNumberId ?? ''}
+            mutationDisabled={mutationDisabled}
+          />
+        </PlaygroundTabPanel>
+        <PlaygroundTabPanel
+          active={activeTab === 'flows'}
+          label={t('apiPlayground.flows.tab')}
+          registry={postmanRegistry.current}
+        >
+          <FlowsPlayground
+            key={selectedChannelId}
+            channelId={selectedChannelId}
+            wabaId={selectedChannel?.waWabaId ?? ''}
+            phoneNumberId={selectedChannel?.waPhoneNumberId ?? ''}
+            mutationDisabled={mutationDisabled}
+          />
+        </PlaygroundTabPanel>
+        <PlaygroundTabPanel
+          active={activeTab === 'templates'}
+          label={t('apiPlayground.templates.tab')}
+          registry={postmanRegistry.current}
+        >
+          <TemplatesPlayground
+            key={selectedChannelId}
+            channelId={selectedChannelId}
+            wabaId={selectedChannel?.waWabaId ?? ''}
+            mutationDisabled={mutationDisabled}
+          />
+        </PlaygroundTabPanel>
+        <PlaygroundTabPanel
+          active={activeTab === 'analytics'}
+          label={t('apiPlayground.analytics.tab')}
+          registry={postmanRegistry.current}
+        >
+          <AnalyticsPlayground
+            key={selectedChannelId}
+            channelId={selectedChannelId}
+            mutationDisabled={mutationDisabled}
+          />
+        </PlaygroundTabPanel>
+        <PlaygroundTabPanel
+          active={activeTab === 'moderation'}
+          label={t('apiPlayground.moderation.tab')}
+          registry={postmanRegistry.current}
+        >
+          <ModerationPlayground
+            key={selectedChannelId}
+            channelId={selectedChannelId}
+            mutationDisabled={mutationDisabled}
+          />
+        </PlaygroundTabPanel>
+        <PlaygroundTabPanel
+          active={activeTab === 'subscriptions'}
+          label={t('apiPlayground.subscriptions.tab')}
+          registry={postmanRegistry.current}
+        >
+          <SubscriptionsPlayground
+            key={selectedChannelId}
+            channelId={selectedChannelId}
+            appId={selectedChannel?.waAppId ?? ''}
+            wabaId={selectedChannel?.waWabaId ?? ''}
+            mutationDisabled={mutationDisabled}
+          />
+        </PlaygroundTabPanel>
+        <PlaygroundTabPanel
+          active={activeTab === 'waba'}
+          label={t('apiPlayground.waba.tab')}
+          registry={postmanRegistry.current}
+        >
+          <WabaPlayground
+            key={selectedChannelId}
+            channelId={selectedChannelId}
+            initialWabaId={selectedChannel?.waWabaId ?? ''}
+            initialBusinessId={selectedChannel?.waBusinessId ?? ''}
+          />
+        </PlaygroundTabPanel>
+        <PlaygroundTabPanel
+          active={activeTab === 'webhooks'}
+          label={t('apiPlayground.webhooks.tab')}
+          registry={postmanRegistry.current}
+        >
+          <WebhooksPlayground
+            key={selectedChannelId}
+            channelId={selectedChannelId}
+          />
+        </PlaygroundTabPanel>
+      </PlaygroundPostmanRegistryProvider>
     </div>
+  )
+}
+
+function PlaygroundTabPanel({
+  active,
+  label,
+  registry,
+  children,
+}: {
+  active: boolean
+  label: string
+  registry: PlaygroundPostmanRegistry
+  children: ReactNode
+}) {
+  return (
+    <PlaygroundPostmanRegistryProvider registry={registry} folder={label}>
+      <div role="tabpanel" aria-label={label} hidden={!active}>
+        {children}
+      </div>
+    </PlaygroundPostmanRegistryProvider>
   )
 }
 

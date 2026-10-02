@@ -157,6 +157,21 @@ describe('message content projection', () => {
     assert.equal(projection.frequentlyForwarded, null)
   })
 
+  it('projects the template name from outbound template messages', () => {
+    const projection = projectWhatsAppMessageContent({
+      messaging_product: 'whatsapp',
+      to: '5511999990000',
+      type: 'template',
+      template: {
+        name: 'order_ready',
+        language: { code: 'en_US' },
+      },
+    })
+
+    assert.equal(projection.templateName, 'order_ready')
+    assert.equal(projection.templateData?.name, 'order_ready')
+  })
+
   it('extracts media fields for direct and interactive-header media', () => {
     const image = projectWhatsAppMessageContent({
       from: '5511999990000',

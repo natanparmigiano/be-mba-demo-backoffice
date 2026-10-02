@@ -10,7 +10,7 @@ then to pages or design-system examples—never in the opposite direction.
 | ---------------------- | ----------------------------------------------------------------------- |
 | `ui/`                  | General-purpose visual primitives and small interaction patterns.       |
 | `chat/`                | Typed message schema, renderer, sample data, and conversation showcase. |
-| `api-playground/`      | Shared collapsible request-card presentation.                           |
+| `api-playground/`      | Shared request cards, executable code examples, and OpenAPI downloads.  |
 | `runner/`              | Lazy Monaco editor and parameter-aware JavaScript language service.     |
 | `design-system/`       | Documentation sections that demonstrate the reusable primitives.        |
 | `theme/`               | Global theme provider and adaptive theme selector.                      |

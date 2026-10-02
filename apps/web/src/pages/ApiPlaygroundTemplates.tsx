@@ -7,10 +7,14 @@ import {
 } from '../components/api-playground/PlaygroundOperationCard'
 import { Input, Textarea } from '../components/ui'
 
-type Props = { channelId: string; mutationDisabled: boolean }
+type Props = { channelId: string; wabaId: string; mutationDisabled: boolean }
 type T = ReturnType<typeof useTranslation>['t']
 
-export function TemplatesPlayground({ channelId, mutationDisabled }: Props) {
+export function TemplatesPlayground({
+  channelId,
+  wabaId,
+  mutationDisabled,
+}: Props) {
   const { t } = useTranslation()
   return (
     <div
@@ -18,21 +22,39 @@ export function TemplatesPlayground({ channelId, mutationDisabled }: Props) {
       role="tabpanel"
       aria-label={t('apiPlayground.templates.tab')}
     >
-      <CreateTemplate channelId={channelId} disabled={mutationDisabled} />
-      <ListTemplates channelId={channelId} disabled={!channelId} />
+      <CreateTemplate
+        channelId={channelId}
+        wabaId={wabaId}
+        disabled={mutationDisabled}
+      />
+      <ListTemplates
+        channelId={channelId}
+        wabaId={wabaId}
+        disabled={!channelId}
+      />
       <GetTemplate channelId={channelId} disabled={!channelId} />
-      <GetNamespace channelId={channelId} disabled={!channelId} />
+      <GetNamespace
+        channelId={channelId}
+        wabaId={wabaId}
+        disabled={!channelId}
+      />
       <UpdateTemplate channelId={channelId} disabled={mutationDisabled} />
-      <DeleteTemplate channelId={channelId} disabled={mutationDisabled} />
+      <DeleteTemplate
+        channelId={channelId}
+        wabaId={wabaId}
+        disabled={mutationDisabled}
+      />
     </div>
   )
 }
 
 function CreateTemplate({
   channelId,
+  wabaId,
   disabled,
 }: {
   channelId: string
+  wabaId: string
   disabled: boolean
 }) {
   const { t } = useTranslation()
@@ -52,6 +74,10 @@ function CreateTemplate({
   return (
     <PlaygroundOperationCard
       method="POST"
+      request={{
+        path: metaWabaPath(wabaId, 'message_templates'),
+        body: requestPayload(payload),
+      }}
       title={t('apiPlayground.templates.create.title')}
       description={t('apiPlayground.templates.create.description')}
       action={t('apiPlayground.templates.create.action')}
@@ -78,9 +104,11 @@ function CreateTemplate({
 
 function ListTemplates({
   channelId,
+  wabaId,
   disabled,
 }: {
   channelId: string
+  wabaId: string
   disabled: boolean
 }) {
   const { t } = useTranslation()
@@ -93,6 +121,15 @@ function ListTemplates({
   return (
     <PlaygroundOperationCard
       method="GET"
+      request={{
+        path: metaWabaPath(wabaId, 'message_templates'),
+        query: {
+          name: name || undefined,
+          language: language || undefined,
+          fields,
+          limit: '50',
+        },
+      }}
       title={t('apiPlayground.templates.list.title')}
       description={t('apiPlayground.templates.list.description')}
       action={t('apiPlayground.templates.list.action')}
@@ -154,6 +191,10 @@ function GetTemplate({
   return (
     <PlaygroundOperationCard
       method="GET"
+      request={{
+        path: metaNodePath(templateId, 'TEMPLATE_ID'),
+        query: { fields },
+      }}
       title={t('apiPlayground.templates.get.title')}
       description={t('apiPlayground.templates.get.description')}
       action={t('apiPlayground.templates.get.action')}
@@ -183,9 +224,11 @@ function GetTemplate({
 
 function GetNamespace({
   channelId,
+  wabaId,
   disabled,
 }: {
   channelId: string
+  wabaId: string
   disabled: boolean
 }) {
   const { t } = useTranslation()
@@ -193,6 +236,10 @@ function GetNamespace({
   return (
     <PlaygroundOperationCard
       method="GET"
+      request={{
+        path: metaWabaPath(wabaId),
+        query: { fields: 'message_template_namespace' },
+      }}
       title={t('apiPlayground.templates.namespace.title')}
       description={t('apiPlayground.templates.namespace.description')}
       action={t('apiPlayground.templates.namespace.action')}
@@ -229,6 +276,10 @@ function UpdateTemplate({
   return (
     <PlaygroundOperationCard
       method="POST"
+      request={{
+        path: metaNodePath(templateId, 'TEMPLATE_ID'),
+        body: requestPayload(payload),
+      }}
       title={t('apiPlayground.templates.update.title')}
       description={t('apiPlayground.templates.update.description')}
       action={t('apiPlayground.templates.update.action')}
@@ -257,9 +308,11 @@ function UpdateTemplate({
 
 function DeleteTemplate({
   channelId,
+  wabaId,
   disabled,
 }: {
   channelId: string
+  wabaId: string
   disabled: boolean
 }) {
   const { t } = useTranslation()
@@ -269,6 +322,13 @@ function DeleteTemplate({
   return (
     <PlaygroundOperationCard
       method="DELETE"
+      request={{
+        path: metaWabaPath(wabaId, 'message_templates'),
+        query: {
+          hsm_id: templateId || 'TEMPLATE_ID',
+          name: name || 'TEMPLATE_NAME',
+        },
+      }}
       buttonVariant="danger"
       title={t('apiPlayground.templates.delete.title')}
       description={t('apiPlayground.templates.delete.description')}
@@ -367,6 +427,20 @@ function parsePayload(value: string, t: T): Record<string, unknown> {
     /* use localized error */
   }
   throw new Error(t('apiPlayground.templates.validJson'))
+}
+function requestPayload(value: string): unknown {
+  try {
+    return JSON.parse(value) as unknown
+  } catch {
+    return value
+  }
+}
+function metaWabaPath(wabaId: string, edge?: string) {
+  const base = `https://graph.facebook.com/v26.0/${encodeURIComponent(wabaId || 'WABA_ID')}`
+  return edge ? `${base}/${edge}` : base
+}
+function metaNodePath(value: string, fallback: string) {
+  return `https://graph.facebook.com/v26.0/${encodeURIComponent(value || fallback)}`
 }
 async function result(response: Response, t: T) {
   const body: unknown = await response.json()

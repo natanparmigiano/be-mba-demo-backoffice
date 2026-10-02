@@ -127,6 +127,16 @@ function TextMessageCard(props: CardProps) {
   return (
     <PlaygroundOperationCard
       method="POST"
+      request={{
+        path: metaMessagesPath(),
+        body: {
+          messaging_product: 'whatsapp',
+          to,
+          type: 'text',
+          text: { body, preview_url: previewUrl },
+          ...messageContext(replyTo),
+        },
+      }}
       title={t('apiPlayground.messaging.text.title')}
       description={t('apiPlayground.messaging.text.description')}
       action={t('apiPlayground.messaging.text.action')}
@@ -195,6 +205,15 @@ function MediaMessageCard({
   const [voice, setVoice] = useState(false)
   const [file, setFile] = useState<File | null>(null)
 
+  const media = {
+    link: '<uploaded-media-url>',
+    ...(hasCaption && caption.trim() ? { caption } : {}),
+    ...(hasFileName
+      ? { filename: fileName.trim() || file?.name || '<filename>' }
+      : {}),
+    ...(hasVoice ? { voice } : {}),
+  }
+
   const submit = async () => {
     if (!file) throw new Error(t('apiPlayground.messaging.media.fileRequired'))
     const link = await uploadMedia(channelId, file, t)
@@ -243,6 +262,16 @@ function MediaMessageCard({
   return (
     <PlaygroundOperationCard
       method="POST"
+      request={{
+        path: metaMessagesPath(),
+        body: {
+          messaging_product: 'whatsapp',
+          to,
+          type: kind,
+          [kind]: media,
+          ...messageContext(replyTo),
+        },
+      }}
       title={t(`apiPlayground.messaging.${kind}.title`)}
       description={t(`apiPlayground.messaging.${kind}.description`)}
       action={t(`apiPlayground.messaging.${kind}.action`)}
@@ -304,6 +333,21 @@ function LocationMessageCard(props: CardProps) {
   return (
     <PlaygroundOperationCard
       method="POST"
+      request={{
+        path: metaMessagesPath(),
+        body: {
+          messaging_product: 'whatsapp',
+          to,
+          type: 'location',
+          location: {
+            latitude: Number(latitude),
+            longitude: Number(longitude),
+            ...(name.trim() ? { name } : {}),
+            ...(address.trim() ? { address } : {}),
+          },
+          ...messageContext(replyTo),
+        },
+      }}
       title={t('apiPlayground.messaging.location.title')}
       description={t('apiPlayground.messaging.location.description')}
       action={t('apiPlayground.messaging.location.action')}
@@ -411,6 +455,16 @@ function JsonMessageCard({
   return (
     <PlaygroundOperationCard
       method="POST"
+      request={{
+        path: metaMessagesPath(),
+        body: {
+          messaging_product: 'whatsapp',
+          to,
+          type: kind,
+          [kind]: parseJsonPreview(json),
+          ...messageContext(replyTo),
+        },
+      }}
       title={t(`apiPlayground.messaging.${kind}.title`)}
       description={t(`apiPlayground.messaging.${kind}.description`)}
       action={t(`apiPlayground.messaging.${kind}.action`)}
@@ -469,6 +523,20 @@ function TemplateMessageCard(props: CardProps) {
   return (
     <PlaygroundOperationCard
       method="POST"
+      request={{
+        path: metaMessagesPath(),
+        body: {
+          messaging_product: 'whatsapp',
+          to,
+          type: 'template',
+          template: {
+            name,
+            language: { code: language },
+            components: parseJsonPreview(components),
+          },
+          ...messageContext(replyTo),
+        },
+      }}
       title={t('apiPlayground.messaging.template.title')}
       description={t('apiPlayground.messaging.template.description')}
       action={t('apiPlayground.messaging.template.action')}
@@ -520,6 +588,15 @@ function ReactionMessageCard(props: CardProps) {
   return (
     <PlaygroundOperationCard
       method="POST"
+      request={{
+        path: metaMessagesPath(),
+        body: {
+          messaging_product: 'whatsapp',
+          to,
+          type: 'reaction',
+          reaction: { message_id: messageId, emoji },
+        },
+      }}
       title={t('apiPlayground.messaging.reaction.title')}
       description={t('apiPlayground.messaging.reaction.description')}
       action={t('apiPlayground.messaging.reaction.action')}
@@ -577,6 +654,17 @@ function MessageActionCard({
   return (
     <PlaygroundOperationCard
       method="POST"
+      request={{
+        path: metaMessagesPath(),
+        body: {
+          messaging_product: 'whatsapp',
+          status: 'read',
+          message_id: messageId,
+          ...(kind === 'typingIndicator'
+            ? { typing_indicator: { type: 'text' } }
+            : {}),
+        },
+      }}
       title={t(`apiPlayground.messaging.${kind}.title`)}
       description={t(`apiPlayground.messaging.${kind}.description`)}
       action={t(`apiPlayground.messaging.${kind}.action`)}
@@ -721,6 +809,18 @@ async function uploadMedia(
 
 function messageContext(replyTo: string) {
   return replyTo.trim() ? { context: { message_id: replyTo.trim() } } : {}
+}
+
+function metaMessagesPath() {
+  return 'https://graph.facebook.com/v26.0/PHONE_NUMBER_ID/messages'
+}
+
+function parseJsonPreview(value: string): unknown {
+  try {
+    return JSON.parse(value) as unknown
+  } catch {
+    return value
+  }
 }
 
 function parseJsonInput(

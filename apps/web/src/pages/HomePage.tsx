@@ -469,7 +469,7 @@ export function HomePage() {
           </h2>
           <div className="mt-5 grid gap-2">
             <QuickLink
-              to="/api-playground"
+              to="/playground"
               label={t('home.references.playground')}
             />
             <QuickLink

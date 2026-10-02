@@ -25,6 +25,13 @@ const QR_CODE_FIELDS = [
   },
 ] as const
 
+const META_QR_CODES_URL =
+  'https://graph.facebook.com/v26.0/PHONE_NUMBER_ID/message_qrdls'
+
+function metaQrCodeUrl(code: string) {
+  return `${META_QR_CODES_URL}/${encodeURIComponent(code.trim() || 'QR_CODE')}`
+}
+
 export function QrPlayground({
   channelId,
   mutationDisabled,
@@ -64,6 +71,15 @@ function CreateQrCodeCard(props: CardProps) {
       action={t('apiPlayground.qr.create.action')}
       state={operation.state}
       disabled={props.disabled}
+      request={{
+        path: META_QR_CODES_URL,
+        body: {
+          prefilled_message: prefilledMessage,
+          ...(imageFormat
+            ? { generate_qr_image: imageFormat.toLowerCase() }
+            : {}),
+        },
+      }}
       defaultOpen
       resultLabel={t('apiPlayground.result')}
       onSubmit={() => {
@@ -107,6 +123,9 @@ function GetQrCodeCard(props: CardProps) {
       action={t('apiPlayground.qr.get.action')}
       state={operation.state}
       disabled={props.disabled}
+      request={{
+        path: metaQrCodeUrl(code),
+      }}
       resultLabel={t('apiPlayground.result')}
       onSubmit={() => {
         void operation.run(async () => {
@@ -136,6 +155,13 @@ function GetQrImageCard(props: CardProps) {
       action={t('apiPlayground.qr.image.action')}
       state={operation.state}
       disabled={props.disabled}
+      request={{
+        path: META_QR_CODES_URL,
+        query: {
+          fields: `code,prefilled_message,deep_link_url,qr_image_url.format(${format})`,
+          code: code || 'QR_CODE',
+        },
+      }}
       resultLabel={t('apiPlayground.result')}
       onSubmit={() => {
         void operation.run(async () => {
@@ -185,6 +211,25 @@ function ListQrCodesCard(props: CardProps) {
       action={t('apiPlayground.qr.list.action')}
       state={operation.state}
       disabled={props.disabled}
+      request={{
+        path: META_QR_CODES_URL,
+        query: {
+          ...(fields.length > 0 || imageFormat
+            ? {
+                fields: [
+                  'code',
+                  ...fields.filter((field) => field !== 'code'),
+                  ...(imageFormat
+                    ? [`qr_image_url.format(${imageFormat})`]
+                    : []),
+                ].join(','),
+              }
+            : {}),
+          ...(limit ? { limit } : {}),
+          ...(before ? { before } : {}),
+          ...(after ? { after } : {}),
+        },
+      }}
       resultLabel={t('apiPlayground.result')}
       onSubmit={() => {
         void operation.run(async () => {
@@ -268,6 +313,13 @@ function UpdateQrCodeCard(props: CardProps) {
       action={t('apiPlayground.qr.update.action')}
       state={operation.state}
       disabled={props.disabled}
+      request={{
+        path: META_QR_CODES_URL,
+        body: {
+          code: code || 'QR_CODE',
+          prefilled_message: prefilledMessage,
+        },
+      }}
       resultLabel={t('apiPlayground.result')}
       onSubmit={() => {
         void operation.run(async () => {
@@ -304,6 +356,9 @@ function DeleteQrCodeCard(props: CardProps) {
       action={t('apiPlayground.qr.delete.action')}
       state={operation.state}
       disabled={props.disabled || !confirmed}
+      request={{
+        path: metaQrCodeUrl(code),
+      }}
       buttonVariant="danger"
       resultLabel={t('apiPlayground.result')}
       onSubmit={() => {

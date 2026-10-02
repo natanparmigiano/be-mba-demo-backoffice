@@ -257,9 +257,9 @@ destination. `audience` is `EVERYONE` or `ALLOWLISTED_ONLY`.
 the custom selection. `neverSayPhrases` contains prohibited phrases.
 
 `rolloutEnabled` records the source state for provenance only. Import ignores
-that value, disables the destination before applying any other configuration,
-and verifies that it remains disabled when import completes. A manager must
-review and enable the imported agent manually.
+that value and preserves the destination's rollout state. An enabled
+destination remains enabled; a disabled destination remains disabled and
+cannot be enabled by an imported package.
 
 ### `agent.allowlist`
 

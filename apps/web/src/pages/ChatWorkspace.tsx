@@ -687,7 +687,7 @@ export function ChatWorkspace() {
                           </span>
                         </span>
                         <span className="mt-0.5 block max-w-full truncate text-xs text-muted-foreground">
-                          {messagePreview(chat.latestMessage, t)}
+                          {messagePreview(chat, t)}
                         </span>
                         <span className="mt-1.5 flex min-w-0 items-center gap-1.5">
                           <HandlerPill handler={chat.handledBy} />
@@ -1511,15 +1511,50 @@ function chatRemoteIdentity(chat: ChatSummary): string {
     : (chat.contact?.waId ?? chat.contact?.userId ?? String(chat.id))
 }
 
-function messagePreview(
-  message: ChatSummary['latestMessage'],
-  t: TFunction,
-): string {
+const inboxPreviewMessageTypes = [
+  'audio',
+  'button',
+  'contacts',
+  'document',
+  'edit',
+  'image',
+  'interactive',
+  'location',
+  'order',
+  'reaction',
+  'revoke',
+  'sticker',
+  'system',
+  'template',
+  'text',
+  'unknown',
+  'unsupported',
+  'video',
+] as const
+
+type InboxPreviewMessageType = (typeof inboxPreviewMessageTypes)[number]
+
+function messagePreview(chat: ChatSummary, t: TFunction): string {
+  const message = chat.latestMessage
   if (!message) return t('chatWorkspace.noMessages')
-  return (
-    message.preview ??
-    t(`chatWorkspace.messageTypes.${message.messageType ?? 'unknown'}`)
+  if (message.preview) return message.preview
+
+  const messageType = inboxPreviewMessageTypes.includes(
+    message.messageType as InboxPreviewMessageType,
   )
+    ? (message.messageType as InboxPreviewMessageType)
+    : 'unknown'
+  const sender =
+    message.direction === 'outbound'
+      ? t('chatWorkspace.inboxPreviews.you')
+      : chat.kind === 'group'
+        ? t('chatWorkspace.inboxPreviews.groupParticipant')
+        : chatName(chat, t)
+
+  return t('chatWorkspace.inboxPreviews.sent', {
+    sender,
+    content: t(`chatWorkspace.inboxPreviews.types.${messageType}`),
+  })
 }
 
 function realtimeEventChatId(event: Event): number | undefined {

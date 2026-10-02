@@ -77,6 +77,7 @@ export type WhatsAppMessageContentProjection = Pick<
   | 'buttonData'
   | 'orderData'
   | 'reactionData'
+  | 'templateName'
   | 'templateData'
   | 'systemData'
   | 'editData'
@@ -124,6 +125,7 @@ export interface PersistWhatsAppOutboundMessageInput {
   mediaFilePath?: string
   mediaMimeType?: string
   templatePreview?: string
+  isMarketingTemplate?: boolean
   message: WhatsAppOutboundMessage
   recipientType?: 'group' | 'individual'
   response: WhatsAppSendMessageResponse
@@ -271,6 +273,9 @@ export async function persistWhatsAppOutboundMessage(
       messageType: input.message.type,
       interactiveType: getInteractiveType(record),
       ...projection,
+      ...(input.message.type === 'template'
+        ? { isMarketingTemplate: input.isMarketingTemplate ?? false }
+        : {}),
       ...(input.templatePreview ? { textContent: input.templatePreview } : {}),
       ...(input.mediaFilePath ? { mediaFilePath: input.mediaFilePath } : {}),
       ...(input.mediaMimeType ? { mediaMimeType: input.mediaMimeType } : {}),
@@ -1633,6 +1638,9 @@ export function projectWhatsAppMessageContent(
     buttonData: projectionValue<'buttonData'>(buttonData),
     orderData: projectionValue<'orderData'>(orderData),
     reactionData: projectionValue<'reactionData'>(reactionData),
+    templateName: templateData
+      ? (getString(templateData, 'name') ?? null)
+      : null,
     templateData: projectionValue<'templateData'>(templateData),
     systemData: projectionValue<'systemData'>(systemData),
     editData: projectionValue<'editData'>(editData),

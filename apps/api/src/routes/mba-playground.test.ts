@@ -96,6 +96,38 @@ describe('MBA playground route', () => {
     assert.equal(called, true)
   })
 
+  it('forwards three positional arguments for connector tool updates', async () => {
+    let received: unknown[] = []
+    const route = createMbaPlaygroundRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository,
+      createMbaClient: () =>
+        ({
+          updateConnectorTool: async (...args: unknown[]) => {
+            received = args
+            return { id: 'tool-one' }
+          },
+        }) as unknown as WhatsAppMbaClientContract,
+    })
+    const response = await route.request('/7', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'updateConnectorTool',
+        arguments: ['connector-one', 'tool-one', { name: 'Updated tool' }],
+      }),
+    })
+    assert.equal(response.status, 200)
+    assert.deepEqual(received.slice(0, 3), [
+      'connector-one',
+      'tool-one',
+      { name: 'Updated tool' },
+    ])
+    assert.ok(
+      (received[3] as { signal?: unknown }).signal instanceof AbortSignal,
+    )
+  })
+
   it('rejects unknown operations at the boundary', async () => {
     const route = createMbaPlaygroundRoute({
       getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
