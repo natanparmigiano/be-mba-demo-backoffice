@@ -23,6 +23,16 @@ export function createInitialMessages(t: TFunction): ChatMessage[] {
       text: t('chat.reply'),
     },
     {
+      id: 'template-sent',
+      type: 'template',
+      direction: 'outgoing',
+      sentAt: '09:42',
+      status: 'delivered',
+      name: t('chat.templateSampleName'),
+      language: 'en-US',
+      preview: t('chat.templateSamplePreview'),
+    },
+    {
       id: 'image',
       type: 'image',
       direction: 'outgoing',

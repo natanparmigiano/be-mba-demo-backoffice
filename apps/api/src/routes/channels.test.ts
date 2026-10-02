@@ -1221,6 +1221,7 @@ describe('channel management route', () => {
     ])
     const manifest = parseAgentArchive(new Uint8Array(agentBytes)).manifest as {
       agent: {
+        skills: Array<{ skill: string }>
         connectors: Array<{
           name: string
           connectorProtocol: string
@@ -1240,6 +1241,30 @@ describe('channel management route', () => {
       mcpPackage.mcp.functions.length,
     )
     assert.equal(Object.hasOwn(connector ?? {}, 'tools'), false)
+
+    const skillInstructions = manifest.agent.skills
+      .map(({ skill }) => skill)
+      .join('\n')
+    for (const fn of mcpPackage.mcp.functions) {
+      assert.match(
+        skillInstructions,
+        new RegExp(`\\b${fn.name}\\b`),
+        `no skill explains when to use ${fn.name}`,
+      )
+      const relevantSkills = manifest.agent.skills
+        .filter(({ skill }) => skill.includes(fn.name))
+        .map(({ skill }) => skill)
+        .join('\n')
+      for (const parameter of fn.revisions.at(-1)!.parameters) {
+        if (parameter.required) {
+          assert.match(
+            relevantSkills,
+            new RegExp(`\\b${parameter.name}\\b`),
+            `${fn.name} skill omits required parameter ${parameter.name}`,
+          )
+        }
+      }
+    }
 
     const route = createChannelManagementRoute({
       getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),

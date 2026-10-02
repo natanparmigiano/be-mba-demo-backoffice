@@ -25,6 +25,13 @@ export interface TextMessage extends MessageBase {
   text: string
 }
 
+export interface TemplateMessage extends MessageBase {
+  type: 'template'
+  name: string
+  language?: string
+  preview?: string
+}
+
 export interface ImageMessage extends MessageBase {
   type: 'image'
   url: string
@@ -182,6 +189,7 @@ export interface ChatTimelineEvent {
 
 export type ChatMessage =
   | TextMessage
+  | TemplateMessage
   | ImageMessage
   | VideoMessage
   | DocumentMessage

@@ -2434,6 +2434,9 @@ const en = {
   },
   chatComposer: {
     placeholder: 'Type a message…',
+    outsideCustomerServiceWindow:
+      'This chat is outside the 24-hour customer service window.',
+    sendTemplateMessage: 'Send template message',
     captionPlaceholder: 'Add a caption…',
     message: 'Message',
     attach: 'Attach content',
@@ -2566,6 +2569,11 @@ const en = {
     stickerSaved: 'Sticker saved to the organization library.',
     stickerSaveFailed: 'Could not save the sticker.',
     messageStatus: 'Message status',
+    templateMessage: 'Message template',
+    templatePreviewUnavailable:
+      'Preview unavailable for this previously sent template.',
+    templateSampleName: 'Order ready',
+    templateSamplePreview: 'Hello Maya, your order #1042 is ready for pickup.',
     aiLabel: 'AI',
     aiGenerated: 'AI-generated message',
     status: {
@@ -5154,6 +5162,9 @@ const pt: typeof en = {
   },
   chatComposer: {
     placeholder: 'Digite uma mensagem…',
+    outsideCustomerServiceWindow:
+      'Este chat está fora da janela de atendimento ao cliente de 24 horas.',
+    sendTemplateMessage: 'Enviar mensagem de modelo',
     captionPlaceholder: 'Adicione uma legenda…',
     message: 'Mensagem',
     attach: 'Anexar conteúdo',
@@ -5288,6 +5299,12 @@ const pt: typeof en = {
     stickerSaved: 'Figurinha salva na biblioteca da organização.',
     stickerSaveFailed: 'Não foi possível salvar a figurinha.',
     messageStatus: 'Status da mensagem',
+    templateMessage: 'Modelo de mensagem',
+    templatePreviewUnavailable:
+      'Prévia indisponível para este modelo enviado anteriormente.',
+    templateSampleName: 'Pedido pronto',
+    templateSamplePreview:
+      'Olá, Maya. Seu pedido nº 1042 está pronto para retirada.',
     aiLabel: 'AI',
     aiGenerated: 'Mensagem gerada por IA',
     status: {
@@ -7900,6 +7917,9 @@ const es: typeof en = {
   },
   chatComposer: {
     placeholder: 'Escribe un mensaje…',
+    outsideCustomerServiceWindow:
+      'Este chat está fuera de la ventana de atención al cliente de 24 horas.',
+    sendTemplateMessage: 'Enviar mensaje de plantilla',
     captionPlaceholder: 'Añade un pie…',
     message: 'Mensaje',
     attach: 'Adjuntar contenido',
@@ -8034,6 +8054,12 @@ const es: typeof en = {
     stickerSaved: 'Sticker guardado en la biblioteca de la organización.',
     stickerSaveFailed: 'No se pudo guardar el sticker.',
     messageStatus: 'Estado del mensaje',
+    templateMessage: 'Plantilla de mensaje',
+    templatePreviewUnavailable:
+      'La vista previa no está disponible para esta plantilla enviada anteriormente.',
+    templateSampleName: 'Pedido listo',
+    templateSamplePreview:
+      'Hola, Maya. Tu pedido n.º 1042 está listo para recoger.',
     aiLabel: 'AI',
     aiGenerated: 'Mensaje generado por IA',
     status: {

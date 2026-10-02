@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import { describe, it } from 'node:test'
 import {
   RunnerApiKeyInvalidError,
@@ -6,6 +7,7 @@ import {
   type RunnerExecutionResult,
   type RunnerMcpRuntimeDefinition,
 } from '@mba-demo/runner'
+import { parseRunnerMcpPackageYaml } from '../runner-mcp-package.js'
 import { createMcpRoute, type McpRunnerApi } from './mcp.js'
 
 const token = `rnr_${'a'.repeat(43)}`
@@ -140,6 +142,72 @@ describe('MCP route', () => {
     assert.equal(receivedFunctionId, 7)
     assert.equal(receivedToken, token)
     assert.deepEqual(receivedParameters, { customer_id: 'cus_123' })
+  })
+
+  it('exposes every documented Dunder Mifflin tool parameter through MCP', async () => {
+    const sample = parseRunnerMcpPackageYaml(
+      await readFile(
+        new URL(
+          '../../../../docs/mcpx/sample_dunder_mifflin.mcpx',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
+    )
+    const sampleRuntime: RunnerMcpRuntimeDefinition = {
+      id: 4,
+      organizationId: 'org-one',
+      name: sample.mcp.name,
+      description: sample.mcp.description,
+      functions: sample.mcp.functions.map((fn, index) => ({
+        id: index + 1,
+        name: fn.name,
+        description: fn.description,
+        currentRevision: fn.currentRevision,
+        parameters: fn.revisions.at(-1)!.parameters,
+      })),
+    }
+    const route = createMcpRoute({
+      runner: createRunner({ getMcpRuntime: async () => sampleRuntime }),
+    })
+
+    const payload = await readMcpPayload(
+      await mcpRequest(route, {
+        jsonrpc: '2.0',
+        id: 4,
+        method: 'tools/list',
+      }),
+    )
+    const tools = payload.result?.tools as Array<{
+      name: string
+      inputSchema: {
+        properties: Record<string, { type?: string; description?: string }>
+        required?: string[]
+        additionalProperties: boolean
+      }
+    }>
+
+    assert.equal(tools.length, sample.mcp.functions.length)
+    for (const fn of sample.mcp.functions) {
+      const tool = tools.find(({ name }) => name === fn.name)
+      assert.ok(tool, `missing MCP tool ${fn.name}`)
+      const parameters = fn.revisions.at(-1)!.parameters
+      assert.deepEqual(
+        Object.keys(tool.inputSchema.properties),
+        parameters.map(({ name }) => name),
+      )
+      assert.deepEqual(
+        tool.inputSchema.required ?? [],
+        parameters.filter(({ required }) => required).map(({ name }) => name),
+      )
+      assert.equal(tool.inputSchema.additionalProperties, false)
+      for (const parameter of parameters) {
+        assert.equal(
+          tool.inputSchema.properties[parameter.name]?.description,
+          parameter.description,
+        )
+      }
+    }
   })
 
   it('returns failed runner executions as MCP tool errors', async () => {

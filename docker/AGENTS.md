@@ -35,7 +35,7 @@ The repository builds one production image that can run as an `app` or
   a high-entropy auth secret, correct public auth/CORS URLs, and secured managed
   data services.
 - Never hard-code a Render-assigned hostname or production credential.
-- Update `DEPLOYMENT.md`, `docker/README.md`, root configuration tables, and
+- Update `docs/deployment/README.md`, `docker/README.md`, root configuration tables, and
   `.env.example` together when runtime variables or profile behavior change.
 - Validate shell entrypoint syntax and build/Compose configuration relevant to
   the change; use the health endpoint for runtime smoke checks when available.

@@ -312,7 +312,7 @@ The full profile is the correct local choice for validating asynchronous webhook
 
 ## Mode 4: Render Blueprint
 
-[`render.yaml`](render.yaml) provisions the hosted demo topology:
+[`render.yaml`](../../render.yaml) provisions the hosted demo topology:
 
 - One free Docker web service running the `app` role without a persistent disk.
 - One free Render PostgreSQL database.
@@ -472,7 +472,7 @@ Before Meta can deliver traffic, the referenced WhatsApp channel must exist in P
 - The payload WABA and phone metadata must match that same channel.
 - Local Compose endpoints are plain HTTP and not publicly reachable. Use an HTTPS development tunnel or reverse proxy when testing callbacks from Meta; no tunnel is included in this repository.
 
-The synthetic generator can target any reachable deployment. See [`apps/webhook-generator/README.md`](apps/webhook-generator/README.md) for signing and load options.
+The synthetic generator can target any reachable deployment. See [`apps/webhook-generator/README.md`](../../apps/webhook-generator/README.md) for signing and load options.
 
 Migration `0001_short_iron_man` generates a unique verification token for every channel that predates this column. After applying it, retrieve or replace each generated token through a trusted administrative path and update the corresponding Meta webhook subscription. Treat verification tokens as secrets and never write them to application logs.
 

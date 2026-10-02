@@ -123,6 +123,7 @@ export interface PersistWhatsAppOutboundMessageInput {
   contactId?: number
   mediaFilePath?: string
   mediaMimeType?: string
+  templatePreview?: string
   message: WhatsAppOutboundMessage
   recipientType?: 'group' | 'individual'
   response: WhatsAppSendMessageResponse
@@ -270,6 +271,7 @@ export async function persistWhatsAppOutboundMessage(
       messageType: input.message.type,
       interactiveType: getInteractiveType(record),
       ...projection,
+      ...(input.templatePreview ? { textContent: input.templatePreview } : {}),
       ...(input.mediaFilePath ? { mediaFilePath: input.mediaFilePath } : {}),
       ...(input.mediaMimeType ? { mediaMimeType: input.mediaMimeType } : {}),
       dispatchStatus: 'accepted' as const,

@@ -36,7 +36,7 @@ The API mounts the resulting `auth.handler` at `/api/auth/*`.
 
 URLs must use `http://` or `https://`. Generate a high-entropy secret for every deployed environment and never rely on the development fallback in production.
 
-OIDC discovery and runtime endpoints are rejected unless their exact origins are trusted. Configure `BETTER_AUTH_TRUSTED_ORIGINS` before registering OIDC providers. See the root [`SSO.md`](../../SSO.md) for the complete OIDC and SAML workflow.
+OIDC discovery and runtime endpoints are rejected unless their exact origins are trusted. Configure `BETTER_AUTH_TRUSTED_ORIGINS` before registering OIDC providers. See the [SSO guide](../../docs/sso/) for the complete OIDC and SAML workflow.
 
 ## Storage
 

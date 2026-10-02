@@ -3,17 +3,22 @@ export function stringifyYaml(value: unknown): string {
 }
 
 export function parseYaml(value: string): unknown {
-  const lines = value
+  const sourceLines = value.split(/\r?\n/)
+  sourceLines.forEach((line, index) => {
+    if (line.includes('\t')) {
+      throw new TypeError(`YAML line ${index + 1} contains a tab`)
+    }
+    const spaces = line.length - line.trimStart().length
+    if (spaces % 2 !== 0) {
+      throw new TypeError(`YAML line ${index + 1} has invalid indentation`)
+    }
+  })
+
+  const lines = normalizeLiteralBlocks(sourceLines)
     .split(/\r?\n/)
     .filter((line) => line.trim().length > 0)
-    .map((line, index) => {
-      if (line.includes('\t')) {
-        throw new TypeError(`YAML line ${index + 1} contains a tab`)
-      }
+    .map((line) => {
       const spaces = line.length - line.trimStart().length
-      if (spaces % 2 !== 0) {
-        throw new TypeError(`YAML line ${index + 1} has invalid indentation`)
-      }
       return { content: line.slice(spaces), depth: spaces / 2 }
     })
 
@@ -69,6 +74,50 @@ export function parseYaml(value: string): unknown {
   if (position !== lines.length)
     throw new TypeError('YAML was not fully parsed')
   return parsed
+}
+
+function normalizeLiteralBlocks(lines: string[]): string {
+  const normalized: string[] = []
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!
+    const match = /^( *)([A-Za-z_][A-Za-z0-9_-]*|"(?:[^"\\]|\\.)*"): \|-$/.exec(
+      line,
+    )
+    if (!match) {
+      normalized.push(line)
+      continue
+    }
+
+    const parentIndent = match[1]!.length
+    const contentIndent = parentIndent + 2
+    const content: string[] = []
+
+    while (index + 1 < lines.length) {
+      const candidate = lines[index + 1]!
+      const candidateIndent = candidate.length - candidate.trimStart().length
+      if (candidate.trim().length > 0 && candidateIndent <= parentIndent) break
+      index += 1
+      if (candidate.trim().length === 0) {
+        content.push('')
+        continue
+      }
+      if (candidateIndent < contentIndent) {
+        throw new TypeError('YAML literal block has invalid indentation')
+      }
+      content.push(candidate.slice(contentIndent))
+    }
+
+    if (content.length === 0) {
+      throw new TypeError('YAML literal block is empty')
+    }
+    while (content.at(-1) === '') content.pop()
+    normalized.push(
+      `${match[1]}${match[2]}: ${JSON.stringify(content.join('\n'))}`,
+    )
+  }
+
+  return normalized.join('\n')
 }
 
 function writeValue(value: unknown, depth: number): string {

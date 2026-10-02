@@ -47,6 +47,34 @@ describe('YAML serialization', () => {
     assert.deepEqual(parseYaml(stringifyYaml(value)), value)
   })
 
+  it('parses stripped literal blocks as strings', () => {
+    assert.deepEqual(
+      parseYaml(
+        [
+          'function:',
+          '  code: |-',
+          '    function greet(name) {',
+          '      // Keep this example easy to read.',
+          '',
+          "      return 'Hello, ' + name;",
+          '    }',
+          '',
+        ].join('\n'),
+      ),
+      {
+        function: {
+          code: [
+            'function greet(name) {',
+            '  // Keep this example easy to read.',
+            '',
+            "  return 'Hello, ' + name;",
+            '}',
+          ].join('\n'),
+        },
+      },
+    )
+  })
+
   it('rejects YAML tags, aliases, and unquoted free-form scalars', () => {
     assert.throws(() => parseYaml('format: !!js/function "bad"\n'))
     assert.throws(() => parseYaml('format: *alias\n'))

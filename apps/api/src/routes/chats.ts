@@ -100,6 +100,7 @@ const handoffBodySchema = z.object({
 
 const chatMessageSchema = z.object({
   clientMessageId: z.string().uuid(),
+  templatePreview: z.string().trim().min(1).max(10_000).optional(),
   mediaFilePath: z.string().min(1).max(1_024).optional(),
   mediaMimeType: z.string().min(1).max(255).optional(),
   message: whatsappOutboundMessageSchema,
@@ -178,6 +179,7 @@ export interface ChatSummary {
   handledBy: 'mba' | 'application'
   updatedAt: string
   unreadMessageCount: number
+  latestInboundMessageAt: string | null
   channel: {
     id: number
     waPhoneNumber: string
@@ -856,6 +858,7 @@ export const createChatsRoute = ({
             contactId: context.contactId ?? undefined,
             mediaFilePath: input.mediaFilePath,
             mediaMimeType: input.mediaMimeType,
+            templatePreview: input.templatePreview,
             message: outbound,
             recipientType: context.kind === 'group' ? 'group' : 'individual',
             response,
@@ -1093,6 +1096,12 @@ async function queryChatSummaryRows(conditions: SQL[], limit: number) {
       latestMessageType: messages.messageType,
       latestMessageOccurredAt: messages.occurredAt,
       latestMessagePreview: messageTextExpression(240),
+      latestInboundMessageAt: sql<Date | null>`(
+          select max(inbound_message.occurred_at)
+          from mba.messages as inbound_message
+          where inbound_message.chat_id = ${chats.id}
+            and inbound_message.direction = 'inbound'
+        )`.mapWith(messages.occurredAt),
     })
     .from(chats)
     .innerJoin(channels, eq(chats.channelId, channels.id))
@@ -1113,6 +1122,7 @@ function toChatSummary(row: ChatSummaryRow): ChatSummary {
     handledBy: row.handledBy,
     updatedAt: row.updatedAt.toISOString(),
     unreadMessageCount: row.unreadMessageCount,
+    latestInboundMessageAt: row.latestInboundMessageAt?.toISOString() ?? null,
     channel: {
       id: row.channelId,
       waPhoneNumber: row.channelPhoneNumber,

@@ -60,6 +60,7 @@ type RealtimeState = 'idle' | 'connecting' | 'connected' | 'disconnected'
 
 const CHAT_PAGE_SIZE = 30
 const TIMELINE_PAGE_SIZE = 50
+const CUSTOMER_SERVICE_WINDOW_MS = 24 * 60 * 60 * 1_000
 
 export function ChatWorkspace() {
   const { t, i18n } = useTranslation()
@@ -374,6 +375,9 @@ export function ChatWorkspace() {
   ])
 
   const selectedChat = chats.find((chat) => chat.id === selectedId) ?? null
+  const isOutsideCustomerServiceWindow = useCustomerServiceWindowExpired(
+    selectedChat?.latestInboundMessageAt ?? null,
+  )
   const loadSelectedTemplates = useCallback(
     (after?: string) => {
       if (selectedId === null) {
@@ -734,6 +738,7 @@ export function ChatWorkspace() {
             footer={
               selectedChat.handledBy === 'application' ? (
                 <ChatComposer
+                  outsideCustomerServiceWindow={isOutsideCustomerServiceWindow}
                   addSticker={addSticker}
                   loadStickers={loadStickers}
                   loadTemplates={loadSelectedTemplates}
@@ -920,6 +925,31 @@ export function ChatWorkspace() {
       </div>
     </section>
   )
+}
+
+function useCustomerServiceWindowExpired(
+  latestInboundMessageAt: string | null,
+): boolean {
+  const expiresAt = latestInboundMessageAt
+    ? new Date(latestInboundMessageAt).getTime() + CUSTOMER_SERVICE_WINDOW_MS
+    : 0
+  const [expired, setExpired] = useState(
+    () => !expiresAt || Date.now() >= expiresAt,
+  )
+
+  useEffect(() => {
+    const nextExpired = !expiresAt || Date.now() >= expiresAt
+    setExpired(nextExpired)
+    if (nextExpired) return
+
+    const timeout = window.setTimeout(
+      () => setExpired(true),
+      Math.min(expiresAt - Date.now(), 2_147_483_647),
+    )
+    return () => window.clearTimeout(timeout)
+  }, [expiresAt])
+
+  return expired
 }
 
 function HandlerPill({ handler }: { handler: Handler }) {
@@ -1159,6 +1189,7 @@ async function sendChatDraft(
     json: {
       clientMessageId: crypto.randomUUID(),
       message,
+      ...(draft.type === 'template' ? { templatePreview: draft.preview } : {}),
       ...(mediaFilePath ? { mediaFilePath } : {}),
       ...(mediaMimeType ? { mediaMimeType } : {}),
     },
@@ -1628,6 +1659,19 @@ function toChatTimelineItem(
         : textMessage(base, fallbackText)
     case 'interactive':
       return interactiveMessage(item, base, fallbackText, t)
+    case 'template': {
+      const template = asRecord(item.templateData)
+      const language = asRecord(template?.language)
+      const name =
+        getString(template, 'name') ?? t('chatWorkspace.messageTypes.template')
+      return {
+        ...base,
+        type: 'template',
+        name,
+        language: getString(language, 'code'),
+        preview: item.text && item.text !== name ? item.text : undefined,
+      }
+    }
     default:
       return textMessage(base, fallbackText)
   }

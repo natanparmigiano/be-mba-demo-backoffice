@@ -38,9 +38,9 @@ request:
     - name: MBA-Allowlist-Entry-ID
       value: ""
     - name: MBA-Connector-ID
-      value: ""
+      value: pfbid027gFE84a6SiMMzQd6oue4742tpiCQsaXd51cvFSBUEQewfKDWZ938xmynVeKTPjbDCoscGnQYW8gva3gLYHCQANjh2dNPyDl
     - name: MBA-Tool-ID
-      value: ""
+      value: pfbid02NDxa2ctKoGC8yW1bQ9omRJKqnKghvQd9kr8pSfPvritRHeMH3mjhxzg2bwaTdA8E9cxebGZR9oUxA62BAxmsofqPmCnBiW
     - name: MBA-Skill-ID
       value: ""
     - name: MBA-UI-Skill-ID

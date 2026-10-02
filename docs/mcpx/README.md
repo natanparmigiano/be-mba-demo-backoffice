@@ -27,7 +27,14 @@ mcp:
       revisions:
         -
           revision: 1
-          code: "({ customer_id }) => ({ customer_id, found: true })"
+          code: |-
+            function findCustomer({ customer_id }) {
+              // Return the stable shape expected by callers of this example tool.
+              return {
+                customer_id,
+                found: true,
+              };
+            }
           parameters:
             -
               name: "customer_id"

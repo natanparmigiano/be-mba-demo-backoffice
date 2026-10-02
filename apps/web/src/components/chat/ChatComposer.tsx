@@ -92,6 +92,7 @@ const MEDIA_ACCEPT: Record<ComposerMediaKind, string> = {
 
 export function ChatComposer({
   disabled = false,
+  outsideCustomerServiceWindow = false,
   addSticker,
   loadStickers,
   loadTemplates,
@@ -99,6 +100,7 @@ export function ChatComposer({
   onSend,
 }: {
   disabled?: boolean
+  outsideCustomerServiceWindow?: boolean
   addSticker: (file: File) => Promise<StickerLibraryItem>
   loadStickers: () => Promise<StickerLibraryItem[]>
   loadTemplates: (after?: string) => Promise<ComposerTemplatePage>
@@ -228,7 +230,13 @@ export function ChatComposer({
     draft: ChatComposerDraft,
     propagateError = false,
   ): Promise<boolean> => {
-    if (disabled || isSending) return false
+    if (
+      disabled ||
+      isSending ||
+      (outsideCustomerServiceWindow && draft.type !== 'template')
+    ) {
+      return false
+    }
     setIsSending(true)
     setError(null)
     try {
@@ -375,6 +383,11 @@ export function ChatComposer({
   return (
     <>
       <div className="shrink-0 border-t bg-card">
+        {outsideCustomerServiceWindow && (
+          <p className="px-3 pt-3 text-center text-xs text-muted-foreground">
+            {t('chatComposer.outsideCustomerServiceWindow')}
+          </p>
+        )}
         {media && (
           <div className="flex items-center gap-2 border-b bg-muted/30 px-3 py-2 text-xs">
             <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
@@ -435,14 +448,22 @@ export function ChatComposer({
           />
           <AttachmentMenu
             disabled={
-              disabled || isSending || isRecording || Boolean(media?.voice)
+              disabled ||
+              outsideCustomerServiceWindow ||
+              isSending ||
+              isRecording ||
+              Boolean(media?.voice)
             }
             onMedia={chooseMedia}
             onDialog={setDialog}
           />
           <EmojiPicker
             disabled={
-              disabled || isSending || isRecording || Boolean(media?.voice)
+              disabled ||
+              outsideCustomerServiceWindow ||
+              isSending ||
+              isRecording ||
+              Boolean(media?.voice)
             }
             addSticker={addSticker}
             loadStickers={loadStickers}
@@ -452,7 +473,16 @@ export function ChatComposer({
               await runSend({ type: 'media', kind: 'sticker', file }, true)
             }}
           />
-          {isRecording ? (
+          {outsideCustomerServiceWindow ? (
+            <Button
+              type="button"
+              className="h-11 min-w-0 flex-1 rounded-2xl"
+              onClick={() => setDialog('template')}
+            >
+              <LayoutTemplate className="size-4" aria-hidden />
+              {t('chatComposer.sendTemplateMessage')}
+            </Button>
+          ) : isRecording ? (
             <div
               className="flex h-11 min-w-0 flex-1 items-center gap-3 rounded-2xl border bg-background px-4 text-primary"
               role="status"
@@ -496,7 +526,17 @@ export function ChatComposer({
               onChange={(event) => setText(event.currentTarget.value)}
             />
           )}
-          {isRecording ? (
+          {outsideCustomerServiceWindow ? (
+            <Button
+              type="button"
+              size="icon"
+              className="size-11 shrink-0 rounded-2xl"
+              disabled
+              aria-label={t('chatComposer.recordAudio')}
+            >
+              <Mic className="size-5" aria-hidden />
+            </Button>
+          ) : isRecording ? (
             <Button
               type="button"
               size="icon"

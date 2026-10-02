@@ -14,5 +14,5 @@ session created from `SSO_ADMIN_EMAIL` and `SSO_ADMIN_PASSWORD`. Keep secrets
 out of provider JSON by referencing an OIDC secret environment variable and a
 SAML metadata file.
 
-See the root [`SSO.md`](../../SSO.md) for configuration examples and the full
+See the [SSO guide](../../docs/sso/) for configuration examples and the full
 setup workflow.

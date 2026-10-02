@@ -29,6 +29,7 @@ import {
   Phone,
   Play,
   Sparkles,
+  LayoutTemplate,
   Sticker as StickerIcon,
   SmilePlus,
   Volume2,
@@ -57,6 +58,7 @@ import type {
   LocationRequestMessage,
   MessageStatus,
   StickerMessage,
+  TemplateMessage,
   UrlButtonMessage,
   VoiceMessage,
 } from './types'
@@ -354,6 +356,8 @@ function MessageContent({
       return (
         <WhatsAppText className="px-3.5 pt-2.5 leading-5" text={message.text} />
       )
+    case 'template':
+      return <TemplateContent message={message} />
     case 'image':
       return (
         <div className="p-1.5 pb-0">
@@ -418,6 +422,44 @@ function MessageContent({
     case 'carousel':
       return <CarouselContent message={message} onAction={onAction} />
   }
+}
+
+function TemplateContent({ message }: { message: TemplateMessage }) {
+  const { t } = useTranslation()
+  return (
+    <div className="m-1.5 mb-0 overflow-hidden rounded-xl border bg-card/75">
+      <div className="flex items-center gap-2 border-b bg-primary/8 px-3 py-2.5">
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/12 text-primary">
+          <LayoutTemplate className="size-4" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[10px] font-semibold uppercase tracking-wide text-primary">
+            {t('chat.templateMessage')}
+          </span>
+          <span className="block truncate text-sm font-semibold">
+            {message.name.replaceAll('_', ' ')}
+          </span>
+        </span>
+        {message.language && (
+          <span className="rounded-full border bg-background px-2 py-1 text-[10px] font-medium text-muted-foreground">
+            {message.language.replace('_', '-')}
+          </span>
+        )}
+      </div>
+      <div className="px-3 py-3">
+        {message.preview ? (
+          <WhatsAppText
+            className="line-clamp-6 text-sm leading-5"
+            text={message.preview}
+          />
+        ) : (
+          <p className="text-xs italic text-muted-foreground">
+            {t('chat.templatePreviewUnavailable')}
+          </p>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function MessageMeta({ message }: { message: ChatMessage }) {

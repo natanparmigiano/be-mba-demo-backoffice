@@ -150,6 +150,16 @@ act as preview placeholders rather than values sent to customers. The live
 preview substitutes entered values, and additional Meta pages can be loaded
 without discarding the current selection.
 
+After 24 hours without an inbound customer message, the composer disables its
+ad-hoc message controls and replaces the text input with a template-message
+action. That action opens the same template composer used by the attachment
+menu and the regular composer returns when a new inbound message arrives.
+
+Sent templates render as dedicated cards with their display name, language,
+and resolved text preview. The composer stores that preview alongside new
+outbound template messages; older records retain the card and show a localized
+fallback when no resolved preview was stored.
+
 Message bodies, media captions, and template previews share the same safe text
 renderer. It supports WhatsApp bold (`*text*`), italic (`_text_`),
 strikethrough (`~text~`), inline code (`` `text` ``), monospace

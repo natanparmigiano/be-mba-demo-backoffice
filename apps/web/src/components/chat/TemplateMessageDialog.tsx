@@ -42,6 +42,7 @@ export interface ComposerTemplatePage {
 
 export interface ComposerTemplateDraft {
   type: 'template'
+  preview: string
   template: {
     name: string
     language: { code: string }
@@ -64,6 +65,7 @@ type ParameterField = {
   mediaKind?: 'document' | 'image' | 'video'
   example?: string
   required?: boolean
+  linkedFieldId?: string
 }
 
 export function TemplateMessageDialog({
@@ -224,6 +226,7 @@ export function TemplateMessageDialog({
       const mediaField = fields.find((field) => field.kind === 'media')
       await onSend({
         type: 'template',
+        preview: templateTextPreview(selected, fields, values),
         template: {
           name: selected.name,
           language: { code: selected.language },
@@ -321,20 +324,22 @@ export function TemplateMessageDialog({
                       {t('chatComposer.templates.noParameters')}
                     </p>
                   ) : (
-                    fields.map((field) => (
-                      <TemplateParameterInput
-                        key={field.id}
-                        field={field}
-                        value={values[field.id] ?? ''}
-                        onChange={(value) =>
-                          setValues((current) => ({
-                            ...current,
-                            [field.id]: value,
-                          }))
-                        }
-                        onFile={setHeaderMedia}
-                      />
-                    ))
+                    fields
+                      .filter((field) => !field.linkedFieldId)
+                      .map((field) => (
+                        <TemplateParameterInput
+                          key={field.id}
+                          field={field}
+                          value={values[field.id] ?? ''}
+                          onChange={(value) =>
+                            setValues((current) => ({
+                              ...current,
+                              [field.id]: value,
+                            }))
+                          }
+                          onFile={setHeaderMedia}
+                        />
+                      ))
                   )}
                 </div>
                 <TemplatePreview
@@ -377,6 +382,32 @@ export function TemplateMessageDialog({
       </form>
     </Dialog>
   )
+}
+
+function templateTextPreview(
+  template: ComposerTemplateDefinition,
+  fields: ParameterField[],
+  values: Record<string, string>,
+): string {
+  return template.components
+    .filter(
+      (component) =>
+        (component.type === 'HEADER' ||
+          component.type === 'BODY' ||
+          component.type === 'FOOTER') &&
+        component.text,
+    )
+    .map((component) =>
+      component.type === 'FOOTER'
+        ? component.text!
+        : replaceParameters(
+            component.text!,
+            fields,
+            values,
+            template.components.indexOf(component),
+          ),
+    )
+    .join('\n\n')
 }
 
 function TemplateParameterInput({
@@ -583,6 +614,14 @@ function templateParameterFields(
           button.url &&
           placeholderTokens(button.url).length
         ) {
+          const authenticationCodeField =
+            template.category?.toUpperCase() === 'AUTHENTICATION'
+              ? fields.find(
+                  (field) =>
+                    field.kind === 'text' &&
+                    template.components[field.componentIndex]?.type === 'BODY',
+                )
+              : undefined
           fields.push({
             id: `${componentIndex}:url:${buttonIndex}`,
             kind: 'url',
@@ -592,6 +631,12 @@ function templateParameterFields(
             example: Array.isArray(button.example)
               ? button.example[0]
               : button.example,
+            ...(authenticationCodeField
+              ? {
+                  linkedFieldId: authenticationCodeField.id,
+                  required: false,
+                }
+              : {}),
           })
         }
         if (button.type === 'COPY_CODE') {
@@ -670,7 +715,10 @@ function buildSendComponents(
         index: field.buttonIndex!,
         parameters: [
           field.kind === 'url'
-            ? { type: 'text', text: values[field.id]!.trim() }
+            ? {
+                type: 'text',
+                text: values[field.linkedFieldId ?? field.id]!.trim(),
+              }
             : { type: 'coupon_code', coupon_code: values[field.id]!.trim() },
         ],
       })
