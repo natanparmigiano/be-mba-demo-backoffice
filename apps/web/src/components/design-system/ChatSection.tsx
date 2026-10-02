@@ -21,6 +21,13 @@ export function ChatSection() {
           showComposer={false}
           footer={
             <ChatComposer
+              addSticker={() =>
+                Promise.resolve({
+                  id: Date.now(),
+                  url: 'data:image/webp;base64,',
+                })
+              }
+              loadStickers={() => Promise.resolve([])}
               loadTemplates={() =>
                 Promise.resolve({
                   templates: [
@@ -52,6 +59,11 @@ export function ChatSection() {
                   ],
                   nextCursor: null,
                 })
+              }
+              resolveSticker={() =>
+                Promise.resolve(
+                  new File([], 'sticker.webp', { type: 'image/webp' }),
+                )
               }
               onSend={() => Promise.resolve()}
             />

@@ -6,11 +6,7 @@ import {
   type RunnerExecutionResult,
   type RunnerMcpRuntimeDefinition,
 } from '@mba-demo/runner'
-import {
-  createMcpRoute,
-  parseMcpAllowedHosts,
-  type McpRunnerApi,
-} from './mcp.js'
+import { createMcpRoute, type McpRunnerApi } from './mcp.js'
 
 const token = `rnr_${'a'.repeat(43)}`
 const now = new Date('2026-10-01T12:00:00.000Z')
@@ -39,27 +35,12 @@ const runtime: RunnerMcpRuntimeDefinition = {
 }
 
 describe('MCP route', () => {
-  it('validates the production MCP host allowlist', () => {
-    assert.deepEqual(parseMcpAllowedHosts(undefined, false), [
-      'localhost',
-      '127.0.0.1',
-      '[::1]',
-    ])
-    assert.deepEqual(
-      parseMcpAllowedHosts('mcp.example.com,api.example.com,mcp.example.com'),
-      ['mcp.example.com', 'api.example.com'],
-    )
-    assert.throws(() => parseMcpAllowedHosts(undefined, true))
-    assert.throws(() => parseMcpAllowedHosts('https://mcp.example.com'))
-    assert.throws(() => parseMcpAllowedHosts('mcp.example.com:443'))
-  })
-
-  it('requires a bearer runner API key', async () => {
+  it('requires a bearer runner API key without restricting the request host', async () => {
     const route = createMcpRoute({ runner: createRunner() })
 
     const response = await route.request('/4', {
       method: 'POST',
-      headers: { host: 'localhost' },
+      headers: { host: 'mcp.corp.example' },
     })
 
     assert.equal(response.status, 401)

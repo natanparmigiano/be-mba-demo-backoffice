@@ -5,7 +5,7 @@ info:
 
 http:
   method: DELETE
-  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/message_qrdls/<QR_CODE_ID>
+  url: https://graph.facebook.com/{{Version}}/{{Phone-Number-ID}}/message_qrdls/FYNG4EVV7BNVG1
   auth: inherit
 
 settings:

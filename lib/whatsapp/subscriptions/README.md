@@ -37,6 +37,11 @@ await registration.register({
   fields: WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS,
 })
 
+const appSubscriptions = await registration.list()
+const registeredFields = appSubscriptions.data.flatMap((subscription) =>
+  subscription.fields.map((field) => field.name),
+)
+
 const subscriptions = createWhatsAppSubscriptionsClient({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
   wabaId: process.env.WHATSAPP_BUSINESS_ACCOUNT_ID!,
@@ -72,6 +77,11 @@ The registration client submits URL-encoded form data to
 field currently parsed by `@mba-demo/wa-webhooks`, including `messages` (which
 also carries message status updates), business/account updates, `standby`,
 `message_echoes`, and `smb_message_echoes`.
+
+`register()` accepts any non-empty subset of those fields. `list()` reads the
+app-level subscriptions and returns each registered callback plus its field
+names and Graph API versions. `MBA_WEBHOOK_SUBSCRIPTION_FIELDS` is the curated
+field set used when the backoffice points a channel webhook at itself.
 
 ## Verification
 

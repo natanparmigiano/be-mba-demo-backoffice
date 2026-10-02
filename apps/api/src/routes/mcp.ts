@@ -12,7 +12,6 @@ import type { Context } from 'hono'
 import { createRunnerMcpServer } from '../mcp-server.js'
 
 const MCP_REQUEST_BODY_LIMIT = 256 * 1024
-const DEFAULT_MCP_ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]']
 
 export interface McpRunnerApi {
   getMcpRuntime(
@@ -28,16 +27,15 @@ export interface McpRunnerApi {
 }
 
 export interface McpRouteOptions {
-  allowedHosts?: string[]
   runner?: McpRunnerApi
 }
 
 export function createMcpRoute({
-  allowedHosts = DEFAULT_MCP_ALLOWED_HOSTS,
   runner = defaultRunner,
 }: McpRouteOptions = {}) {
+  // Host validation is intentionally disabled. Deployments rely on their
+  // network boundary plus the runner API key required for every MCP request.
   const route = createMcpHonoApp({
-    allowedHosts,
     host: '0.0.0.0',
     maxRequestBodySize: MCP_REQUEST_BODY_LIMIT,
   })
@@ -76,33 +74,6 @@ export function createMcpRoute({
       throw error
     }
   })
-}
-
-export function parseMcpAllowedHosts(
-  value: string | undefined,
-  production = process.env.NODE_ENV === 'production',
-): string[] {
-  if (!value) {
-    if (production) {
-      throw new Error('MCP_ALLOWED_HOSTS is required in production')
-    }
-    return DEFAULT_MCP_ALLOWED_HOSTS
-  }
-  const hosts = [
-    ...new Set(value.split(',').map((host) => host.trim())),
-  ].filter(Boolean)
-  if (
-    hosts.length === 0 ||
-    hosts.some(
-      (host) =>
-        !(/^\[[0-9a-f:]+\]$/i.test(host) || /^[a-z0-9.-]+$/i.test(host)),
-    )
-  ) {
-    throw new Error(
-      'MCP_ALLOWED_HOSTS must contain comma-separated hostnames without ports',
-    )
-  }
-  return hosts
 }
 
 function parseMcpId(value: string): number | undefined {

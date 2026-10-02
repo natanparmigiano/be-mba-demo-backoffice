@@ -56,7 +56,6 @@ async function main(): Promise<void> {
     const mcp = await createMcp([firstFunction.id, secondFunction.id])
     const mcpKey = await createApiKey([], 'mcp', [mcp.id])
     const mcpRoute = createMcpRoute({
-      allowedHosts: ['localhost'],
       runner: smokeRunner,
     })
     const listedTools = await requestMcp(mcpRoute, mcp.id, mcpKey.apiKey, {

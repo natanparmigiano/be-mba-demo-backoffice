@@ -47,6 +47,24 @@ export const WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS = [
 export type WhatsAppWebhookSubscriptionField =
   (typeof WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS)[number]
 
+export const MBA_WEBHOOK_SUBSCRIPTION_FIELDS = [
+  'account_alerts',
+  'account_review_update',
+  'account_update',
+  'calls',
+  'flows',
+  'message_template_components_update',
+  'message_template_quality_update',
+  'message_template_status_update',
+  'messages',
+  'messaging_handovers',
+  'phone_number_name_update',
+  'phone_number_quality_update',
+  'security',
+  'standby',
+  'template_category_update',
+] as const satisfies readonly WhatsAppWebhookSubscriptionField[]
+
 const SUPPORTED_FIELDS: ReadonlySet<string> = new Set(
   WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS,
 )
@@ -74,6 +92,25 @@ export interface WhatsAppWebhookRegistrationResult {
   success: true
 }
 
+export interface WhatsAppWebhookSubscribedField {
+  name: string
+  version?: string
+  [key: string]: unknown
+}
+
+export interface WhatsAppWebhookAppSubscription {
+  object: string
+  callback_url?: string
+  active?: boolean
+  fields: WhatsAppWebhookSubscribedField[]
+  [key: string]: unknown
+}
+
+export interface WhatsAppWebhookAppSubscriptionPage {
+  data: WhatsAppWebhookAppSubscription[]
+  [key: string]: unknown
+}
+
 export interface WhatsAppWebhookRegistrationRequestOptions {
   signal?: AbortSignal
 }
@@ -83,6 +120,9 @@ export interface WhatsAppWebhookRegistrationClientContract {
     input: RegisterWhatsAppWebhookInput,
     options?: WhatsAppWebhookRegistrationRequestOptions,
   ): Promise<WhatsAppWebhookRegistrationResult>
+  list(
+    options?: WhatsAppWebhookRegistrationRequestOptions,
+  ): Promise<WhatsAppWebhookAppSubscriptionPage>
 }
 
 function required(name: string, value: string): string {
@@ -144,6 +184,15 @@ function parseJson(text: string): unknown {
   }
 }
 
+function parseErrorBody(text: string): unknown {
+  if (!text) return undefined
+  try {
+    return JSON.parse(text) as unknown
+  } catch {
+    return text
+  }
+}
+
 function parseSuccess(body: unknown): WhatsAppWebhookRegistrationResult {
   if (
     typeof body !== 'object' ||
@@ -157,6 +206,79 @@ function parseSuccess(body: unknown): WhatsAppWebhookRegistrationResult {
     )
   }
   return { success: true }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function parseSubscribedField(value: unknown): WhatsAppWebhookSubscribedField {
+  if (!isRecord(value) || typeof value.name !== 'string') {
+    throw new WhatsAppWebhookRegistrationResponseError(
+      'WhatsApp Graph API returned an invalid subscribed webhook field',
+      value,
+    )
+  }
+  if (value.version !== undefined && typeof value.version !== 'string') {
+    throw new WhatsAppWebhookRegistrationResponseError(
+      'WhatsApp Graph API returned an invalid webhook field version',
+      value,
+    )
+  }
+  return {
+    ...value,
+    name: value.name,
+    ...(value.version === undefined ? {} : { version: value.version }),
+  }
+}
+
+function parseSubscription(value: unknown): WhatsAppWebhookAppSubscription {
+  if (
+    !isRecord(value) ||
+    typeof value.object !== 'string' ||
+    !Array.isArray(value.fields)
+  ) {
+    throw new WhatsAppWebhookRegistrationResponseError(
+      'WhatsApp Graph API returned invalid app webhook subscription data',
+      value,
+    )
+  }
+  if (
+    value.callback_url !== undefined &&
+    typeof value.callback_url !== 'string'
+  ) {
+    throw new WhatsAppWebhookRegistrationResponseError(
+      'WhatsApp Graph API returned an invalid webhook callback URL',
+      value,
+    )
+  }
+  if (value.active !== undefined && typeof value.active !== 'boolean') {
+    throw new WhatsAppWebhookRegistrationResponseError(
+      'WhatsApp Graph API returned an invalid webhook subscription state',
+      value,
+    )
+  }
+  return {
+    ...value,
+    object: value.object,
+    fields: value.fields.map(parseSubscribedField),
+    ...(value.callback_url === undefined
+      ? {}
+      : { callback_url: value.callback_url }),
+    ...(value.active === undefined ? {} : { active: value.active }),
+  }
+}
+
+function parseSubscriptionPage(
+  body: unknown,
+): WhatsAppWebhookAppSubscriptionPage {
+  if (!isRecord(body) || !Array.isArray(body.data)) {
+    throw new WhatsAppWebhookRegistrationResponseError(
+      'WhatsApp Graph API returned an unexpected app subscription list',
+      body,
+    )
+  }
+  return { ...body, data: body.data.map(parseSubscription) }
 }
 
 export class WhatsAppWebhookRegistrationClient implements WhatsAppWebhookRegistrationClientContract {
@@ -198,14 +320,35 @@ export class WhatsAppWebhookRegistrationClient implements WhatsAppWebhookRegistr
       body,
       signal: options.signal,
     })
-    const responseBody = parseJson(await response.text())
+    const responseText = await response.text()
     if (!response.ok) {
       throw new WhatsAppWebhookRegistrationApiError(
         response.status,
-        responseBody,
+        parseErrorBody(responseText),
       )
     }
+    const responseBody = parseJson(responseText)
     return parseSuccess(responseBody)
+  }
+
+  async list(
+    options: WhatsAppWebhookRegistrationRequestOptions = {},
+  ): Promise<WhatsAppWebhookAppSubscriptionPage> {
+    const url = new URL(this.#subscriptionsUrl)
+    url.searchParams.set('access_token', this.#accessToken)
+    const response = await this.#fetch(url, {
+      method: 'GET',
+      signal: options.signal,
+    })
+    const responseText = await response.text()
+    if (!response.ok) {
+      throw new WhatsAppWebhookRegistrationApiError(
+        response.status,
+        parseErrorBody(responseText),
+      )
+    }
+    const responseBody = parseJson(responseText)
+    return parseSubscriptionPage(responseBody)
   }
 }
 

@@ -6,6 +6,10 @@ import { cors } from 'hono/cors'
 import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import {
+  createAnalyticsPlaygroundRoute,
+  type AnalyticsPlaygroundRouteOptions,
+} from './routes/analytics-playground.js'
+import {
   createComponentsPlaygroundRoute,
   type ComponentsPlaygroundRouteOptions,
 } from './routes/components-playground.js'
@@ -22,6 +26,10 @@ import {
   type MessagingPlaygroundRouteOptions,
 } from './routes/messaging-playground.js'
 import {
+  createMbaPlaygroundRoute,
+  type MbaPlaygroundRouteOptions,
+} from './routes/mba-playground.js'
+import {
   createMediaPlaygroundRoute,
   type MediaPlaygroundRouteOptions,
 } from './routes/media-playground.js'
@@ -29,6 +37,14 @@ import {
   createQrPlaygroundRoute,
   type QrPlaygroundRouteOptions,
 } from './routes/qr-playground.js'
+import {
+  createModerationPlaygroundRoute,
+  type ModerationPlaygroundRouteOptions,
+} from './routes/moderation-playground.js'
+import {
+  createSubscriptionsPlaygroundRoute,
+  type SubscriptionsPlaygroundRouteOptions,
+} from './routes/subscriptions-playground.js'
 import {
   createTemplatesPlaygroundRoute,
   type TemplatesPlaygroundRouteOptions,
@@ -48,11 +64,24 @@ import { createGroupsRoute, type GroupsRouteOptions } from './routes/groups.js'
 import { createMcpRoute, type McpRouteOptions } from './routes/mcp.js'
 import { createRunnerRoute, type RunnerRouteOptions } from './routes/runner.js'
 import {
+  createStickersRoute,
+  type StickersRouteOptions,
+} from './routes/stickers.js'
+import {
   createWaCloudWebhookRoute,
   type WaCloudWebhookRouteOptions,
 } from './routes/wa-cloud.js'
+import {
+  createWabaPlaygroundRoute,
+  type WabaPlaygroundRouteOptions,
+} from './routes/waba-playground.js'
+import {
+  createWebhooksPlaygroundRoute,
+  type WebhooksPlaygroundRouteOptions,
+} from './routes/webhooks-playground.js'
 
 interface CreateAppOptions {
+  analyticsPlayground?: AnalyticsPlaygroundRouteOptions
   apiPlayground?: ApiPlaygroundRouteOptions
   channelManagement?: ChannelManagementRouteOptions
   componentsPlayground?: ComponentsPlaygroundRouteOptions
@@ -65,16 +94,23 @@ interface CreateAppOptions {
   groups?: GroupsRouteOptions
   hasSsoProviders?: () => Promise<boolean>
   messagingPlayground?: MessagingPlaygroundRouteOptions
+  mbaPlayground?: MbaPlaygroundRouteOptions
+  moderationPlayground?: ModerationPlaygroundRouteOptions
   mediaPlayground?: MediaPlaygroundRouteOptions
   mcp?: McpRouteOptions
   qrPlayground?: QrPlaygroundRouteOptions
+  subscriptionsPlayground?: SubscriptionsPlaygroundRouteOptions
   templatesPlayground?: TemplatesPlaygroundRouteOptions
   runner?: RunnerRouteOptions
+  stickers?: StickersRouteOptions
   waCloudWebhook?: WaCloudWebhookRouteOptions
+  wabaPlayground?: WabaPlaygroundRouteOptions
+  webhooksPlayground?: WebhooksPlaygroundRouteOptions
   webRoot?: string
 }
 
 export const createApp = ({
+  analyticsPlayground,
   apiPlayground,
   channelManagement,
   componentsPlayground,
@@ -87,12 +123,18 @@ export const createApp = ({
   groups,
   hasSsoProviders = defaultHasSsoProviders,
   messagingPlayground,
+  mbaPlayground,
+  moderationPlayground,
   mediaPlayground,
   mcp,
   qrPlayground,
+  subscriptionsPlayground,
   templatesPlayground,
   runner,
+  stickers,
   waCloudWebhook,
+  wabaPlayground,
+  webhooksPlayground,
   webRoot,
 }: CreateAppOptions = {}) => {
   const app = new Hono()
@@ -129,11 +171,24 @@ export const createApp = ({
     )
     .route('/api/playground', createApiPlaygroundRoute(apiPlayground))
     .route(
+      '/api/playground/analytics',
+      createAnalyticsPlaygroundRoute(analyticsPlayground),
+    )
+    .route(
       '/api/playground/messaging',
       createMessagingPlaygroundRoute({ fileStore, ...messagingPlayground }),
     )
     .route('/api/playground/media', createMediaPlaygroundRoute(mediaPlayground))
+    .route('/api/playground/mba', createMbaPlaygroundRoute(mbaPlayground))
+    .route(
+      '/api/playground/moderation',
+      createModerationPlaygroundRoute(moderationPlayground),
+    )
     .route('/api/playground/qr', createQrPlaygroundRoute(qrPlayground))
+    .route(
+      '/api/playground/subscriptions',
+      createSubscriptionsPlaygroundRoute(subscriptionsPlayground),
+    )
     .route(
       '/api/playground/components',
       createComponentsPlaygroundRoute(componentsPlayground),
@@ -143,12 +198,18 @@ export const createApp = ({
       '/api/playground/templates',
       createTemplatesPlaygroundRoute(templatesPlayground),
     )
+    .route('/api/playground/waba', createWabaPlaygroundRoute(wabaPlayground))
+    .route(
+      '/api/playground/webhooks',
+      createWebhooksPlaygroundRoute(webhooksPlayground),
+    )
     .route('/api/admin/organizations', createAdminOrganizationsRoute())
     .route('/api/channels', createChannelManagementRoute(channelManagement))
     .route('/api/chats', createChatsRoute({ fileStore, ...chats }))
     .route('/api/contacts', createContactsRoute(contacts))
     .route('/api/files', createFilesRoute(fileStore))
     .route('/api/groups', createGroupsRoute(groups))
+    .route('/api/stickers', createStickersRoute({ fileStore, ...stickers }))
     .route('/api/mcp', createMcpRoute(mcp))
     .route('/api/runner', createRunnerRoute(runner))
     .route(

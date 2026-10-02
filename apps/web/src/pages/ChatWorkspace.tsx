@@ -31,6 +31,8 @@ import {
   type ContactValue,
   type MessageReaction,
   type ReplyActions,
+  type StickerLibraryItem,
+  type StickerMessage,
 } from '../components/chat'
 import { Avatar, Button, cn, Pill } from '../components/ui'
 
@@ -385,6 +387,16 @@ export function ChatWorkspace() {
     },
     [selectedId, t],
   )
+  const loadStickers = useCallback(
+    () => fetchStickerLibrary(t('chatComposer.stickerLibraryFailed')),
+    [t],
+  )
+  const addSticker = useCallback((file: File) => saveStickerFile(file, t), [t])
+  const resolveSticker = useCallback(
+    (sticker: StickerLibraryItem) =>
+      fetchStickerFile(sticker, t('chatComposer.stickerLibraryFailed')),
+    [t],
+  )
   const unavailableChatMessage = hasInvalidRouteChatId
     ? t('chatWorkspace.invalidChatLink')
     : selectedChatError
@@ -722,7 +734,10 @@ export function ChatWorkspace() {
             footer={
               selectedChat.handledBy === 'application' ? (
                 <ChatComposer
+                  addSticker={addSticker}
+                  loadStickers={loadStickers}
                   loadTemplates={loadSelectedTemplates}
+                  resolveSticker={resolveSticker}
                   onSend={async (draft) => {
                     await sendChatDraft(selectedChat.id, draft, t)
                     await refreshChatRegion(selectedChat.id)
@@ -743,6 +758,17 @@ export function ChatWorkspace() {
                   }
                 : undefined
             }
+            onSaveSticker={async (message: StickerMessage) => {
+              const response = await fetch(message.url)
+              if (!response.ok) {
+                throw new Error(t('chat.stickerSaveFailed'))
+              }
+              const blob = await response.blob()
+              const source = new File([blob], `received-${message.id}.webp`, {
+                type: blob.type,
+              })
+              await saveStickerFile(source, t, true)
+            }}
             headerActions={
               <div className="ml-auto flex shrink-0 items-center gap-2">
                 <OwnerIndicator handler={selectedChat.handledBy} />
@@ -1323,6 +1349,112 @@ function composerMediaContentType(
   const inferred = extension ? byExtension[extension] : undefined
   if (declared && allowed[kind].has(declared)) return declared
   return inferred && allowed[kind].has(inferred) ? inferred : undefined
+}
+
+async function fetchStickerLibrary(
+  fallbackMessage: string,
+): Promise<StickerLibraryItem[]> {
+  const response = await apiClient.api.stickers.$get()
+  if (!response.ok)
+    throw new Error(await readApiError(response, fallbackMessage))
+  return (await response.json()).stickers
+}
+
+async function fetchStickerFile(
+  sticker: StickerLibraryItem,
+  fallbackMessage: string,
+): Promise<File> {
+  const response = await fetch(sticker.url)
+  if (!response.ok) throw new Error(fallbackMessage)
+  return new File([await response.blob()], `sticker-${sticker.id}.webp`, {
+    type: 'image/webp',
+  })
+}
+
+async function saveStickerFile(
+  source: File,
+  t: TFunction,
+  preserveWebp = false,
+): Promise<StickerLibraryItem> {
+  const sticker =
+    preserveWebp && source.type === 'image/webp'
+      ? source
+      : await convertStickerToWebp(source, t)
+  const response = await fetch('/api/stickers', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'image/webp' },
+    body: sticker,
+  })
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(response, t('chatComposer.stickerLibraryFailed')),
+    )
+  }
+  const result = (await response.json()) as { sticker: StickerLibraryItem }
+  return result.sticker
+}
+
+async function convertStickerToWebp(source: File, t: TFunction): Promise<Blob> {
+  let bitmap: ImageBitmap
+  try {
+    bitmap = await createImageBitmap(source)
+  } catch {
+    throw new Error(t('chatComposer.invalidSticker'))
+  }
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 512
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error(t('chatComposer.invalidSticker'))
+    const scale = Math.min(512 / bitmap.width, 512 / bitmap.height)
+    const width = bitmap.width * scale
+    const height = bitmap.height * scale
+    context.drawImage(
+      bitmap,
+      (512 - width) / 2,
+      (512 - height) / 2,
+      width,
+      height,
+    )
+
+    let converted: Blob | null = null
+    for (let quality = 0.9; quality >= 0.3; quality -= 0.1) {
+      converted = await canvasToBlob(
+        canvas,
+        quality,
+        t('chatComposer.webpUnsupported'),
+      )
+      if (converted.size <= 100_000) break
+    }
+    if (!converted || converted.type !== 'image/webp') {
+      throw new Error(t('chatComposer.webpUnsupported'))
+    }
+    if (converted.size > 100_000) {
+      throw new Error(t('chatComposer.stickerTooLarge'))
+    }
+    return converted
+  } finally {
+    bitmap.close()
+  }
+}
+
+function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  quality: number,
+  errorMessage: string,
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob)
+        else reject(new Error(errorMessage))
+      },
+      'image/webp',
+      quality,
+    )
+  })
 }
 
 function chatName(chat: ChatSummary, t: TFunction): string {

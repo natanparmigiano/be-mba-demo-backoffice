@@ -310,6 +310,37 @@ export const agentBackups = mbaSchema.table(
   ],
 )
 
+export const stickerLibrary = mbaSchema.table(
+  'sticker_library',
+  {
+    id: bigint('id', { mode: 'number' })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    storagePath: text('storage_path').notNull(),
+    sha256: text('sha256').notNull(),
+    byteSize: bigint('byte_size', { mode: 'number' }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('sticker_library_storage_path_uidx').on(table.storagePath),
+    uniqueIndex('sticker_library_organization_sha256_uidx').on(
+      table.organizationId,
+      table.sha256,
+    ),
+    index('sticker_library_organization_created_id_idx').on(
+      table.organizationId,
+      table.createdAt,
+      table.id,
+    ),
+    check('sticker_library_byte_size_check', sql`${table.byteSize} > 0`),
+  ],
+)
+
 export const contacts = mbaSchema.table(
   'contacts',
   {

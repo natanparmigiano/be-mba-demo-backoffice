@@ -112,7 +112,6 @@ The database defaults to `postgresql://postgres:postgres@localhost:5432/mba_demo
 | `BETTER_AUTH_URL`             | Production             | Public Better Auth base URL                                 |
 | `BETTER_AUTH_TRUSTED_ORIGINS` | With OIDC              | Comma-separated exact IdP endpoint origins                  |
 | `CORS_ORIGIN`                 | No                     | Trusted browser origin; defaults to `http://localhost:5173` |
-| `MCP_ALLOWED_HOSTS`           | Production             | Comma-separated public hostnames accepted by MCP routes     |
 | `PORT`                        | No                     | Hono port; defaults to `3000`                               |
 | `WEB_ROOT`                    | No                     | Static build directory; defaults to `../web/dist`           |
 | `REDIS_URL`                   | No                     | Selects Redis for KV and Pub/Sub; otherwise both use memory |

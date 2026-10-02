@@ -6,16 +6,12 @@ import { files } from '@mba-demo/files'
 import { kv } from '@mba-demo/kv'
 import { pubsub } from '@mba-demo/pubsub'
 import { createApp } from './app.js'
-import { parseMcpAllowedHosts } from './routes/mcp.js'
 import { registerSubscribers } from './subscribers.js'
 import { isInProcessWorkerEnabled } from './worker-config.js'
 
 const port = Number.parseInt(process.env.PORT ?? '3000', 10)
 const app = createApp({
   corsOrigin: process.env.CORS_ORIGIN,
-  mcp: {
-    allowedHosts: parseMcpAllowedHosts(process.env.MCP_ALLOWED_HOSTS),
-  },
   webRoot: process.env.WEB_ROOT ?? '../web/dist',
 })
 

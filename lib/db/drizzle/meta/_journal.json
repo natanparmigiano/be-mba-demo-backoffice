@@ -169,6 +169,13 @@
       "when": 1790885695008,
       "tag": "0023_chief_black_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790947696090,
+      "tag": "0024_uneven_the_twelve",
+      "breakpoints": true
     }
   ]
 }

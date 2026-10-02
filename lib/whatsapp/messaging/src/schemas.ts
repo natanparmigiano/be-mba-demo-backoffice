@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import {
+  contactNameSchema,
   locationContentSchema,
   sharedContactSchema,
 } from '@mba-demo/wa-webhooks'
@@ -55,6 +56,20 @@ export const outboundTextSchema = z.looseObject({
 export const outboundReactionSchema = z.looseObject({
   message_id: z.string(),
   emoji: z.string(),
+})
+
+const outboundContactNameSchema = contactNameSchema.refine(
+  ({ first_name, last_name, middle_name, prefix, suffix }) =>
+    [first_name, last_name, middle_name, prefix, suffix].some(
+      (value) => value !== undefined && value.trim().length > 0,
+    ),
+  {
+    message: 'Contact name must include at least one structured name parameter',
+  },
+)
+
+export const outboundContactSchema = sharedContactSchema.extend({
+  name: outboundContactNameSchema,
 })
 
 const interactiveTextSchema = z.looseObject({ text: z.string() })
@@ -271,7 +286,7 @@ export const whatsappOutboundMessageSchema = z.discriminatedUnion('type', [
   }),
   outboundMessageBaseSchema.extend({
     type: z.literal('contacts'),
-    contacts: z.array(sharedContactSchema),
+    contacts: z.array(outboundContactSchema),
   }),
   outboundMessageBaseSchema.extend({
     type: z.literal('document'),

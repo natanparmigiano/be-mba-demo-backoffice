@@ -210,4 +210,18 @@ describe('WhatsAppSubscriptionsClient', () => {
     )
     await assert.rejects(client.subscribe(), WhatsAppSubscriptionsResponseError)
   })
+
+  it('preserves the status of a non-JSON Graph error', async () => {
+    const { client } = clientWith([
+      new Response('Subscription failed', { status: 433 }),
+    ])
+
+    await assert.rejects(client.subscribe(), (error: unknown) => {
+      assert.ok(error instanceof WhatsAppSubscriptionsApiError)
+      assert.equal(error.status, 433)
+      assert.equal(error.body, 'Subscription failed')
+      assert.equal(error.message, 'Subscription failed')
+      return true
+    })
+  })
 })

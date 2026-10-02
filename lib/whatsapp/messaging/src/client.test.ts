@@ -127,7 +127,15 @@ describe('WhatsAppMessagingClient', () => {
       {
         to: '1',
         type: 'contacts',
-        contacts: [{ name: { formatted_name: 'Ada Lovelace' } }],
+        contacts: [
+          {
+            name: {
+              formatted_name: 'Ada Lovelace',
+              first_name: 'Ada',
+              last_name: 'Lovelace',
+            },
+          },
+        ],
       },
       {
         to: '1',
@@ -193,6 +201,17 @@ describe('WhatsAppMessagingClient', () => {
         ...messages[index],
       })
     })
+  })
+
+  it('requires a structured name field for outbound contacts', () => {
+    const result = whatsappOutboundMessageSchema.safeParse({
+      messaging_product: 'whatsapp',
+      to: '1',
+      type: 'contacts',
+      contacts: [{ name: { formatted_name: 'Ada Lovelace' } }],
+    })
+
+    assert.equal(result.success, false)
   })
 
   it('builds a typed template request with components', async () => {

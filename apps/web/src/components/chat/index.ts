@@ -11,6 +11,7 @@ export type {
   ComposerTemplatePage,
 } from './TemplateMessageDialog'
 export { LightboxImage } from './ImageLightbox'
+export type { StickerLibraryItem } from './EmojiPicker'
 export { MessageRow, MessageStatusIndicator } from './MessageRenderer'
 export { WhatsAppText } from './WhatsAppText'
 export type * from './types'

@@ -195,6 +195,15 @@ function parseJson(text: string): unknown {
   }
 }
 
+function parseErrorBody(text: string): unknown {
+  if (!text) return undefined
+  try {
+    return JSON.parse(text) as unknown
+  } catch {
+    return text
+  }
+}
+
 export class WhatsAppSubscriptionsClient implements WhatsAppSubscriptionsClientContract {
   readonly #accessToken: string
   readonly #fetch: Fetch
@@ -270,11 +279,14 @@ export class WhatsAppSubscriptionsClient implements WhatsAppSubscriptionsClientC
       body: request.body ? JSON.stringify(request.body) : undefined,
       signal: request.signal,
     })
-    const body = parseJson(await response.text())
+    const responseText = await response.text()
     if (!response.ok) {
-      throw new WhatsAppSubscriptionsApiError(response.status, body)
+      throw new WhatsAppSubscriptionsApiError(
+        response.status,
+        parseErrorBody(responseText),
+      )
     }
-    return body
+    return parseJson(responseText)
   }
 }
 

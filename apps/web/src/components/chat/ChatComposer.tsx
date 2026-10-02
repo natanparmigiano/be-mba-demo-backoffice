@@ -33,7 +33,7 @@ import {
   MenuItem,
   MenuTrigger,
 } from '../ui'
-import { EmojiPickerPanel } from './EmojiPicker'
+import { EmojiPickerPanel, type StickerLibraryItem } from './EmojiPicker'
 import {
   TemplateMessageDialog,
   type ComposerTemplateDraft,
@@ -92,11 +92,17 @@ const MEDIA_ACCEPT: Record<ComposerMediaKind, string> = {
 
 export function ChatComposer({
   disabled = false,
+  addSticker,
+  loadStickers,
   loadTemplates,
+  resolveSticker,
   onSend,
 }: {
   disabled?: boolean
+  addSticker: (file: File) => Promise<StickerLibraryItem>
+  loadStickers: () => Promise<StickerLibraryItem[]>
   loadTemplates: (after?: string) => Promise<ComposerTemplatePage>
+  resolveSticker: (sticker: StickerLibraryItem) => Promise<File>
   onSend: (draft: ChatComposerDraft) => Promise<void>
 }) {
   const { t } = useTranslation()
@@ -438,7 +444,13 @@ export function ChatComposer({
             disabled={
               disabled || isSending || isRecording || Boolean(media?.voice)
             }
+            addSticker={addSticker}
+            loadStickers={loadStickers}
             onSelect={insertEmoji}
+            onSelectSticker={async (sticker) => {
+              const file = await resolveSticker(sticker)
+              await runSend({ type: 'media', kind: 'sticker', file }, true)
+            }}
           />
           {isRecording ? (
             <div
@@ -581,10 +593,6 @@ function AttachmentMenu({
           <Headphones className="size-4" />
           {t('chatComposer.types.audio')}
         </MenuItem>
-        <MenuItem onClick={() => onMedia('sticker')}>
-          <Sticker className="size-4" />
-          {t('chatComposer.types.sticker')}
-        </MenuItem>
         <MenuItem onClick={() => onDialog('contact')}>
           <ContactRound className="size-4" />
           {t('chatComposer.types.contact')}
@@ -604,13 +612,22 @@ function AttachmentMenu({
 
 function EmojiPicker({
   disabled,
+  addSticker,
+  loadStickers,
   onSelect,
+  onSelectSticker,
 }: {
   disabled: boolean
+  addSticker: (file: File) => Promise<StickerLibraryItem>
+  loadStickers: () => Promise<StickerLibraryItem[]>
   onSelect: (emoji: string) => void
+  onSelectSticker: (sticker: StickerLibraryItem) => Promise<void>
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [stickers, setStickers] = useState<StickerLibraryItem[]>([])
+  const [stickersLoading, setStickersLoading] = useState(false)
+  const [stickerError, setStickerError] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
@@ -632,6 +649,64 @@ function EmojiPicker({
     }
   }, [open])
 
+  useEffect(() => {
+    if (!open) return
+    let active = true
+    setStickersLoading(true)
+    setStickerError(null)
+    void loadStickers()
+      .then((items) => {
+        if (active) setStickers(items)
+      })
+      .catch((reason: unknown) => {
+        if (active) {
+          setStickerError(
+            reason instanceof Error
+              ? reason.message
+              : t('chatComposer.stickerLibraryFailed'),
+          )
+        }
+      })
+      .finally(() => {
+        if (active) setStickersLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [loadStickers, open, t])
+
+  const handleAddSticker = async (file: File) => {
+    setStickersLoading(true)
+    setStickerError(null)
+    try {
+      const sticker = await addSticker(file)
+      setStickers((current) => [
+        sticker,
+        ...current.filter((item) => item.id !== sticker.id),
+      ])
+    } catch (reason) {
+      setStickerError(
+        reason instanceof Error
+          ? reason.message
+          : t('chatComposer.stickerLibraryFailed'),
+      )
+    } finally {
+      setStickersLoading(false)
+    }
+  }
+
+  const handleSelectSticker = async (sticker: StickerLibraryItem) => {
+    setStickerError(null)
+    try {
+      await onSelectSticker(sticker)
+      setOpen(false)
+    } catch (reason) {
+      setStickerError(
+        reason instanceof Error ? reason.message : t('chatComposer.sendFailed'),
+      )
+    }
+  }
+
   return (
     <div ref={rootRef} className="relative inline-flex">
       <button
@@ -652,7 +727,15 @@ function EmojiPicker({
           aria-label={t('chatComposer.emojiTitle')}
           className="absolute bottom-full left-0 z-50 mb-2"
         >
-          <EmojiPickerPanel onSelect={onSelect} />
+          <EmojiPickerPanel
+            disabled={disabled}
+            stickers={stickers}
+            stickersLoading={stickersLoading}
+            stickerError={stickerError}
+            onAddSticker={handleAddSticker}
+            onSelect={onSelect}
+            onSelectSticker={handleSelectSticker}
+          />
         </div>
       )}
     </div>
@@ -689,11 +772,17 @@ function StructuredMessageDialog({
       if (kind === 'contact') {
         const formattedName = fields.name?.trim()
         if (!formattedName) return
+        const [firstName, ...remainingNames] = formattedName.split(/\s+/)
+        const lastName = remainingNames.join(' ')
         await onSend({
           type: 'contacts',
           contacts: [
             {
-              name: { formatted_name: formattedName },
+              name: {
+                formatted_name: formattedName,
+                first_name: firstName,
+                ...(lastName ? { last_name: lastName } : {}),
+              },
               ...(fields.phone?.trim()
                 ? {
                     phones: [

@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { describe, it } from 'node:test'
-import { WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS } from '@mba-demo/wa-subscriptions'
+import {
+  MBA_WEBHOOK_SUBSCRIPTION_FIELDS,
+  WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS,
+  WhatsAppWebhookRegistrationApiError,
+} from '@mba-demo/wa-subscriptions'
 import { whatsappWebhookChangeSchema } from '@mba-demo/wa-webhooks'
 import { createAgentExportArchive } from '../agent-export.js'
 import { parseAgentArchive } from '../agent-import.js'
@@ -15,6 +19,7 @@ import {
   getMetaAgentEligibility,
   getMetaAgentSettings,
   listMetaAgentAllowlist,
+  MetaWebhookRegistrationError,
   onboardMetaAgent,
   registerMetaWebhook,
   removeMetaAgentAllowlistEntry,
@@ -2176,6 +2181,56 @@ describe('channel management route', () => {
     })
   })
 
+  it('returns and logs safe Meta details when webhook registration fails', async () => {
+    const logged: unknown[][] = []
+    const originalConsoleError = console.error
+    console.error = (...values: unknown[]) => logged.push(values)
+    try {
+      const route = createChannelManagementRoute({
+        getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+        repository: createRepository(),
+        registerWebhook: async () => {
+          throw new MetaWebhookRegistrationError(
+            'Meta rejected the webhook registration: Callback is unreachable',
+            'app_registration',
+            new WhatsAppWebhookRegistrationApiError(433, {
+              error: {
+                message: 'Callback is unreachable',
+                code: 2200,
+                error_subcode: 2201,
+                type: 'OAuthException',
+                fbtrace_id: 'safe-trace-id',
+              },
+            }),
+          )
+        },
+      })
+
+      const response = await route.request('/7/set-webhook', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          callbackUrl: 'https://example.com/api/wa-cloud/webhook/7',
+        }),
+      })
+
+      assert.equal(response.status, 502)
+      assert.deepEqual(await response.json(), {
+        message:
+          'Meta rejected the webhook registration: Callback is unreachable',
+        stage: 'app_registration',
+        providerStatus: 433,
+        providerCode: 2200,
+        providerSubcode: 2201,
+        providerTraceId: 'safe-trace-id',
+      })
+      assert.equal(JSON.stringify(logged).includes('safe-trace-id'), true)
+      assert.equal(JSON.stringify(logged).includes('app-secret'), false)
+    } finally {
+      console.error = originalConsoleError
+    }
+  })
+
   it('rejects a callback URL that does not belong to the channel', async () => {
     const route = createChannelManagementRoute({
       getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
@@ -2221,7 +2276,7 @@ describe('Meta webhook registration', () => {
     )
   })
 
-  it('registers supported fields before subscribing the app to the WABA', async () => {
+  it('registers the MBA field set before subscribing the app to the WABA', async () => {
     const requests: Array<{ url: string; init?: RequestInit }> = []
     const request = (async (
       input: string | URL | Request,
@@ -2269,7 +2324,7 @@ describe('Meta webhook registration', () => {
     assert.equal(registrationBody.get('verify_token'), 'verify-secret')
     assert.equal(
       registrationBody.get('fields'),
-      WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS.join(','),
+      MBA_WEBHOOK_SUBSCRIPTION_FIELDS.join(','),
     )
     assert.equal(registrationBody.get('access_token'), 'app-id|app-secret')
 

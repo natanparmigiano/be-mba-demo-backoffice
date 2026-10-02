@@ -1187,26 +1187,36 @@ class IngestionContext {
     if (cached && !carriesProfileOrIdentityData) return cached
 
     const profile = getRecord(record, 'profile')
-    const identityConditions = [
-      waId ? eq(contacts.waId, waId) : undefined,
-      userId ? eq(contacts.userId, userId) : undefined,
-    ].filter((condition) => condition !== undefined)
-    const [existing] = cached
-      ? [cached]
-      : await this.transaction
-          .select({
-            id: contacts.id,
-            waId: contacts.waId,
-            userId: contacts.userId,
-          })
-          .from(contacts)
-          .where(
-            and(
-              eq(contacts.channelId, this.channel.id),
-              or(...identityConditions),
-            ),
-          )
-          .limit(1)
+    let existing = cached
+    if (!existing && waId) {
+      ;[existing] = await this.transaction
+        .select({
+          id: contacts.id,
+          waId: contacts.waId,
+          userId: contacts.userId,
+        })
+        .from(contacts)
+        .where(
+          and(eq(contacts.channelId, this.channel.id), eq(contacts.waId, waId)),
+        )
+        .limit(1)
+    }
+    if (!existing && userId) {
+      ;[existing] = await this.transaction
+        .select({
+          id: contacts.id,
+          waId: contacts.waId,
+          userId: contacts.userId,
+        })
+        .from(contacts)
+        .where(
+          and(
+            eq(contacts.channelId, this.channel.id),
+            eq(contacts.userId, userId),
+          ),
+        )
+        .limit(1)
+    }
     const values = {
       channelId: this.channel.id,
       waId,
@@ -1214,8 +1224,12 @@ class IngestionContext {
       parentUserId: getString(record, 'parent_user_id'),
       identityKeyHash: getString(record, 'identity_key_hash'),
       input: getString(record, 'input'),
-      profileName: profile ? getString(profile, 'name') : undefined,
-      profileUsername: profile ? getString(profile, 'username') : undefined,
+      ...(profile && getString(profile, 'name') !== undefined
+        ? { profileName: getString(profile, 'name') }
+        : {}),
+      ...(profile && getString(profile, 'username') !== undefined
+        ? { profileUsername: getString(profile, 'username') }
+        : {}),
       rawContact,
       lastSeenAt: new Date(),
     }
@@ -1253,7 +1267,10 @@ class IngestionContext {
           .where(
             and(
               eq(contacts.channelId, this.channel.id),
-              or(...identityConditions),
+              or(
+                ...(waId ? [eq(contacts.waId, waId)] : []),
+                ...(userId ? [eq(contacts.userId, userId)] : []),
+              ),
             ),
           )
           .limit(1)

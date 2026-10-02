@@ -139,6 +139,148 @@ const en = {
     operationFailed: 'The request failed.',
     unexpectedResponse: 'The API returned an unexpected response.',
     requestFailed: 'Request failed ({{status}}).',
+    analytics: {
+      tab: 'Analytics',
+      execute: 'Run request',
+      payload: 'Request payload',
+      payloadHint: 'Valid JSON matching the analytics client options.',
+      operationDescription:
+        "Query analytics for the selected channel's WhatsApp Business Account.",
+      enableDescription:
+        'Irreversibly enable template insights for this WhatsApp Business Account.',
+      operations: {
+        messaging: 'Messaging analytics',
+        conversation: 'Conversation analytics',
+        pricing: 'Pricing analytics',
+        template: 'Template analytics',
+        templateGroup: 'Template group analytics',
+        call: 'Call analytics',
+        group: 'Group analytics',
+        enableTemplate: 'Enable template insights',
+      },
+    },
+    moderation: {
+      tab: 'Moderation',
+      users: 'Users',
+      usersHint: 'One WhatsApp phone number per line, or comma-separated.',
+      usersRequired: 'Enter at least one WhatsApp phone number.',
+      tooManyUsers: 'A maximum of 1,000 users is allowed.',
+      list: {
+        title: 'List blocked users',
+        description:
+          "Read the channel's blocked users with optional cursor pagination.",
+        action: 'List blocked users',
+        limit: 'Limit',
+        before: 'Before cursor',
+        after: 'After cursor',
+        cursorHint: 'Optional opaque pagination cursor.',
+      },
+      block: {
+        title: 'Block users',
+        description: 'Block up to 1,000 WhatsApp users for this phone number.',
+        action: 'Block users',
+      },
+      unblock: {
+        title: 'Unblock users',
+        description:
+          "Remove up to 1,000 WhatsApp users from this phone number's blocklist.",
+        action: 'Unblock users',
+      },
+    },
+    subscriptions: {
+      tab: 'Subscriptions',
+      callbackUrl: 'Callback URL',
+      callbackUrlHint: 'HTTPS endpoint that receives webhook events.',
+      verifyToken: 'Verification token',
+      verifyTokenHint: 'Secret used to verify the callback.',
+      fields: 'Subscribed fields',
+      selectedFields: '{{count}} fields selected',
+      appRegistration: {
+        title: 'Register app webhook',
+        description:
+          'Set the app callback and choose the WhatsApp Business Account fields Meta should deliver.',
+        action: 'Register webhook fields',
+      },
+      appList: {
+        title: 'Inspect app webhook fields',
+        description:
+          'Show the callback and fields currently registered for this Meta app.',
+        action: 'List registered fields',
+      },
+      subscribe: {
+        title: 'Subscribe app',
+        description: 'Subscribe the current Meta app to this WABA.',
+        action: 'Subscribe app',
+      },
+      list: {
+        title: 'List subscriptions',
+        description: 'List apps subscribed to this WABA.',
+        action: 'List subscriptions',
+      },
+      override: {
+        title: 'Override callback',
+        description: 'Set a WABA-specific callback URL and verification token.',
+        action: 'Override callback',
+      },
+      unsubscribe: {
+        title: 'Unsubscribe app',
+        description: 'Remove the current Meta app subscription from this WABA.',
+        action: 'Unsubscribe app',
+        confirm: 'I understand and want to remove this subscription.',
+      },
+    },
+    waba: {
+      tab: 'WABA',
+      wabaId: 'WABA ID',
+      wabaIdHint: 'WhatsApp Business Account to retrieve.',
+      businessId: 'Business ID',
+      businessIdHint: 'Meta Business that owns or shares the accounts.',
+      limit: 'Limit',
+      before: 'Before cursor',
+      after: 'After cursor',
+      cursorHint: 'Optional opaque pagination cursor.',
+      get: {
+        title: 'Get WABA',
+        description: 'Retrieve one WhatsApp Business Account.',
+        action: 'Get WABA',
+      },
+      owned: {
+        title: 'List owned WABAs',
+        description: 'List accounts owned by a Meta Business.',
+        action: 'List owned WABAs',
+      },
+      shared: {
+        title: 'List shared WABAs',
+        description: 'List client accounts shared with a Meta Business.',
+        action: 'List shared WABAs',
+      },
+    },
+    webhooks: {
+      tab: 'Webhooks',
+      operations: { validate: 'Validate webhook' },
+      description:
+        'Validate and inspect a WhatsApp webhook payload against the shared schema.',
+      execute: 'Validate payload',
+      payload: 'Webhook JSON',
+      payloadHint: 'Paste a complete WhatsApp webhook callback.',
+      invalidJson: 'Enter valid JSON.',
+    },
+    mba: {
+      tab: 'MBA',
+      title: 'Business Agent API',
+      description:
+        'Choose an MBA operation and provide its positional arguments and request options as JSON.',
+      action: 'Execute operation',
+      operation: 'Operation',
+      operationHint:
+        'Read operations are available to members; mutations require an owner or admin.',
+      arguments: 'Arguments (JSON array)',
+      argumentsHint:
+        'Positional method arguments. For onboard with no input, use [{}].',
+      options: 'Options (JSON object)',
+      optionsHint:
+        'Pagination, agent IDs, date ranges, and other request options. Signal is added automatically.',
+    },
     registration: {
       tab: 'Registration',
       verificationCode: 'Verification code',
@@ -1794,6 +1936,18 @@ const en = {
     eyebrow: 'Workspace contacts',
     title: 'Contacts',
     description: 'Review the people discovered through your WhatsApp channels.',
+    addContact: 'Add contact',
+    addTitle: 'Add contact',
+    addDescription: 'Create a contact in an active WhatsApp channel.',
+    editTitle: 'Edit contact',
+    editDescription: 'Update the WhatsApp identity and profile fields.',
+    saveContact: 'Save contact',
+    contactUpdated: 'Contact updated.',
+    selectChannel: 'Select a channel',
+    createContact: 'Create contact',
+    contactCreated: 'Contact created.',
+    contactDeleted: 'Contact deleted.',
+    cancel: 'Cancel',
     refresh: 'Refresh contacts',
     directory: 'Contact directory',
     pageSummary_one: '{{count}} contact on page {{page}}',
@@ -1822,6 +1976,19 @@ const en = {
     notAvailable: 'Not available',
     channelNumber: 'Channel #{{id}}',
     viewNamed: 'View {{name}}',
+    editNamed: 'Edit {{name}}',
+    deleteNamed: 'Delete {{name}}',
+    deleteTitle: 'Delete contact?',
+    deleteDescription:
+      'Permanently delete {{contact}} and its direct conversation data.',
+    deleteWarning:
+      'This cannot be undone. The direct chat and all its messages and events will also be deleted.',
+    loadingDeletionPreview: 'Checking contact deletion impact…',
+    deletionPreviewFailed: 'Could not check the contact deletion impact.',
+    deletionImpact: { chats: 'Direct chats', messages: 'Messages' },
+    deleteConfirmationLabel: 'Confirm contact deletion',
+    deleteConfirmationHint: 'Type “{{confirmation}}” to confirm.',
+    deleteContact: 'Delete contact',
     page: 'Page {{page}}',
     pagination: 'Contact pages',
     previousPage: 'Previous page',
@@ -2266,6 +2433,14 @@ const en = {
     emojiSearch: 'Search emoji',
     emojiSearchResults: 'Search results',
     emojiNoResults: 'No emoji found',
+    stickers: 'Stickers',
+    addSticker: 'Add sticker',
+    sendSticker: 'Send sticker',
+    loadingStickers: 'Loading stickers…',
+    stickerLibraryFailed: 'Could not load or update the sticker library.',
+    invalidSticker: 'Choose a valid image for the sticker.',
+    webpUnsupported: 'This browser cannot create WebP stickers.',
+    stickerTooLarge: 'The converted sticker is too large for WhatsApp.',
     emojiCategoriesLabel: 'Emoji categories',
     emojiCategories: {
       smileysEmotion: 'Smileys & emotion',
@@ -2378,6 +2553,9 @@ const en = {
     reactToMessage: 'Reaction',
     chooseReaction: 'Choose a reaction',
     reactionSendFailed: 'Could not send the reaction.',
+    saveSticker: 'Save sticker',
+    stickerSaved: 'Sticker saved to the organization library.',
+    stickerSaveFailed: 'Could not save the sticker.',
     messageStatus: 'Message status',
     aiLabel: 'AI',
     aiGenerated: 'AI-generated message',
@@ -2640,6 +2818,149 @@ const pt: typeof en = {
     operationFailed: 'A requisição falhou.',
     unexpectedResponse: 'A API retornou uma resposta inesperada.',
     requestFailed: 'A requisição falhou ({{status}}).',
+    analytics: {
+      tab: 'Análises',
+      execute: 'Executar requisição',
+      payload: 'Payload da requisição',
+      payloadHint: 'JSON válido conforme as opções do cliente de análises.',
+      operationDescription:
+        'Consulte análises da Conta do WhatsApp Business do canal selecionado.',
+      enableDescription:
+        'Ative irreversivelmente os insights de modelos para esta Conta do WhatsApp Business.',
+      operations: {
+        messaging: 'Análises de mensagens',
+        conversation: 'Análises de conversas',
+        pricing: 'Análises de preços',
+        template: 'Análises de modelos',
+        templateGroup: 'Análises de grupos de modelos',
+        call: 'Análises de chamadas',
+        group: 'Análises de grupos',
+        enableTemplate: 'Ativar insights de modelos',
+      },
+    },
+    moderation: {
+      tab: 'Moderação',
+      users: 'Usuários',
+      usersHint: 'Um número do WhatsApp por linha ou separado por vírgulas.',
+      usersRequired: 'Informe pelo menos um número do WhatsApp.',
+      tooManyUsers: 'É permitido no máximo 1.000 usuários.',
+      list: {
+        title: 'Listar usuários bloqueados',
+        description:
+          'Consulte os usuários bloqueados do canal com paginação opcional.',
+        action: 'Listar usuários bloqueados',
+        limit: 'Limite',
+        before: 'Cursor anterior',
+        after: 'Próximo cursor',
+        cursorHint: 'Cursor opaco de paginação opcional.',
+      },
+      block: {
+        title: 'Bloquear usuários',
+        description: 'Bloqueie até 1.000 usuários do WhatsApp neste número.',
+        action: 'Bloquear usuários',
+      },
+      unblock: {
+        title: 'Desbloquear usuários',
+        description:
+          'Remova até 1.000 usuários da lista de bloqueio deste número.',
+        action: 'Desbloquear usuários',
+      },
+    },
+    subscriptions: {
+      tab: 'Assinaturas',
+      callbackUrl: 'URL de callback',
+      callbackUrlHint: 'Endpoint HTTPS que recebe eventos de webhook.',
+      verifyToken: 'Token de verificação',
+      verifyTokenHint: 'Segredo usado para verificar o callback.',
+      fields: 'Campos assinados',
+      selectedFields: '{{count}} campos selecionados',
+      appRegistration: {
+        title: 'Registrar webhook do aplicativo',
+        description:
+          'Defina o callback e escolha os campos da Conta do WhatsApp Business que a Meta deve enviar.',
+        action: 'Registrar campos do webhook',
+      },
+      appList: {
+        title: 'Consultar campos do webhook',
+        description:
+          'Exiba o callback e os campos atualmente registrados neste aplicativo Meta.',
+        action: 'Listar campos registrados',
+      },
+      subscribe: {
+        title: 'Assinar aplicativo',
+        description: 'Assine o aplicativo Meta atual nesta WABA.',
+        action: 'Assinar aplicativo',
+      },
+      list: {
+        title: 'Listar assinaturas',
+        description: 'Liste os aplicativos assinados nesta WABA.',
+        action: 'Listar assinaturas',
+      },
+      override: {
+        title: 'Substituir callback',
+        description: 'Defina URL de callback e token específicos para a WABA.',
+        action: 'Substituir callback',
+      },
+      unsubscribe: {
+        title: 'Cancelar assinatura',
+        description: 'Remova a assinatura do aplicativo Meta atual desta WABA.',
+        action: 'Cancelar assinatura',
+        confirm: 'Entendo e quero remover esta assinatura.',
+      },
+    },
+    waba: {
+      tab: 'WABA',
+      wabaId: 'ID da WABA',
+      wabaIdHint: 'Conta do WhatsApp Business a consultar.',
+      businessId: 'ID da empresa',
+      businessIdHint: 'Empresa Meta proprietária ou destinatária das contas.',
+      limit: 'Limite',
+      before: 'Cursor anterior',
+      after: 'Próximo cursor',
+      cursorHint: 'Cursor opaco de paginação opcional.',
+      get: {
+        title: 'Obter WABA',
+        description: 'Consulte uma Conta do WhatsApp Business.',
+        action: 'Obter WABA',
+      },
+      owned: {
+        title: 'Listar WABAs próprias',
+        description: 'Liste contas pertencentes a uma Empresa Meta.',
+        action: 'Listar WABAs próprias',
+      },
+      shared: {
+        title: 'Listar WABAs compartilhadas',
+        description:
+          'Liste contas de clientes compartilhadas com uma Empresa Meta.',
+        action: 'Listar WABAs compartilhadas',
+      },
+    },
+    webhooks: {
+      tab: 'Webhooks',
+      operations: { validate: 'Validar webhook' },
+      description:
+        'Valide e inspecione um payload de webhook do WhatsApp com o schema compartilhado.',
+      execute: 'Validar payload',
+      payload: 'JSON do webhook',
+      payloadHint: 'Cole um callback completo de webhook do WhatsApp.',
+      invalidJson: 'Digite um JSON válido.',
+    },
+    mba: {
+      tab: 'MBA',
+      title: 'API do Business Agent',
+      description:
+        'Escolha uma operação MBA e informe seus argumentos posicionais e opções em JSON.',
+      action: 'Executar operação',
+      operation: 'Operação',
+      operationHint:
+        'Leituras estão disponíveis aos membros; mutações exigem proprietário ou administrador.',
+      arguments: 'Argumentos (array JSON)',
+      argumentsHint:
+        'Argumentos posicionais do método. Para onboard sem entrada, use [{}].',
+      options: 'Opções (objeto JSON)',
+      optionsHint:
+        'Paginação, IDs de agente, intervalos de datas e outras opções. O sinal é adicionado automaticamente.',
+    },
     registration: {
       tab: 'Registro',
       verificationCode: 'Código de verificação',
@@ -4323,6 +4644,18 @@ const pt: typeof en = {
     title: 'Contatos',
     description:
       'Consulte as pessoas identificadas por meio dos seus canais do WhatsApp.',
+    addContact: 'Adicionar contato',
+    addTitle: 'Adicionar contato',
+    addDescription: 'Crie um contato em um canal ativo do WhatsApp.',
+    editTitle: 'Editar contato',
+    editDescription: 'Atualize a identidade do WhatsApp e os campos do perfil.',
+    saveContact: 'Salvar contato',
+    contactUpdated: 'Contato atualizado.',
+    selectChannel: 'Selecione um canal',
+    createContact: 'Criar contato',
+    contactCreated: 'Contato criado.',
+    contactDeleted: 'Contato excluído.',
+    cancel: 'Cancelar',
     refresh: 'Atualizar contatos',
     directory: 'Diretório de contatos',
     pageSummary_one: '{{count}} contato na página {{page}}',
@@ -4351,6 +4684,20 @@ const pt: typeof en = {
     notAvailable: 'Não disponível',
     channelNumber: 'Canal nº {{id}}',
     viewNamed: 'Ver {{name}}',
+    editNamed: 'Editar {{name}}',
+    deleteNamed: 'Excluir {{name}}',
+    deleteTitle: 'Excluir contato?',
+    deleteDescription:
+      'Exclua permanentemente {{contact}} e os dados da conversa direta.',
+    deleteWarning:
+      'Esta ação não pode ser desfeita. O chat direto e todas as mensagens e eventos também serão excluídos.',
+    loadingDeletionPreview: 'Verificando o impacto da exclusão…',
+    deletionPreviewFailed:
+      'Não foi possível verificar o impacto da exclusão do contato.',
+    deletionImpact: { chats: 'Chats diretos', messages: 'Mensagens' },
+    deleteConfirmationLabel: 'Confirmar exclusão do contato',
+    deleteConfirmationHint: 'Digite “{{confirmation}}” para confirmar.',
+    deleteContact: 'Excluir contato',
     page: 'Página {{page}}',
     pagination: 'Páginas de contatos',
     previousPage: 'Página anterior',
@@ -4796,6 +5143,15 @@ const pt: typeof en = {
     emojiSearch: 'Buscar emoji',
     emojiSearchResults: 'Resultados da busca',
     emojiNoResults: 'Nenhum emoji encontrado',
+    stickers: 'Figurinhas',
+    addSticker: 'Adicionar figurinha',
+    sendSticker: 'Enviar figurinha',
+    loadingStickers: 'Carregando figurinhas…',
+    stickerLibraryFailed:
+      'Não foi possível carregar ou atualizar a biblioteca de figurinhas.',
+    invalidSticker: 'Escolha uma imagem válida para a figurinha.',
+    webpUnsupported: 'Este navegador não consegue criar figurinhas WebP.',
+    stickerTooLarge: 'A figurinha convertida é muito grande para o WhatsApp.',
     emojiCategoriesLabel: 'Categorias de emojis',
     emojiCategories: {
       smileysEmotion: 'Carinhas e emoções',
@@ -4909,6 +5265,9 @@ const pt: typeof en = {
     reactToMessage: 'Reação',
     chooseReaction: 'Escolher uma reação',
     reactionSendFailed: 'Não foi possível enviar a reação.',
+    saveSticker: 'Salvar figurinha',
+    stickerSaved: 'Figurinha salva na biblioteca da organização.',
+    stickerSaveFailed: 'Não foi possível salvar a figurinha.',
     messageStatus: 'Status da mensagem',
     aiLabel: 'AI',
     aiGenerated: 'Mensagem gerada por IA',
@@ -5175,6 +5534,152 @@ const es: typeof en = {
     operationFailed: 'La solicitud falló.',
     unexpectedResponse: 'La API devolvió una respuesta inesperada.',
     requestFailed: 'La solicitud falló ({{status}}).',
+    analytics: {
+      tab: 'Analíticas',
+      execute: 'Ejecutar solicitud',
+      payload: 'Contenido de la solicitud',
+      payloadHint: 'JSON válido según las opciones del cliente de analíticas.',
+      operationDescription:
+        'Consulta analíticas de la cuenta de WhatsApp Business del canal seleccionado.',
+      enableDescription:
+        'Activa de forma irreversible las estadísticas de plantillas para esta cuenta.',
+      operations: {
+        messaging: 'Analíticas de mensajes',
+        conversation: 'Analíticas de conversaciones',
+        pricing: 'Analíticas de precios',
+        template: 'Analíticas de plantillas',
+        templateGroup: 'Analíticas de grupos de plantillas',
+        call: 'Analíticas de llamadas',
+        group: 'Analíticas de grupos',
+        enableTemplate: 'Activar estadísticas de plantillas',
+      },
+    },
+    moderation: {
+      tab: 'Moderación',
+      users: 'Usuarios',
+      usersHint: 'Un número de WhatsApp por línea o separado por comas.',
+      usersRequired: 'Ingresa al menos un número de WhatsApp.',
+      tooManyUsers: 'Se permite un máximo de 1.000 usuarios.',
+      list: {
+        title: 'Listar usuarios bloqueados',
+        description:
+          'Consulta los usuarios bloqueados del canal con paginación opcional.',
+        action: 'Listar usuarios bloqueados',
+        limit: 'Límite',
+        before: 'Cursor anterior',
+        after: 'Cursor siguiente',
+        cursorHint: 'Cursor opaco de paginación opcional.',
+      },
+      block: {
+        title: 'Bloquear usuarios',
+        description:
+          'Bloquea hasta 1.000 usuarios de WhatsApp para este número.',
+        action: 'Bloquear usuarios',
+      },
+      unblock: {
+        title: 'Desbloquear usuarios',
+        description:
+          'Elimina hasta 1.000 usuarios de la lista de bloqueo de este número.',
+        action: 'Desbloquear usuarios',
+      },
+    },
+    subscriptions: {
+      tab: 'Suscripciones',
+      callbackUrl: 'URL de callback',
+      callbackUrlHint: 'Endpoint HTTPS que recibe eventos de webhook.',
+      verifyToken: 'Token de verificación',
+      verifyTokenHint: 'Secreto usado para verificar el callback.',
+      fields: 'Campos suscritos',
+      selectedFields: '{{count}} campos seleccionados',
+      appRegistration: {
+        title: 'Registrar webhook de la aplicación',
+        description:
+          'Define el callback y elige los campos de la cuenta de WhatsApp Business que Meta debe enviar.',
+        action: 'Registrar campos del webhook',
+      },
+      appList: {
+        title: 'Consultar campos del webhook',
+        description:
+          'Muestra el callback y los campos registrados actualmente para esta aplicación Meta.',
+        action: 'Listar campos registrados',
+      },
+      subscribe: {
+        title: 'Suscribir aplicación',
+        description: 'Suscribe la aplicación Meta actual a esta WABA.',
+        action: 'Suscribir aplicación',
+      },
+      list: {
+        title: 'Listar suscripciones',
+        description: 'Lista las aplicaciones suscritas a esta WABA.',
+        action: 'Listar suscripciones',
+      },
+      override: {
+        title: 'Reemplazar callback',
+        description:
+          'Define una URL y un token de verificación específicos para la WABA.',
+        action: 'Reemplazar callback',
+      },
+      unsubscribe: {
+        title: 'Cancelar suscripción',
+        description:
+          'Elimina la suscripción de la aplicación Meta actual de esta WABA.',
+        action: 'Cancelar suscripción',
+        confirm: 'Entiendo y quiero eliminar esta suscripción.',
+      },
+    },
+    waba: {
+      tab: 'WABA',
+      wabaId: 'ID de WABA',
+      wabaIdHint: 'Cuenta de WhatsApp Business que se consultará.',
+      businessId: 'ID de empresa',
+      businessIdHint: 'Empresa Meta propietaria o receptora de las cuentas.',
+      limit: 'Límite',
+      before: 'Cursor anterior',
+      after: 'Cursor siguiente',
+      cursorHint: 'Cursor opaco de paginación opcional.',
+      get: {
+        title: 'Obtener WABA',
+        description: 'Consulta una cuenta de WhatsApp Business.',
+        action: 'Obtener WABA',
+      },
+      owned: {
+        title: 'Listar WABAs propias',
+        description: 'Lista las cuentas propiedad de una empresa Meta.',
+        action: 'Listar WABAs propias',
+      },
+      shared: {
+        title: 'Listar WABAs compartidas',
+        description:
+          'Lista cuentas de clientes compartidas con una empresa Meta.',
+        action: 'Listar WABAs compartidas',
+      },
+    },
+    webhooks: {
+      tab: 'Webhooks',
+      operations: { validate: 'Validar webhook' },
+      description:
+        'Valida e inspecciona un payload de webhook de WhatsApp con el esquema compartido.',
+      execute: 'Validar payload',
+      payload: 'JSON del webhook',
+      payloadHint: 'Pega un callback completo de webhook de WhatsApp.',
+      invalidJson: 'Ingresa un JSON válido.',
+    },
+    mba: {
+      tab: 'MBA',
+      title: 'API de Business Agent',
+      description:
+        'Elige una operación MBA y proporciona sus argumentos posicionales y opciones en JSON.',
+      action: 'Ejecutar operación',
+      operation: 'Operación',
+      operationHint:
+        'Las lecturas están disponibles para miembros; las mutaciones requieren propietario o administrador.',
+      arguments: 'Argumentos (array JSON)',
+      argumentsHint:
+        'Argumentos posicionales del método. Para onboard sin entrada, usa [{}].',
+      options: 'Opciones (objeto JSON)',
+      optionsHint:
+        'Paginación, IDs de agente, rangos de fechas y otras opciones. La señal se agrega automáticamente.',
+    },
     registration: {
       tab: 'Registro',
       verificationCode: 'Código de verificación',
@@ -6869,6 +7374,19 @@ const es: typeof en = {
     title: 'Contactos',
     description:
       'Consulta las personas identificadas a través de tus canales de WhatsApp.',
+    addContact: 'Añadir contacto',
+    addTitle: 'Añadir contacto',
+    addDescription: 'Crea un contacto en un canal activo de WhatsApp.',
+    editTitle: 'Editar contacto',
+    editDescription:
+      'Actualiza la identidad de WhatsApp y los campos del perfil.',
+    saveContact: 'Guardar contacto',
+    contactUpdated: 'Contacto actualizado.',
+    selectChannel: 'Selecciona un canal',
+    createContact: 'Crear contacto',
+    contactCreated: 'Contacto creado.',
+    contactDeleted: 'Contacto eliminado.',
+    cancel: 'Cancelar',
     refresh: 'Actualizar contactos',
     directory: 'Directorio de contactos',
     pageSummary_one: '{{count}} contacto en la página {{page}}',
@@ -6897,6 +7415,20 @@ const es: typeof en = {
     notAvailable: 'No disponible',
     channelNumber: 'Canal n.º {{id}}',
     viewNamed: 'Ver {{name}}',
+    editNamed: 'Editar {{name}}',
+    deleteNamed: 'Eliminar {{name}}',
+    deleteTitle: '¿Eliminar contacto?',
+    deleteDescription:
+      'Elimina permanentemente a {{contact}} y los datos de su conversación directa.',
+    deleteWarning:
+      'Esta acción no se puede deshacer. El chat directo y todos sus mensajes y eventos también se eliminarán.',
+    loadingDeletionPreview: 'Comprobando el impacto de la eliminación…',
+    deletionPreviewFailed:
+      'No se pudo comprobar el impacto de la eliminación del contacto.',
+    deletionImpact: { chats: 'Chats directos', messages: 'Mensajes' },
+    deleteConfirmationLabel: 'Confirmar eliminación del contacto',
+    deleteConfirmationHint: 'Escribe “{{confirmation}}” para confirmar.',
+    deleteContact: 'Eliminar contacto',
     page: 'Página {{page}}',
     pagination: 'Páginas de contactos',
     previousPage: 'Página anterior',
@@ -7346,6 +7878,15 @@ const es: typeof en = {
     emojiSearch: 'Buscar emoji',
     emojiSearchResults: 'Resultados de búsqueda',
     emojiNoResults: 'No se encontraron emojis',
+    stickers: 'Stickers',
+    addSticker: 'Agregar sticker',
+    sendSticker: 'Enviar sticker',
+    loadingStickers: 'Cargando stickers…',
+    stickerLibraryFailed:
+      'No se pudo cargar o actualizar la biblioteca de stickers.',
+    invalidSticker: 'Elige una imagen válida para el sticker.',
+    webpUnsupported: 'Este navegador no puede crear stickers WebP.',
+    stickerTooLarge: 'El sticker convertido es demasiado grande para WhatsApp.',
     emojiCategoriesLabel: 'Categorías de emojis',
     emojiCategories: {
       smileysEmotion: 'Caras y emociones',
@@ -7459,6 +8000,9 @@ const es: typeof en = {
     reactToMessage: 'Reacción',
     chooseReaction: 'Elegir una reacción',
     reactionSendFailed: 'No se pudo enviar la reacción.',
+    saveSticker: 'Guardar sticker',
+    stickerSaved: 'Sticker guardado en la biblioteca de la organización.',
+    stickerSaveFailed: 'No se pudo guardar el sticker.',
     messageStatus: 'Estado del mensaje',
     aiLabel: 'AI',
     aiGenerated: 'Mensaje generado por IA',

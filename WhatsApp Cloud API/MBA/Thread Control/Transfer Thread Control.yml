@@ -29,6 +29,6 @@ settings:
   forwardAuthorizationHeader: false
 
 docs: |-
-  Releases control of a WhatsApp conversation back to the Business AI. This endpoint specifically requires `X-API-Version: 1.0.0`.
+  Passes, releases, or takes control of a WhatsApp conversation. This endpoint specifically requires `X-API-Version: 1.0.0`.
 
   Reference: https://developers.facebook.com/documentation/meta-business-agent/reference/operate/thread-control-cloud-api

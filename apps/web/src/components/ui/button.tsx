@@ -62,7 +62,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {isLoading && (
           <LoaderCircle className="size-4 animate-spin" aria-hidden />
         )}
-        {children}
+        {(!isLoading || size !== 'icon') && children}
       </button>
     )
   },

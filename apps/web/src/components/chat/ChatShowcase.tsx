@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { Avatar, Button, cn } from '../ui'
 import { createInitialMessages } from './fixtures'
 import { MessageRow, MessageStatusIndicator } from './MessageRenderer'
-import type { ChatMessage, ChatTimelineItem } from './types'
+import type { ChatMessage, ChatTimelineItem, StickerMessage } from './types'
 
 export interface ChatShowcaseProps {
   variant?: 'showcase' | 'workspace'
@@ -42,6 +42,7 @@ export interface ChatShowcaseProps {
     providerMessageId: string,
     emoji: string,
   ) => Promise<void>
+  onSaveSticker?: (message: StickerMessage) => Promise<void>
   className?: string
 }
 
@@ -64,6 +65,7 @@ export function ChatShowcase({
   messagePlaceholder,
   onConversationRendered,
   onMessageReaction,
+  onSaveSticker,
   className,
 }: ChatShowcaseProps = {}) {
   const { t, i18n } = useTranslation()
@@ -242,6 +244,7 @@ export function ChatShowcase({
                     incomingAvatarName={resolvedContactName}
                     onAction={(action) => setLastAction(action)}
                     onReact={onMessageReaction}
+                    onSaveSticker={onSaveSticker}
                   />
                 ),
               )}

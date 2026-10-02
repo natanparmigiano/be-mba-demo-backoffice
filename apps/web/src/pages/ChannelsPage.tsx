@@ -1771,7 +1771,16 @@ async function readApiError(
   response: Response,
   fallback: string,
 ): Promise<string> {
-  await response.json().catch(() => undefined)
+  const body: unknown = await response.json().catch(() => undefined)
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'message' in body &&
+    typeof body.message === 'string' &&
+    body.message.trim()
+  ) {
+    return body.message
+  }
   return `${fallback} (${response.status}).`
 }
 

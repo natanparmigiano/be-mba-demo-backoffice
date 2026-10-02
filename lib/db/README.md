@@ -20,6 +20,9 @@ import * as schema from '@mba-demo/db/schema'
 
 - Development falls back to `postgresql://postgres:postgres@localhost:5432/mba_demo_backoffice`.
 - Production requires an explicit `DATABASE_URL`.
+- Provider-specific `verifySSL` query parameters are removed before connecting;
+  Postgres.js otherwise forwards them as unsupported PostgreSQL settings. Use
+  the supported `ssl` or `sslmode` parameters to configure transport security.
 - The pool allows one connection outside production and ten in production.
 - Idle connections time out after 20 seconds; connection attempts after 10 seconds.
 
@@ -83,6 +86,10 @@ as missing rather than failing the complete export.
 The archive bytes live in `@mba-demo/files`; PostgreSQL stores the safe file
 name, unique storage path, byte size, and creation time. The composite channel
 and organization foreign key prevents cross-tenant backup associations.
+
+`mba.sticker_library` stores organization-scoped, SHA-256-deduplicated WebP
+sticker metadata. Sticker bytes remain in `@mba-demo/files`; the database keeps
+their unique storage paths, sizes, and creation order.
 
 `mba.message_status_events` preserves the append-only delivery-status history while the provider message ID makes message upserts idempotent. `mba.chat_events` stores non-message activity attached to a chat: billing-window observations, Business Agents ownership handovers and agent events, group changes, calls, call statuses, and user preferences. The model supports incoming `messages`, Business Agents `standby`, history, message echoes, and status-first rows.
 

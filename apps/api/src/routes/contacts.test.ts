@@ -36,7 +36,7 @@ describe('contacts route', () => {
       lastSeenAt: contact.lastSeenAt,
     })
     const route = createContactsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
       repository: createRepository({
         list: async (organizationId, query) => {
           receivedOrganizationId = organizationId
@@ -67,7 +67,7 @@ describe('contacts route', () => {
   it('rejects malformed cursors before querying the repository', async () => {
     let listCalled = false
     const route = createContactsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
       repository: createRepository({
         list: async () => {
           listCalled = true
@@ -99,7 +99,7 @@ describe('contacts route', () => {
     let requestedContactId: number | undefined
     let requestedOrganizationId: string | undefined
     const route = createContactsRoute({
-      getAccess: async () => ({ organizationId: 'org-two' }),
+      getAccess: async () => ({ organizationId: 'org-two', role: 'member' }),
       repository: createRepository({
         get: async (organizationId, contactId) => {
           requestedOrganizationId = organizationId
@@ -119,7 +119,7 @@ describe('contacts route', () => {
 
   it('returns not found without exposing another organization contact', async () => {
     const route = createContactsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
       repository: createRepository({ get: async () => undefined }),
     })
 
@@ -127,6 +127,115 @@ describe('contacts route', () => {
 
     assert.equal(response.status, 404)
     assert.deepEqual(await response.json(), { message: 'Contact not found' })
+  })
+
+  it('lets organization managers create contacts on owned channels', async () => {
+    let receivedInput: Parameters<ContactsRepository['create']>[1] | undefined
+    const route = createContactsRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository({
+        create: async (_organizationId, input) => {
+          receivedInput = input
+          return contactDetail
+        },
+      }),
+    })
+
+    const response = await route.request('/', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId: 4,
+        waId: '5511999990000',
+        profileName: 'Ada Lovelace',
+      }),
+    })
+
+    assert.equal(response.status, 201)
+    assert.deepEqual(receivedInput, {
+      channelId: 4,
+      waId: '5511999990000',
+      profileName: 'Ada Lovelace',
+    })
+    assert.deepEqual(await response.json(), { contact: contactDetail })
+  })
+
+  it('previews and confirms cascading contact deletion for managers', async () => {
+    let confirmation: string | undefined
+    const route = createContactsRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
+      repository: createRepository({
+        delete: async (_organizationId, _contactId, value) => {
+          confirmation = value
+          return { status: 'deleted', impact: { chats: 1, messages: 2 } }
+        },
+      }),
+    })
+
+    const preview = await route.request('/17/deletion-impact')
+    assert.equal(preview.status, 200)
+    assert.deepEqual(await preview.json(), {
+      impact: {
+        confirmationText: contact.waId,
+        chats: 1,
+        messages: 2,
+      },
+    })
+
+    const response = await route.request('/17', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ confirmation: contact.waId }),
+    })
+    assert.equal(response.status, 200)
+    assert.equal(confirmation, contact.waId)
+    assert.deepEqual(await response.json(), {
+      deleted: true,
+      impact: { chats: 1, messages: 2 },
+    })
+  })
+
+  it('updates managed contact fields without requiring a provider user ID', async () => {
+    let receivedInput: Parameters<ContactsRepository['update']>[2] | undefined
+    const route = createContactsRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository({
+        update: async (_organizationId, _contactId, input) => {
+          receivedInput = input
+          return contactDetail
+        },
+      }),
+    })
+
+    const response = await route.request('/17', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        waId: '5511888880000',
+        profileName: 'Ada Byron',
+        profileUsername: '',
+      }),
+    })
+
+    assert.equal(response.status, 200)
+    assert.deepEqual(receivedInput, {
+      waId: '5511888880000',
+      profileName: 'Ada Byron',
+      profileUsername: '',
+    })
+  })
+
+  it('forbids contact mutations for regular organization members', async () => {
+    const route = createContactsRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      repository: createRepository(),
+    })
+
+    const response = await route.request('/17/deletion-impact')
+    assert.equal(response.status, 403)
+    assert.deepEqual(await response.json(), {
+      message: 'Organization owner or admin required',
+    })
   })
 })
 
@@ -136,6 +245,17 @@ function createRepository(
   return {
     list: async () => ({ contacts: [], nextCursor: null }),
     get: async () => contactDetail,
+    create: async () => contactDetail,
+    update: async () => contactDetail,
+    getDeletionPreview: async () => ({
+      confirmationText: contact.waId ?? String(contact.id),
+      chats: 1,
+      messages: 2,
+    }),
+    delete: async () => ({
+      status: 'deleted',
+      impact: { chats: 1, messages: 2 },
+    }),
     ...overrides,
   }
 }

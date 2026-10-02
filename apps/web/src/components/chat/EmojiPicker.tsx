@@ -4,14 +4,16 @@ import {
   Heart,
   Lightbulb,
   PawPrint,
+  Plus,
   Puzzle,
   Search,
   Smile,
+  Sticker,
   Trophy,
   UserRound,
   Utensils,
 } from 'lucide-react'
-import { useMemo, useState, type ComponentType } from 'react'
+import { useMemo, useRef, useState, type ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 import emojiData from '../../assets/emoji-categories.json'
 import { cn } from '../ui'
@@ -63,13 +65,25 @@ function categoryEntries(category: EmojiCategoryName): EmojiEntry[] {
 export function EmojiPickerPanel({
   className,
   disabled = false,
+  stickers,
+  stickersLoading = false,
+  stickerError,
+  onAddSticker,
   onSelect,
+  onSelectSticker,
 }: {
   className?: string
   disabled?: boolean
+  stickers?: readonly StickerLibraryItem[]
+  stickersLoading?: boolean
+  stickerError?: string | null
+  onAddSticker?: (file: File) => void | Promise<void>
   onSelect: (emoji: string) => void | Promise<void>
+  onSelectSticker?: (sticker: StickerLibraryItem) => void | Promise<void>
 }) {
   const { t } = useTranslation()
+  const stickerInputRef = useRef<HTMLInputElement>(null)
+  const [mode, setMode] = useState<'emoji' | 'stickers'>('emoji')
   const [category, setCategory] =
     useState<EmojiCategoryName>('Smileys & Emotion')
   const [query, setQuery] = useState('')
@@ -85,6 +99,7 @@ export function EmojiPickerPanel({
         : categoryEntries(category),
     [category, normalizedQuery],
   )
+  const hasStickerLibrary = Boolean(stickers && onAddSticker && onSelectSticker)
 
   return (
     <div
@@ -114,10 +129,33 @@ export function EmojiPickerPanel({
         role="tablist"
         aria-label={t('chatComposer.emojiCategoriesLabel')}
       >
+        {hasStickerLibrary && (
+          <button
+            type="button"
+            role="tab"
+            aria-label={t('chatComposer.stickers')}
+            aria-selected={mode === 'stickers'}
+            title={t('chatComposer.stickers')}
+            className={cn(
+              'grid size-10 shrink-0 cursor-pointer place-items-center border-b-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30',
+              mode === 'stickers'
+                ? 'border-primary text-primary'
+                : 'border-transparent',
+            )}
+            disabled={disabled}
+            onClick={() => {
+              setMode('stickers')
+              setQuery('')
+            }}
+          >
+            <Sticker className="size-4" aria-hidden />
+          </button>
+        )}
         {CATEGORY_CONFIG.map((item) => {
           const Icon = item.icon
           const label = t(`chatComposer.emojiCategories.${item.translationKey}`)
-          const selected = !normalizedQuery && category === item.name
+          const selected =
+            mode === 'emoji' && !normalizedQuery && category === item.name
           return (
             <button
               key={item.name}
@@ -132,6 +170,7 @@ export function EmojiPickerPanel({
               )}
               disabled={disabled}
               onClick={() => {
+                setMode('emoji')
                 setQuery('')
                 setCategory(item.name)
               }}
@@ -143,35 +182,99 @@ export function EmojiPickerPanel({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        <p className="sticky top-0 z-10 bg-card/95 px-1 pb-2 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
-          {normalizedQuery
-            ? t('chatComposer.emojiSearchResults')
-            : t(
-                `chatComposer.emojiCategories.${CATEGORY_CONFIG.find((item) => item.name === category)?.translationKey ?? 'smileysEmotion'}`,
-              )}
-        </p>
-        {entries.length > 0 ? (
-          <div className="grid grid-cols-8 gap-1 sm:grid-cols-9">
-            {entries.map((entry, index) => (
-              <button
-                key={`${entry.code.join('-')}-${index}`}
-                type="button"
-                className="grid aspect-square cursor-pointer place-items-center rounded-lg text-xl hover:bg-muted focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-wait disabled:opacity-50"
-                aria-label={entry.name}
-                title={entry.name}
-                disabled={disabled}
-                onClick={() => void onSelect(entry.emoji)}
+        {mode === 'stickers' && hasStickerLibrary ? (
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+            <input
+              ref={stickerInputRef}
+              type="file"
+              accept="image/*,.webp"
+              hidden
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0]
+                event.currentTarget.value = ''
+                if (file) void onAddSticker?.(file)
+              }}
+            />
+            <button
+              type="button"
+              className="grid aspect-square cursor-pointer place-items-center rounded-xl border border-dashed text-primary hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-wait disabled:opacity-50"
+              aria-label={t('chatComposer.addSticker')}
+              title={t('chatComposer.addSticker')}
+              disabled={disabled || stickersLoading}
+              onClick={() => stickerInputRef.current?.click()}
+            >
+              <Plus className="size-6" aria-hidden />
+            </button>
+            {stickersLoading && (stickers?.length ?? 0) === 0 ? (
+              <p className="col-span-full grid min-h-28 place-items-center text-sm text-muted-foreground">
+                {t('chatComposer.loadingStickers')}
+              </p>
+            ) : (
+              (stickers ?? []).map((sticker) => (
+                <button
+                  key={sticker.id}
+                  type="button"
+                  className="grid aspect-square cursor-pointer place-items-center overflow-hidden rounded-xl bg-muted/50 p-1 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-wait disabled:opacity-50"
+                  aria-label={t('chatComposer.sendSticker')}
+                  title={t('chatComposer.sendSticker')}
+                  disabled={disabled || stickersLoading}
+                  onClick={() => void onSelectSticker?.(sticker)}
+                >
+                  <img
+                    src={sticker.url}
+                    alt=""
+                    className="size-full object-contain"
+                  />
+                </button>
+              ))
+            )}
+            {stickerError && (
+              <p
+                className="col-span-full text-xs text-destructive"
+                role="alert"
               >
-                {entry.emoji}
-              </button>
-            ))}
+                {stickerError}
+              </p>
+            )}
           </div>
         ) : (
-          <p className="grid h-full min-h-32 place-items-center text-sm text-muted-foreground">
-            {t('chatComposer.emojiNoResults')}
-          </p>
+          <>
+            <p className="sticky top-0 z-10 bg-card/95 px-1 pb-2 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
+              {normalizedQuery
+                ? t('chatComposer.emojiSearchResults')
+                : t(
+                    `chatComposer.emojiCategories.${CATEGORY_CONFIG.find((item) => item.name === category)?.translationKey ?? 'smileysEmotion'}`,
+                  )}
+            </p>
+            {entries.length > 0 ? (
+              <div className="grid grid-cols-8 gap-1 sm:grid-cols-9">
+                {entries.map((entry, index) => (
+                  <button
+                    key={`${entry.code.join('-')}-${index}`}
+                    type="button"
+                    className="grid aspect-square cursor-pointer place-items-center rounded-lg text-xl hover:bg-muted focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-wait disabled:opacity-50"
+                    aria-label={entry.name}
+                    title={entry.name}
+                    disabled={disabled}
+                    onClick={() => void onSelect(entry.emoji)}
+                  >
+                    {entry.emoji}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="grid h-full min-h-32 place-items-center text-sm text-muted-foreground">
+                {t('chatComposer.emojiNoResults')}
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>
   )
+}
+
+export interface StickerLibraryItem {
+  id: number
+  url: string
 }

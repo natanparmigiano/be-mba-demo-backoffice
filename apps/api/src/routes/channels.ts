@@ -53,7 +53,7 @@ import {
 import {
   createWhatsAppSubscriptionsClient,
   createWhatsAppWebhookRegistrationClient,
-  WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS,
+  MBA_WEBHOOK_SUBSCRIPTION_FIELDS,
   WhatsAppSubscriptionsApiError,
   WhatsAppSubscriptionsResponseError,
   WhatsAppWebhookRegistrationApiError,
@@ -3345,7 +3345,36 @@ export const createChannelManagementRoute = ({
           })
         } catch (error) {
           if (error instanceof MetaWebhookRegistrationError) {
-            return c.json({ message: error.message }, 422)
+            console.error('Meta webhook setup failed', {
+              channelId,
+              organizationId: access.organizationId,
+              stage: error.stage,
+              providerStatus: error.providerStatus,
+              providerCode: error.providerCode,
+              providerSubcode: error.providerSubcode,
+              providerType: error.providerType,
+              providerTraceId: error.providerTraceId,
+              message: error.message,
+            })
+            return c.json(
+              {
+                message: error.message,
+                stage: error.stage,
+                ...(error.providerStatus === undefined
+                  ? {}
+                  : { providerStatus: error.providerStatus }),
+                ...(error.providerCode === undefined
+                  ? {}
+                  : { providerCode: error.providerCode }),
+                ...(error.providerSubcode === undefined
+                  ? {}
+                  : { providerSubcode: error.providerSubcode }),
+                ...(error.providerTraceId === undefined
+                  ? {}
+                  : { providerTraceId: error.providerTraceId }),
+              },
+              502,
+            )
           }
           throw error
         }
@@ -3552,7 +3581,7 @@ export async function registerMetaWebhook(
     await registration.register({
       callbackUrl,
       verifyToken: configuration.waWebhookVerifyToken,
-      fields: WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS,
+      fields: MBA_WEBHOOK_SUBSCRIPTION_FIELDS,
     })
 
     const subscriptions = createWhatsAppSubscriptionsClient({
@@ -3565,35 +3594,70 @@ export async function registerMetaWebhook(
     if (error instanceof WhatsAppWebhookRegistrationApiError) {
       throw new MetaWebhookRegistrationError(
         `Meta rejected the webhook registration: ${error.message}`,
-        { cause: error },
+        'app_registration',
+        error,
       )
     }
     if (error instanceof WhatsAppWebhookRegistrationResponseError) {
       throw new MetaWebhookRegistrationError(
         'Meta returned an unexpected webhook registration response',
-        { cause: error },
+        'app_registration',
+        error,
       )
     }
     if (error instanceof WhatsAppSubscriptionsApiError) {
       throw new MetaWebhookRegistrationError(
         `Meta rejected the WABA app subscription: ${error.message}`,
-        { cause: error },
+        'waba_subscription',
+        error,
       )
     }
     if (error instanceof WhatsAppSubscriptionsResponseError) {
       throw new MetaWebhookRegistrationError(
         'Meta returned an unexpected WABA app subscription response',
-        { cause: error },
+        'waba_subscription',
+        error,
       )
     }
     throw new MetaWebhookRegistrationError(
       'Could not register the Meta webhook and subscribe the app',
-      { cause: error },
+      'unknown',
+      error,
     )
   }
 }
 
-class MetaWebhookRegistrationError extends Error {}
+type MetaWebhookRegistrationStage =
+  'app_registration' | 'waba_subscription' | 'unknown'
+
+export class MetaWebhookRegistrationError extends Error {
+  readonly stage: MetaWebhookRegistrationStage
+  readonly providerStatus?: number
+  readonly providerCode?: number
+  readonly providerSubcode?: number
+  readonly providerType?: string
+  readonly providerTraceId?: string
+
+  constructor(
+    message: string,
+    stage: MetaWebhookRegistrationStage,
+    cause: unknown,
+  ) {
+    super(message, { cause })
+    this.name = 'MetaWebhookRegistrationError'
+    this.stage = stage
+    if (
+      cause instanceof WhatsAppWebhookRegistrationApiError ||
+      cause instanceof WhatsAppSubscriptionsApiError
+    ) {
+      this.providerStatus = cause.status
+      this.providerCode = cause.code
+      this.providerSubcode = cause.subcode
+      this.providerType = cause.errorType
+      this.providerTraceId = cause.traceId
+    }
+  }
+}
 
 export async function getMetaDashboardAnalytics(
   configuration: ChannelAgentConfiguration,

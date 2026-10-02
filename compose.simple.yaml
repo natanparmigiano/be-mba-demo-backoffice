@@ -35,7 +35,6 @@ services:
       BETTER_AUTH_URL: ${COMPOSE_BETTER_AUTH_URL:-http://localhost:8080}
       BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-}
       CORS_ORIGIN: ${COMPOSE_CORS_ORIGIN:-http://localhost:8080}
-      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost,127.0.0.1}
       FILES_ADAPTER: fs
       FILES_DIRECTORY: /var/lib/mba-demo/files
       FILES_PUBLIC_URL: ${COMPOSE_FILES_PUBLIC_URL:-http://localhost:8080}

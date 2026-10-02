@@ -4,10 +4,19 @@ import {
   ChevronRight,
   ContactRound,
   Eye,
+  Pencil,
+  Plus,
   RefreshCw,
   SearchX,
+  Trash2,
 } from 'lucide-react'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
@@ -17,6 +26,7 @@ import {
   cn,
   Dialog,
   EmptyState,
+  Input,
   SearchBox,
   Select,
   Table,
@@ -45,6 +55,17 @@ type ChannelOption = Pick<
   ChannelsResponse['channels'][number],
   'id' | 'waPhoneNumber'
 >
+type ContactDeletionPreview = InferResponseType<
+  (typeof apiClient.api.contacts)[':id']['deletion-impact']['$get'],
+  200
+>['impact']
+
+interface ContactForm {
+  channelId: string
+  waId: string
+  profileName: string
+  profileUsername: string
+}
 
 interface ContactQuery {
   search: string
@@ -54,11 +75,22 @@ interface ContactQuery {
 }
 
 const PAGE_SIZE = 20
+const emptyContactForm: ContactForm = {
+  channelId: '',
+  waId: '',
+  profileName: '',
+  profileUsername: '',
+}
 
 export function ContactsPage() {
   const { t, i18n } = useTranslation()
   const activeOrganizationQuery = authClient.useActiveOrganization()
+  const activeMemberRoleQuery = authClient.useActiveMemberRole()
   const activeOrganizationId = activeOrganizationQuery.data?.id
+  const canManage = (activeMemberRoleQuery.data?.role ?? '')
+    .split(',')
+    .map((role) => role.trim())
+    .some((role) => role === 'owner' || role === 'admin')
   const [contacts, setContacts] = useState<ContactSummary[]>([])
   const [channels, setChannels] = useState<ChannelOption[]>([])
   const [searchInput, setSearchInput] = useState('')
@@ -78,6 +110,21 @@ export function ContactsPage() {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
   const detailRequestId = useRef(0)
+  const deletionPreviewRequestId = useRef(0)
+  const [form, setForm] = useState<ContactForm>(emptyContactForm)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [editContactTarget, setEditContactTarget] =
+    useState<ContactSummary | null>(null)
+  const [deleteContactTarget, setDeleteContactTarget] =
+    useState<ContactSummary | null>(null)
+  const [deletionPreview, setDeletionPreview] =
+    useState<ContactDeletionPreview | null>(null)
+  const [deleteConfirmation, setDeleteConfirmation] = useState('')
+  const [isLoadingDeletionPreview, setIsLoadingDeletionPreview] =
+    useState(false)
+  const [isBusy, setIsBusy] = useState(false)
+  const [dialogError, setDialogError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => {
     document.title = `${t('contacts.title')} · ${t('design.brand')}`
@@ -249,6 +296,148 @@ export function ContactsPage() {
     setDetailError(null)
   }
 
+  const openCreateDialog = () => {
+    setForm({
+      ...emptyContactForm,
+      channelId: channels[0] ? String(channels[0].id) : '',
+    })
+    setDialogError(null)
+    setIsCreateOpen(true)
+  }
+
+  const openEditDialog = (contact: ContactSummary) => {
+    setForm({
+      channelId: String(contact.channel.id),
+      waId: contact.waId ?? '',
+      profileName: contact.profileName ?? '',
+      profileUsername: contact.profileUsername ?? '',
+    })
+    setDialogError(null)
+    setEditContactTarget(contact)
+  }
+
+  const closeContactForm = () => {
+    setIsCreateOpen(false)
+    setEditContactTarget(null)
+    setDialogError(null)
+  }
+
+  const createContact = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const channelId = Number(form.channelId)
+    if (!Number.isSafeInteger(channelId) || channelId <= 0) return
+    setIsBusy(true)
+    setDialogError(null)
+    try {
+      const values = {
+        waId: form.waId.trim(),
+        profileName: form.profileName.trim(),
+        profileUsername: form.profileUsername.trim(),
+      }
+      const response = editContactTarget
+        ? await apiClient.api.contacts[':id'].$patch({
+            param: { id: String(editContactTarget.id) },
+            json: values,
+          })
+        : await apiClient.api.contacts.$post({
+            json: { channelId, ...values },
+          })
+      if (!response.ok)
+        throw new Error(
+          await readApiError(response, t('contacts.operationFailed')),
+        )
+      closeContactForm()
+      setNotice(
+        editContactTarget
+          ? t('contacts.contactUpdated')
+          : t('contacts.contactCreated'),
+      )
+      setQuery((current) => ({
+        ...current,
+        cursor: undefined,
+        previousCursors: [],
+      }))
+      setRefreshVersion((version) => version + 1)
+    } catch (reason) {
+      setDialogError(getErrorMessage(reason, t('contacts.operationFailed')))
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  const openDeleteDialog = async (contact: ContactSummary) => {
+    const requestId = ++deletionPreviewRequestId.current
+    setDeleteContactTarget(contact)
+    setDeletionPreview(null)
+    setDeleteConfirmation('')
+    setDialogError(null)
+    setIsLoadingDeletionPreview(true)
+    try {
+      const response = await apiClient.api.contacts[':id'][
+        'deletion-impact'
+      ].$get({
+        param: { id: String(contact.id) },
+      })
+      if (!response.ok)
+        throw new Error(
+          await readApiError(response, t('contacts.deletionPreviewFailed')),
+        )
+      if (deletionPreviewRequestId.current === requestId) {
+        setDeletionPreview((await response.json()).impact)
+      }
+    } catch (reason) {
+      if (deletionPreviewRequestId.current === requestId) {
+        setDialogError(
+          getErrorMessage(reason, t('contacts.deletionPreviewFailed')),
+        )
+      }
+    } finally {
+      if (deletionPreviewRequestId.current === requestId)
+        setIsLoadingDeletionPreview(false)
+    }
+  }
+
+  const closeDeleteDialog = () => {
+    deletionPreviewRequestId.current += 1
+    setDeleteContactTarget(null)
+    setDeletionPreview(null)
+    setDeleteConfirmation('')
+    setDialogError(null)
+  }
+
+  const deleteContact = async () => {
+    if (
+      !deleteContactTarget ||
+      !deletionPreview ||
+      deleteConfirmation !== deletionPreview.confirmationText
+    )
+      return
+    setIsBusy(true)
+    setDialogError(null)
+    try {
+      const response = await apiClient.api.contacts[':id'].$delete({
+        param: { id: String(deleteContactTarget.id) },
+        json: { confirmation: deleteConfirmation },
+      })
+      if (!response.ok)
+        throw new Error(
+          await readApiError(response, t('contacts.operationFailed')),
+        )
+      closeDeleteDialog()
+      setNotice(t('contacts.contactDeleted'))
+      setQuery((current) => ({
+        ...current,
+        cursor: undefined,
+        previousCursors: [],
+      }))
+      setRefreshVersion((version) => version + 1)
+    } catch (reason) {
+      setDialogError(getErrorMessage(reason, t('contacts.operationFailed')))
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
   const hasFilters = Boolean(query.search || query.channelId)
   const page = query.previousCursors.length + 1
 
@@ -266,19 +455,35 @@ export function ContactsPage() {
             {t('contacts.description')}
           </p>
         </div>
-        <Button
-          className="self-start sm:self-auto"
-          variant="outline"
-          disabled={isLoading}
-          onClick={() => setRefreshVersion((version) => version + 1)}
-        >
-          <RefreshCw
-            className={cn('size-4', isLoading && 'animate-spin')}
-            aria-hidden
-          />
-          {t('contacts.refresh')}
-        </Button>
+        <div className="flex gap-2 self-start sm:self-auto">
+          <Button
+            variant="outline"
+            disabled={isLoading}
+            onClick={() => setRefreshVersion((version) => version + 1)}
+          >
+            <RefreshCw
+              className={cn('size-4', isLoading && 'animate-spin')}
+              aria-hidden
+            />
+            {t('contacts.refresh')}
+          </Button>
+          {canManage && (
+            <Button disabled={channels.length === 0} onClick={openCreateDialog}>
+              <Plus className="size-4" aria-hidden />
+              {t('contacts.addContact')}
+            </Button>
+          )}
+        </div>
       </header>
+
+      {notice && (
+        <p
+          className="rounded-xl border border-success/30 bg-success/10 p-3 text-sm text-success"
+          role="status"
+        >
+          {notice}
+        </p>
+      )}
 
       {error && (
         <p
@@ -418,7 +623,7 @@ export function ContactsPage() {
                       {formatDate(contact.lastSeenAt, i18n.language)}
                     </TableCell>
                     <TableCell>
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-1">
                         <Button
                           className="size-8"
                           size="icon"
@@ -428,6 +633,28 @@ export function ContactsPage() {
                         >
                           <Eye className="size-4" aria-hidden />
                         </Button>
+                        {canManage && (
+                          <>
+                            <Button
+                              className="size-8"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={t('contacts.editNamed', { name })}
+                              onClick={() => openEditDialog(contact)}
+                            >
+                              <Pencil className="size-4" aria-hidden />
+                            </Button>
+                            <Button
+                              className="size-8"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={t('contacts.deleteNamed', { name })}
+                              onClick={() => void openDeleteDialog(contact)}
+                            >
+                              <Trash2 className="size-4" aria-hidden />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -479,8 +706,219 @@ export function ContactsPage() {
         locale={i18n.language}
         onClose={closeContact}
       />
+
+      <Dialog
+        open={isCreateOpen || Boolean(editContactTarget)}
+        onOpenChange={(open) => !open && closeContactForm()}
+        title={
+          editContactTarget ? t('contacts.editTitle') : t('contacts.addTitle')
+        }
+        description={
+          editContactTarget
+            ? t('contacts.editDescription')
+            : t('contacts.addDescription')
+        }
+        icon={
+          <DialogIcon
+            icon={
+              editContactTarget ? (
+                <Pencil className="size-5" />
+              ) : (
+                <Plus className="size-5" />
+              )
+            }
+          />
+        }
+      >
+        <form
+          className="grid w-full gap-4"
+          onSubmit={(event) => void createContact(event)}
+        >
+          <label className="grid gap-1.5 text-sm font-semibold">
+            {t('contacts.channel')}
+            <Select
+              required
+              disabled={Boolean(editContactTarget)}
+              value={form.channelId}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  channelId: event.target.value,
+                }))
+              }
+            >
+              <option value="">{t('contacts.selectChannel')}</option>
+              {channels.map((channel) => (
+                <option key={channel.id} value={channel.id}>
+                  {channel.waPhoneNumber}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <Input
+            required
+            autoFocus
+            label={t('contacts.whatsAppId')}
+            value={form.waId}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, waId: event.target.value }))
+            }
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label={t('contacts.profileName')}
+              value={form.profileName}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  profileName: event.target.value,
+                }))
+              }
+            />
+            <Input
+              label={t('contacts.username')}
+              value={form.profileUsername}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  profileUsername: event.target.value,
+                }))
+              }
+            />
+          </div>
+          <DialogError message={dialogError} />
+          <div className="flex justify-end gap-2 border-t pt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isBusy}
+              onClick={closeContactForm}
+            >
+              {t('contacts.cancel')}
+            </Button>
+            <Button type="submit" isLoading={isBusy}>
+              {editContactTarget
+                ? t('contacts.saveContact')
+                : t('contacts.createContact')}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(deleteContactTarget)}
+        onOpenChange={(open) => !open && closeDeleteDialog()}
+        title={t('contacts.deleteTitle')}
+        description={t('contacts.deleteDescription', {
+          contact: deleteContactTarget
+            ? getContactName(deleteContactTarget, t('contacts.unknown'))
+            : t('contacts.unknown'),
+        })}
+        icon={<DialogIcon icon={<Trash2 className="size-5" />} danger />}
+      >
+        <div className="grid w-full gap-4">
+          {isLoadingDeletionPreview ? (
+            <p
+              className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground"
+              role="status"
+            >
+              {t('contacts.loadingDeletionPreview')}
+            </p>
+          ) : deletionPreview ? (
+            <>
+              <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm leading-6 text-destructive">
+                {t('contacts.deleteWarning')}
+              </div>
+              <dl className="grid grid-cols-2 gap-2">
+                <DeletionImpact
+                  label={t('contacts.deletionImpact.chats')}
+                  value={deletionPreview.chats}
+                />
+                <DeletionImpact
+                  label={t('contacts.deletionImpact.messages')}
+                  value={deletionPreview.messages}
+                />
+              </dl>
+              <Input
+                autoComplete="off"
+                autoFocus
+                disabled={isBusy}
+                hint={t('contacts.deleteConfirmationHint', {
+                  confirmation: deletionPreview.confirmationText,
+                })}
+                label={t('contacts.deleteConfirmationLabel')}
+                value={deleteConfirmation}
+                onChange={(event) => setDeleteConfirmation(event.target.value)}
+              />
+            </>
+          ) : null}
+          <DialogError message={dialogError} />
+          <div className="flex justify-end gap-2 border-t pt-4">
+            <Button
+              variant="ghost"
+              disabled={isBusy}
+              onClick={closeDeleteDialog}
+            >
+              {t('contacts.cancel')}
+            </Button>
+            <Button
+              variant="danger"
+              disabled={
+                !deletionPreview ||
+                deleteConfirmation !== deletionPreview.confirmationText
+              }
+              isLoading={isBusy}
+              onClick={() => void deleteContact()}
+            >
+              {t('contacts.deleteContact')}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   )
+}
+
+function DialogIcon({
+  icon,
+  danger = false,
+}: {
+  icon: ReactNode
+  danger?: boolean
+}) {
+  return (
+    <span
+      className={cn(
+        'grid size-10 shrink-0 place-items-center rounded-xl',
+        danger
+          ? 'bg-destructive/10 text-destructive'
+          : 'bg-primary/10 text-primary',
+      )}
+      aria-hidden
+    >
+      {icon}
+    </span>
+  )
+}
+
+function DeletionImpact({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="grid rounded-xl border bg-muted/25 p-3 text-center">
+      <dt className="order-2 mt-1 text-xs text-muted-foreground">{label}</dt>
+      <dd className="order-1 text-xl font-black tabular-nums">{value}</dd>
+    </div>
+  )
+}
+
+function DialogError({ message }: { message: string | null }) {
+  return message ? (
+    <p
+      className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive"
+      role="alert"
+    >
+      {message}
+    </p>
+  ) : null
 }
 
 function ContactDetailsDialog({

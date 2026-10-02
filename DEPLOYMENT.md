@@ -146,7 +146,6 @@ yarn install --frozen-lockfile
 | `BETTER_AUTH_TRUSTED_ORIGINS` | With OIDC              | App                 | Comma-separated exact IdP discovery, token, authorization, and JWKS origins          |
 | `BETTER_AUTH_ADMIN_USER_IDS`  | No                     | App                 | Comma-separated user IDs that receive the admin role                                 |
 | `CORS_ORIGIN`                 | No                     | App                 | Exact trusted browser origin; defaults to `http://localhost:5173`                    |
-| `MCP_ALLOWED_HOSTS`           | Production             | App                 | Comma-separated public hostnames accepted by the remote MCP endpoint, without ports  |
 | `WEB_ROOT`                    | No                     | App                 | Static frontend directory; defaults to `../web/dist` from the API working directory  |
 | `WEB_PORT`                    | Compose only           | Compose             | Host port mapped to container port `8080`                                            |
 | `COMPOSE_BETTER_AUTH_URL`     | Compose only           | Compose             | Public auth URL injected as `BETTER_AUTH_URL`                                        |
@@ -355,7 +354,9 @@ The managed Redis-compatible service means additional web instances can share KV
 Render injects `DATABASE_URL`, `REDIS_URL`, and `PORT`. It generates
 `BETTER_AUTH_SECRET` and `FILES_SIGNING_SECRET`. The application entrypoint
 applies migrations on every web deployment before starting Hono; a migration
-failure prevents the service from becoming healthy.
+failure prevents the service from becoming healthy. The database boundary
+removes Render's `verifySSL` compatibility query parameter before passing the
+URL to Postgres.js while preserving supported `ssl` and `sslmode` settings.
 
 ### Render limitations
 

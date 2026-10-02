@@ -10,8 +10,8 @@ http:
     type: json
     data: |-
       {
-          "prefilled_message": "<PREFILLED_MESSAGE>",
-          "generate_qr_image": "<GENERATE_QR_IMAGE>"
+          "prefilled_message": "Hello",
+          "generate_qr_image": "SVG"
       }
   auth: inherit
 

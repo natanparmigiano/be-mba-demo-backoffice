@@ -29,7 +29,9 @@ export class WhatsAppWebhookRegistrationApiError extends Error {
     const message =
       typeof error?.message === 'string'
         ? error.message
-        : `WhatsApp Graph API request failed with status ${status}`
+        : typeof body === 'string' && body.trim()
+          ? body.trim().slice(0, 500)
+          : `WhatsApp Graph API request failed with status ${status}`
     super(message)
     this.name = 'WhatsAppWebhookRegistrationApiError'
     this.status = status

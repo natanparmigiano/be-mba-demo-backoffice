@@ -30,8 +30,6 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false
-      - key: MCP_ALLOWED_HOSTS
-        sync: false
       - key: FILES_ADAPTER
         # Demo-only fallback for a diskless Render service. Do not use the
         # PostgreSQL blob driver for production; configure S3 instead.

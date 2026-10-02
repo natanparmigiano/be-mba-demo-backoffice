@@ -66,6 +66,13 @@ composition chained in `src/app.ts`.
 | `POST`                   | `/api/playground/registration/:channelId/register`                  | Registers a channel phone number for an owner/admin                      |
 | `POST`                   | `/api/playground/registration/:channelId/two-step-pin`              | Changes a channel phone-number PIN for an owner/admin                    |
 | `POST`                   | `/api/playground/registration/:channelId/deregister`                | Deregisters a channel phone number for an owner/admin                    |
+| `POST`                   | `/api/playground/analytics/:channelId`                              | Runs WABA analytics queries or enables template analytics                |
+| `POST`                   | `/api/playground/mba/:channelId`                                    | Runs a selected Meta Business Agent client operation                     |
+| `GET`, `POST`            | `/api/playground/moderation/:channelId/*`                           | Lists, blocks, or unblocks WhatsApp users                                |
+| `GET`, `POST`, `DELETE`  | `/api/playground/subscriptions/:channelId/*`                        | Manages the channel WABA's application subscription                      |
+| `GET`, `POST`            | `/api/playground/subscriptions/:channelId/app-registration`         | Lists or registers app-level webhook fields and callback                 |
+| `GET`                    | `/api/playground/waba/:channelId/*`                                 | Retrieves WABAs or lists owned and shared accounts                       |
+| `POST`                   | `/api/playground/webhooks/:channelId/validate`                      | Validates a webhook callback through the shared WhatsApp schema          |
 | `POST`                   | `/api/playground/messaging/:channelId/send`                         | Sends a typed WhatsApp message for an owner/admin                        |
 | `POST`                   | `/api/playground/messaging/:channelId/mark-read`                    | Marks an incoming WhatsApp message as read                               |
 | `POST`                   | `/api/playground/messaging/:channelId/typing-indicator`             | Marks a message read and displays a typing indicator                     |
@@ -88,7 +95,14 @@ composition chained in `src/app.ts`.
 | `PATCH`                  | `/api/chats/:id/read`                                               | Marks the latest inbound message at Meta, then advances the local cursor |
 | `PATCH`                  | `/api/chats/:id/handoff`                                            | Transfers thread control between a human operator and the Business AI    |
 | `GET`                    | `/api/contacts`                                                     | Lists active-organization contacts with search and cursor pagination     |
-| `GET`                    | `/api/contacts/:id`                                                 | Returns read-only contact details for the active organization            |
+| `POST`                   | `/api/contacts`                                                     | Creates a contact on an organization-owned channel                       |
+| `GET`                    | `/api/contacts/:id`                                                 | Returns contact details for the active organization                      |
+| `PATCH`                  | `/api/contacts/:id`                                                 | Updates a managed contact's WhatsApp and profile fields                  |
+| `GET`                    | `/api/contacts/:id/deletion-impact`                                 | Counts direct chats and messages before contact deletion                 |
+| `DELETE`                 | `/api/contacts/:id`                                                 | Safely deletes a confirmed contact and its direct conversation data      |
+| `GET`                    | `/api/stickers`                                                     | Lists the active organization's saved sticker library                    |
+| `POST`                   | `/api/stickers`                                                     | Saves a validated WebP sticker for the active organization               |
+| `GET`                    | `/api/stickers/:id/content`                                         | Serves organization-authorized sticker bytes                             |
 | `GET`                    | `/api/groups`                                                       | Lists active-organization groups with search and cursor pagination       |
 | `GET`                    | `/api/groups/:id`                                                   | Returns read-only group details for the active organization              |
 | `POST`                   | `/api/runner/functions`                                             | Creates an organization-scoped versioned JavaScript function             |
@@ -141,8 +155,9 @@ rechecks key validity, membership, and scope before every tool call. It is
 stateless, supports the current protocol and the SDK's stateless legacy
 fallback, and delegates authorization and worker dispatch to
 `@mba-demo/runner`.
-`MCP_ALLOWED_HOSTS` supplies the comma-separated public hostnames accepted by
-the official Hono adapter and is required in production.
+The transport accepts any request host; deployments must enforce their network
+boundary, while the route continues to require a valid scoped runner API key
+on every request.
 
 MCPX export includes the pack metadata, ordered functions, and every
 immutable revision with its parameter contract and timestamp. Import uses the
@@ -194,7 +209,7 @@ The WA Cloud route accepts a positive numeric channel ID that must resolve to a 
 
 The subscriber validates the event again and persists contacts, groups, chats, messages, and message status history in one transaction. For media messages it first uses `@mba-demo/wa-media` to retrieve and authenticate the temporary provider download, then stores the bytes through `@mba-demo/files`. The resulting deterministic, UUID-sharded object key is persisted in `messages.media_file_path`. Failed webhook handling is republished to the established `wa-cloud.webhook.v1` topic with a durable retry count. After `WA_WEBHOOK_MAX_RETRIES` retries (default `5`), the complete original event and final error are published to `wa-cloud.webhook.dead-letter.v1`; successful retry or dead-letter publication lets the failed source offset commit, preventing poison messages from looping forever. Reusing the established source topic also prevents first deliveries from being skipped by a new topic's latest-offset initialization. Retry writes remain idempotent through unique indexes, and out-of-order message statuses cannot regress the current projection.
 
-Contact reads are scoped through each contact's channel to the active organization membership. The list endpoint accepts `search`, `channelId`, `limit`, and an opaque `cursor`, ordered by most recently seen contacts. Full raw provider data is returned only by the detail endpoint.
+Contact reads are scoped through each contact's channel to the active organization membership. The list endpoint accepts `search`, `channelId`, `limit`, and an opaque `cursor`, ordered by most recently seen contacts. Full raw provider data is returned only by the detail endpoint. Organization owners and admins create contacts from the WhatsApp ID and optional profile fields; creation also creates the direct chat in the same transaction. Managed contacts can be updated without knowing Meta's optional user ID. Webhook ingestion resolves WhatsApp ID first, so later provider traffic enriches the existing managed row and reuses its chat. Deletion requires reviewing the direct-chat impact and typing the WhatsApp ID, then transactionally removes the direct chat, events, messages, and status history; group-message sender references are cleared before the contact is removed.
 
 Agent status and eligibility reads resolve the owned channel's phone-number ID
 and system-user access token on the server and query `@mba-demo/wa-mba`. An

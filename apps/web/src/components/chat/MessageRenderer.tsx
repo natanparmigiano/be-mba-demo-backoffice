@@ -29,6 +29,7 @@ import {
   Phone,
   Play,
   Sparkles,
+  Sticker as StickerIcon,
   SmilePlus,
   Volume2,
   X,
@@ -55,6 +56,7 @@ import type {
   LocationMessage,
   LocationRequestMessage,
   MessageStatus,
+  StickerMessage,
   UrlButtonMessage,
   VoiceMessage,
 } from './types'
@@ -63,11 +65,13 @@ export function MessageRow({
   message,
   onAction,
   onReact,
+  onSaveSticker,
   incomingAvatarName,
 }: {
   message: ChatMessage
   onAction: (label: string) => void
   onReact?: (providerMessageId: string, emoji: string) => Promise<void>
+  onSaveSticker?: (message: StickerMessage) => Promise<void>
   incomingAvatarName?: string
 }) {
   const { t } = useTranslation()
@@ -80,9 +84,12 @@ export function MessageRow({
   const isSticker = message.type === 'sticker'
   const senderName = message.senderName ?? incomingAvatarName
   const canReact = Boolean(message.providerMessageId && onReact)
+  const canSaveSticker =
+    isSticker && message.direction === 'incoming' && Boolean(onSaveSticker)
+  const hasMessageActions = canReact || canSaveSticker
 
   const openReactionMenu = (x: number, y: number) => {
-    if (!canReact) return
+    if (!hasMessageActions) return
     setReactionMenuPoint({ x, y })
   }
 
@@ -92,18 +99,18 @@ export function MessageRow({
       className={cn(
         'flex items-end gap-2 outline-none',
         isOutgoing && 'justify-end',
-        canReact && 'focus-visible:ring-2 focus-visible:ring-ring/30',
+        hasMessageActions && 'focus-visible:ring-2 focus-visible:ring-ring/30',
       )}
-      tabIndex={canReact ? 0 : undefined}
-      aria-haspopup={canReact ? 'menu' : undefined}
+      tabIndex={hasMessageActions ? 0 : undefined}
+      aria-haspopup={hasMessageActions ? 'menu' : undefined}
       onContextMenu={(event) => {
-        if (!canReact) return
+        if (!hasMessageActions) return
         event.preventDefault()
         openReactionMenu(event.clientX, event.clientY)
       }}
       onKeyDown={(event) => {
         if (
-          !canReact ||
+          !hasMessageActions ||
           (event.key !== 'ContextMenu' &&
             !(event.shiftKey && event.key === 'F10'))
         ) {
@@ -141,7 +148,7 @@ export function MessageRow({
         </div>
         {isSticker && <MessageMeta message={message} />}
       </div>
-      {reactionMenuPoint && message.providerMessageId && onReact
+      {reactionMenuPoint && hasMessageActions
         ? createPortal(
             <MessageReactionMenu
               point={reactionMenuPoint}
@@ -149,7 +156,19 @@ export function MessageRow({
                 setReactionMenuPoint(null)
                 rowRef.current?.focus()
               }}
-              onReact={(emoji) => onReact(message.providerMessageId!, emoji)}
+              onReact={
+                message.providerMessageId && onReact
+                  ? (emoji) => onReact(message.providerMessageId!, emoji)
+                  : undefined
+              }
+              onSaveSticker={
+                isSticker && onSaveSticker
+                  ? async () => {
+                      await onSaveSticker(message)
+                      onAction(t('chat.stickerSaved'))
+                    }
+                  : undefined
+              }
             />,
             document.body,
           )
@@ -162,10 +181,12 @@ function MessageReactionMenu({
   point,
   onClose,
   onReact,
+  onSaveSticker,
 }: {
   point: { x: number; y: number }
   onClose: () => void
-  onReact: (emoji: string) => Promise<void>
+  onReact?: (emoji: string) => Promise<void>
+  onSaveSticker?: () => Promise<void>
 }) {
   const { t } = useTranslation()
   const rootRef = useRef<HTMLDivElement>(null)
@@ -203,7 +224,7 @@ function MessageReactionMenu({
   }, [onClose])
 
   const sendReaction = async (emoji: string) => {
-    if (sending) return
+    if (sending || !onReact) return
     setSending(true)
     setError(null)
     try {
@@ -217,13 +238,28 @@ function MessageReactionMenu({
     }
   }
 
+  const saveSticker = async () => {
+    if (sending || !onSaveSticker) return
+    setSending(true)
+    setError(null)
+    try {
+      await onSaveSticker()
+      onClose()
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : t('chat.stickerSaveFailed'),
+      )
+      setSending(false)
+    }
+  }
+
   return (
     <div
       ref={rootRef}
       className="fixed z-[100]"
       style={{ left: position.x, top: position.y }}
     >
-      {showPicker ? (
+      {showPicker && onReact ? (
         <div role="dialog" aria-label={t('chat.chooseReaction')}>
           {error && (
             <p
@@ -241,15 +277,29 @@ function MessageReactionMenu({
           aria-label={t('chat.messageActions')}
           className="min-w-44 rounded-xl border bg-card p-1.5 text-card-foreground shadow-xl"
         >
-          <button
-            type="button"
-            role="menuitem"
-            className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
-            onClick={() => setShowPicker(true)}
-          >
-            <SmilePlus className="size-4" aria-hidden />
-            {t('chat.reactToMessage')}
-          </button>
+          {onReact && (
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+              onClick={() => setShowPicker(true)}
+            >
+              <SmilePlus className="size-4" aria-hidden />
+              {t('chat.reactToMessage')}
+            </button>
+          )}
+          {onSaveSticker && (
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+              disabled={sending}
+              onClick={() => void saveSticker()}
+            >
+              <StickerIcon className="size-4" aria-hidden />
+              {t('chat.saveSticker')}
+            </button>
+          )}
         </div>
       )}
       {sending && (

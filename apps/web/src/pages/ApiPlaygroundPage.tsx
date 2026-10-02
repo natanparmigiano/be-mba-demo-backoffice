@@ -15,11 +15,17 @@ import {
   type PlaygroundOperationState as OperationState,
 } from '../components/api-playground/PlaygroundOperationCard'
 import { MessagingPlayground } from './ApiPlaygroundMessaging'
+import { AnalyticsPlayground } from './ApiPlaygroundAnalytics'
 import { MediaPlayground } from './ApiPlaygroundMedia'
 import { QrPlayground } from './ApiPlaygroundQr'
 import { ComponentsPlayground } from './ApiPlaygroundComponents'
 import { FlowsPlayground } from './ApiPlaygroundFlows'
 import { TemplatesPlayground } from './ApiPlaygroundTemplates'
+import { MbaPlayground } from './ApiPlaygroundMba'
+import { ModerationPlayground } from './ApiPlaygroundModeration'
+import { SubscriptionsPlayground } from './ApiPlaygroundSubscriptions'
+import { WabaPlayground } from './ApiPlaygroundWaba'
+import { WebhooksPlayground } from './ApiPlaygroundWebhooks'
 import { Button, Checkbox, cn, Input, Select, Tabs } from '../components/ui'
 
 type ChannelsResponse = InferResponseType<
@@ -35,13 +41,19 @@ type OperationKey =
   | 'twoStepPin'
   | 'deregister'
 type PackageTab =
+  | 'analytics'
   | 'registration'
   | 'messaging'
   | 'media'
+  | 'mba'
+  | 'moderation'
   | 'qr'
   | 'components'
   | 'flows'
   | 'templates'
+  | 'subscriptions'
+  | 'waba'
+  | 'webhooks'
 
 const initialOperationStates: Record<OperationKey, OperationState> = {
   phoneNumber: { status: 'idle' },
@@ -387,6 +399,30 @@ export function ApiPlaygroundPage() {
             value: 'templates',
             label: t('apiPlayground.templates.tab'),
           },
+          {
+            value: 'analytics',
+            label: t('apiPlayground.analytics.tab'),
+          },
+          {
+            value: 'moderation',
+            label: t('apiPlayground.moderation.tab'),
+          },
+          {
+            value: 'subscriptions',
+            label: t('apiPlayground.subscriptions.tab'),
+          },
+          {
+            value: 'waba',
+            label: t('apiPlayground.waba.tab'),
+          },
+          {
+            value: 'webhooks',
+            label: t('apiPlayground.webhooks.tab'),
+          },
+          {
+            value: 'mba',
+            label: t('apiPlayground.mba.tab'),
+          },
         ]}
         value={activeTab}
         onValueChange={setActiveTab}
@@ -713,8 +749,39 @@ export function ApiPlaygroundPage() {
           channelId={selectedChannelId}
           mutationDisabled={mutationDisabled}
         />
-      ) : (
+      ) : activeTab === 'templates' ? (
         <TemplatesPlayground
+          key={selectedChannelId}
+          channelId={selectedChannelId}
+          mutationDisabled={mutationDisabled}
+        />
+      ) : activeTab === 'analytics' ? (
+        <AnalyticsPlayground
+          key={selectedChannelId}
+          channelId={selectedChannelId}
+          mutationDisabled={mutationDisabled}
+        />
+      ) : activeTab === 'moderation' ? (
+        <ModerationPlayground
+          key={selectedChannelId}
+          channelId={selectedChannelId}
+          mutationDisabled={mutationDisabled}
+        />
+      ) : activeTab === 'subscriptions' ? (
+        <SubscriptionsPlayground
+          key={selectedChannelId}
+          channelId={selectedChannelId}
+          mutationDisabled={mutationDisabled}
+        />
+      ) : activeTab === 'waba' ? (
+        <WabaPlayground key={selectedChannelId} channelId={selectedChannelId} />
+      ) : activeTab === 'webhooks' ? (
+        <WebhooksPlayground
+          key={selectedChannelId}
+          channelId={selectedChannelId}
+        />
+      ) : (
+        <MbaPlayground
           key={selectedChannelId}
           channelId={selectedChannelId}
           mutationDisabled={mutationDisabled}

@@ -21,19 +21,28 @@ export function getDatabaseUrl(
   }
 
   const databaseUrl = configuredUrl || DEVELOPMENT_DATABASE_URL
-  let protocol: string
+  let parsedUrl: URL
 
   try {
-    protocol = new URL(databaseUrl).protocol
+    parsedUrl = new URL(databaseUrl)
   } catch {
     throw new Error('DATABASE_URL must be a valid PostgreSQL URL')
   }
 
-  if (protocol !== 'postgres:' && protocol !== 'postgresql:') {
+  if (
+    parsedUrl.protocol !== 'postgres:' &&
+    parsedUrl.protocol !== 'postgresql:'
+  ) {
     throw new Error(
       'DATABASE_URL must use the postgres:// or postgresql:// protocol',
     )
   }
 
-  return databaseUrl
+  for (const parameter of [...parsedUrl.searchParams.keys()]) {
+    if (parameter.toLowerCase() === 'verifyssl') {
+      parsedUrl.searchParams.delete(parameter)
+    }
+  }
+
+  return parsedUrl.href
 }

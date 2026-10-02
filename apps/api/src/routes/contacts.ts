@@ -1,7 +1,26 @@
 import { auth } from '@mba-demo/auth'
-import { channels, contacts, db, member } from '@mba-demo/db'
+import {
+  channels,
+  chatEvents,
+  chats,
+  contacts,
+  db,
+  member,
+  messages,
+  messageStatusEvents,
+} from '@mba-demo/db'
 import { zValidator } from '@hono/zod-validator'
-import { and, desc, eq, ilike, lt, or, type SQL } from 'drizzle-orm'
+import {
+  and,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  lt,
+  or,
+  type SQL,
+} from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
 
@@ -25,8 +44,26 @@ const contactCursorSchema = z.object({
   lastSeenAt: z.string().datetime({ offset: true }),
 })
 
+const optionalText = z.string().trim().max(500).optional()
+const createContactSchema = z.object({
+  channelId: z.number().int().positive(),
+  waId: z.string().trim().min(1).max(500),
+  profileName: optionalText,
+  profileUsername: optionalText,
+})
+const updateContactSchema = createContactSchema
+  .omit({ channelId: true })
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one contact field is required',
+  })
+const deleteContactSchema = z.object({
+  confirmation: z.string().trim().min(1).max(500),
+})
+
 interface OrganizationAccess {
   organizationId: string
+  role: string
 }
 
 interface ContactCursor {
@@ -67,6 +104,23 @@ interface ContactListResult {
   nextCursor: string | null
 }
 
+type CreateContactInput = z.infer<typeof createContactSchema>
+type UpdateContactInput = z.infer<typeof updateContactSchema>
+
+export interface ContactDeletionPreview {
+  confirmationText: string
+  chats: number
+  messages: number
+}
+
+type ContactDeletionResult =
+  | {
+      status: 'deleted'
+      impact: Omit<ContactDeletionPreview, 'confirmationText'>
+    }
+  | { status: 'confirmation_mismatch' }
+  | { status: 'not_found' }
+
 export interface ContactsRepository {
   list: (
     organizationId: string,
@@ -76,6 +130,24 @@ export interface ContactsRepository {
     organizationId: string,
     contactId: number,
   ) => Promise<ContactDetail | undefined>
+  create: (
+    organizationId: string,
+    input: CreateContactInput,
+  ) => Promise<ContactDetail | undefined>
+  update: (
+    organizationId: string,
+    contactId: number,
+    input: UpdateContactInput,
+  ) => Promise<ContactDetail | undefined>
+  getDeletionPreview: (
+    organizationId: string,
+    contactId: number,
+  ) => Promise<ContactDeletionPreview | undefined>
+  delete: (
+    organizationId: string,
+    contactId: number,
+    confirmation: string,
+  ) => Promise<ContactDeletionResult>
 }
 
 export interface ContactsRouteOptions {
@@ -86,6 +158,10 @@ export interface ContactsRouteOptions {
 const databaseRepository: ContactsRepository = {
   list: listContacts,
   get: getContact,
+  create: createContact,
+  update: updateContact,
+  getDeletionPreview: getContactDeletionPreview,
+  delete: deleteContact,
 }
 
 export const createContactsRoute = ({
@@ -93,6 +169,44 @@ export const createContactsRoute = ({
   repository = databaseRepository,
 }: ContactsRouteOptions = {}) =>
   new Hono()
+    .post(
+      '/',
+      zValidator('json', createContactSchema, (result, c) => {
+        if (!result.success) {
+          return c.json({ message: 'Invalid contact' }, 400)
+        }
+      }),
+      async (c) => {
+        const access = await getAccess(c.req.raw.headers)
+        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        if (!canManageContacts(access.role)) {
+          return c.json(
+            { message: 'Organization owner or admin required' },
+            403,
+          )
+        }
+
+        try {
+          const contact = await repository.create(
+            access.organizationId,
+            c.req.valid('json'),
+          )
+          if (!contact) return c.json({ message: 'Channel not found' }, 404)
+          return c.json({ contact }, 201)
+        } catch (error) {
+          if (getDatabaseErrorCode(error) === '23505') {
+            return c.json(
+              {
+                message:
+                  'A contact already uses this WhatsApp ID on the channel',
+              },
+              409,
+            )
+          }
+          throw error
+        }
+      },
+    )
     .get(
       '/',
       zValidator('query', listContactsQuerySchema, (result, c) => {
@@ -122,6 +236,21 @@ export const createContactsRoute = ({
         )
       },
     )
+    .get('/:id/deletion-impact', async (c) => {
+      const contactId = parsePositiveSafeInteger(c.req.param('id'))
+      if (!contactId) return c.json({ message: 'Invalid contact ID' }, 400)
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      if (!canManageContacts(access.role)) {
+        return c.json({ message: 'Organization owner or admin required' }, 403)
+      }
+      const impact = await repository.getDeletionPreview(
+        access.organizationId,
+        contactId,
+      )
+      if (!impact) return c.json({ message: 'Contact not found' }, 404)
+      return c.json({ impact })
+    })
     .get('/:id', async (c) => {
       const contactId = parsePositiveSafeInteger(c.req.param('id'))
       if (!contactId) return c.json({ message: 'Invalid contact ID' }, 400)
@@ -133,6 +262,89 @@ export const createContactsRoute = ({
       if (!contact) return c.json({ message: 'Contact not found' }, 404)
       return c.json({ contact })
     })
+    .patch(
+      '/:id',
+      zValidator('json', updateContactSchema, (result, c) => {
+        if (!result.success) return c.json({ message: 'Invalid contact' }, 400)
+      }),
+      async (c) => {
+        const contactId = parsePositiveSafeInteger(c.req.param('id'))
+        if (!contactId) return c.json({ message: 'Invalid contact ID' }, 400)
+        const access = await getAccess(c.req.raw.headers)
+        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        if (!canManageContacts(access.role)) {
+          return c.json(
+            { message: 'Organization owner or admin required' },
+            403,
+          )
+        }
+        try {
+          const contact = await repository.update(
+            access.organizationId,
+            contactId,
+            c.req.valid('json'),
+          )
+          if (!contact) return c.json({ message: 'Contact not found' }, 404)
+          return c.json({ contact })
+        } catch (error) {
+          if (getDatabaseErrorCode(error) === '23505') {
+            return c.json(
+              {
+                message:
+                  'A contact already uses this WhatsApp ID on the channel',
+              },
+              409,
+            )
+          }
+          throw error
+        }
+      },
+    )
+    .delete(
+      '/:id',
+      zValidator('json', deleteContactSchema, (result, c) => {
+        if (!result.success) {
+          return c.json({ message: 'Invalid contact deletion request' }, 400)
+        }
+      }),
+      async (c) => {
+        const contactId = parsePositiveSafeInteger(c.req.param('id'))
+        if (!contactId) return c.json({ message: 'Invalid contact ID' }, 400)
+        const access = await getAccess(c.req.raw.headers)
+        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        if (!canManageContacts(access.role)) {
+          return c.json(
+            { message: 'Organization owner or admin required' },
+            403,
+          )
+        }
+        try {
+          const result = await repository.delete(
+            access.organizationId,
+            contactId,
+            c.req.valid('json').confirmation,
+          )
+          if (result.status === 'not_found') {
+            return c.json({ message: 'Contact not found' }, 404)
+          }
+          if (result.status === 'confirmation_mismatch') {
+            return c.json(
+              { message: 'Contact confirmation did not match' },
+              400,
+            )
+          }
+          return c.json({ deleted: true as const, impact: result.impact })
+        } catch (error) {
+          if (getDatabaseErrorCode(error) === '23503') {
+            return c.json(
+              { message: 'Contact data could not be fully deleted' },
+              409,
+            )
+          }
+          throw error
+        }
+      },
+    )
 
 async function listContacts(
   organizationId: string,
@@ -242,6 +454,218 @@ async function getContact(
     : undefined
 }
 
+async function createContact(
+  organizationId: string,
+  input: CreateContactInput,
+): Promise<ContactDetail | undefined> {
+  const createdId = await db.transaction(async (transaction) => {
+    const [channel] = await transaction
+      .select({ id: channels.id })
+      .from(channels)
+      .where(
+        and(
+          eq(channels.id, input.channelId),
+          eq(channels.organizationId, organizationId),
+        ),
+      )
+      .limit(1)
+    if (!channel) return undefined
+
+    const [created] = await transaction
+      .insert(contacts)
+      .values({
+        channelId: input.channelId,
+        waId: input.waId,
+        input: input.waId,
+        profileName: input.profileName || null,
+        profileUsername: input.profileUsername || null,
+        rawContact: buildManagedRawContact(input),
+      })
+      .returning({ id: contacts.id })
+    if (!created) throw new Error('Failed to create contact')
+    await transaction.insert(chats).values({
+      kind: 'direct',
+      channelId: input.channelId,
+      organizationId,
+      contactId: created.id,
+    })
+    return created.id
+  })
+  return createdId ? getContact(organizationId, createdId) : undefined
+}
+
+async function updateContact(
+  organizationId: string,
+  contactId: number,
+  input: UpdateContactInput,
+): Promise<ContactDetail | undefined> {
+  const [existing] = await db
+    .select({
+      waId: contacts.waId,
+      profileName: contacts.profileName,
+      profileUsername: contacts.profileUsername,
+    })
+    .from(contacts)
+    .innerJoin(channels, eq(contacts.channelId, channels.id))
+    .where(
+      and(
+        eq(contacts.id, contactId),
+        eq(channels.organizationId, organizationId),
+      ),
+    )
+    .limit(1)
+  if (!existing) return undefined
+
+  const waId = input.waId ?? existing.waId
+  if (!waId) return undefined
+  await db
+    .update(contacts)
+    .set({
+      ...(input.waId === undefined
+        ? {}
+        : { waId: input.waId, input: input.waId }),
+      ...(input.profileName === undefined
+        ? {}
+        : { profileName: input.profileName || null }),
+      ...(input.profileUsername === undefined
+        ? {}
+        : { profileUsername: input.profileUsername || null }),
+      rawContact: buildManagedRawContact({
+        waId,
+        profileName: input.profileName ?? existing.profileName ?? undefined,
+        profileUsername:
+          input.profileUsername ?? existing.profileUsername ?? undefined,
+      }),
+      lastSeenAt: new Date(),
+    })
+    .where(eq(contacts.id, contactId))
+  return getContact(organizationId, contactId)
+}
+
+function buildManagedRawContact(input: {
+  waId: string
+  profileName?: string
+  profileUsername?: string
+}) {
+  return {
+    input: input.waId,
+    wa_id: input.waId,
+    ...(input.profileName || input.profileUsername
+      ? {
+          profile: {
+            ...(input.profileName ? { name: input.profileName } : {}),
+            ...(input.profileUsername
+              ? { username: input.profileUsername }
+              : {}),
+          },
+        }
+      : {}),
+  }
+}
+
+async function getContactDeletionPreview(
+  organizationId: string,
+  contactId: number,
+): Promise<ContactDeletionPreview | undefined> {
+  const [contact] = await db
+    .select({ waId: contacts.waId, userId: contacts.userId })
+    .from(contacts)
+    .innerJoin(channels, eq(contacts.channelId, channels.id))
+    .where(
+      and(
+        eq(contacts.id, contactId),
+        eq(channels.organizationId, organizationId),
+      ),
+    )
+    .limit(1)
+  if (!contact) return undefined
+  const [chatTotal] = await db
+    .select({ value: count() })
+    .from(chats)
+    .where(eq(chats.contactId, contactId))
+  const contactChatIds = db
+    .select({ id: chats.id })
+    .from(chats)
+    .where(eq(chats.contactId, contactId))
+  const [messageTotal] = await db
+    .select({ value: count() })
+    .from(messages)
+    .where(inArray(messages.chatId, contactChatIds))
+  return {
+    confirmationText: contact.waId ?? contact.userId ?? String(contactId),
+    chats: chatTotal?.value ?? 0,
+    messages: messageTotal?.value ?? 0,
+  }
+}
+
+async function deleteContact(
+  organizationId: string,
+  contactId: number,
+  confirmation: string,
+): Promise<ContactDeletionResult> {
+  return db.transaction(async (transaction) => {
+    const [contact] = await transaction
+      .select({ id: contacts.id, waId: contacts.waId, userId: contacts.userId })
+      .from(contacts)
+      .innerJoin(channels, eq(contacts.channelId, channels.id))
+      .where(
+        and(
+          eq(contacts.id, contactId),
+          eq(channels.organizationId, organizationId),
+        ),
+      )
+      .limit(1)
+      .for('update')
+    if (!contact) return { status: 'not_found' as const }
+    const confirmationText = contact.waId ?? contact.userId ?? String(contactId)
+    if (confirmation !== confirmationText)
+      return { status: 'confirmation_mismatch' as const }
+
+    const contactChatIds = transaction
+      .select({ id: chats.id })
+      .from(chats)
+      .where(eq(chats.contactId, contactId))
+    const contactMessageIds = transaction
+      .select({ id: messages.id })
+      .from(messages)
+      .where(inArray(messages.chatId, contactChatIds))
+    const [messageTotal] = await transaction
+      .select({ value: count() })
+      .from(messages)
+      .where(inArray(messages.chatId, contactChatIds))
+    const [chatTotal] = await transaction
+      .select({ value: count() })
+      .from(chats)
+      .where(eq(chats.contactId, contactId))
+    await transaction
+      .delete(messageStatusEvents)
+      .where(inArray(messageStatusEvents.messageId, contactMessageIds))
+    await transaction
+      .delete(chatEvents)
+      .where(inArray(chatEvents.chatId, contactChatIds))
+    await transaction
+      .update(chats)
+      .set({ latestMessageId: null, latestReadMessageId: null })
+      .where(eq(chats.contactId, contactId))
+    await transaction
+      .delete(messages)
+      .where(inArray(messages.chatId, contactChatIds))
+    await transaction.delete(chats).where(eq(chats.contactId, contactId))
+    await transaction
+      .update(messages)
+      .set({ contactId: null })
+      .where(eq(messages.contactId, contactId))
+    await transaction.delete(contacts).where(eq(contacts.id, contactId))
+    return {
+      status: 'deleted' as const,
+      impact: {
+        chats: chatTotal?.value ?? 0,
+        messages: messageTotal?.value ?? 0,
+      },
+    }
+  })
+}
+
 function toContactSummary(row: {
   id: number
   channelId: number
@@ -276,7 +700,7 @@ async function getOrganizationAccess(
   if (!session || !organizationId) return undefined
 
   const [membership] = await db
-    .select({ id: member.id })
+    .select({ role: member.role })
     .from(member)
     .where(
       and(
@@ -286,7 +710,20 @@ async function getOrganizationAccess(
     )
     .limit(1)
 
-  return membership ? { organizationId } : undefined
+  return membership ? { organizationId, role: membership.role } : undefined
+}
+
+function canManageContacts(role: string): boolean {
+  return role
+    .split(',')
+    .map((value) => value.trim())
+    .some((value) => value === 'owner' || value === 'admin')
+}
+
+function getDatabaseErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('code' in error))
+    return undefined
+  return typeof error.code === 'string' ? error.code : undefined
 }
 
 export function encodeContactCursor(cursor: ContactCursor): string {

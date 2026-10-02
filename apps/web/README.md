@@ -48,26 +48,26 @@ The build command runs TypeScript project validation before creating the product
 
 ## Routes
 
-| Path                                  | Classification | Behavior                                                                                              |
-| ------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------- |
-| `/design-system`                      | Public         | Available with or without a session.                                                                  |
-| `/login`                              | Guest          | Redirects authenticated users to `/`.                                                                 |
-| `/`                                   | Private        | Shows a channel-scoped WhatsApp and Business Agent overview with feature shortcuts.                   |
-| `/chat`                               | Private        | Displays cursor-paginated organization chats and message/event timelines.                             |
-| `/chat/:chatId`                       | Private        | Opens a tenant-authorized chat directly while retaining the paginated inbox.                          |
-| `/organization`                       | Private        | Manages organizations, invitations, and members.                                                      |
-| `/agents`                             | Private        | Displays organization channels available for agent configuration.                                     |
-| `/agents/:id`                         | Private        | Manages agent configuration, backups, AGTX export, and reviewed AGTX import.                          |
-| `/agents/:id/connectors/:connectorId` | Private        | Creates or edits a connector, its tools, and recent logs.                                             |
-| `/channels`                           | Private        | Manages WhatsApp channels and webhook forwarding.                                                     |
-| `/contacts`                           | Private        | Searches and filters cursor-paginated organization contacts.                                          |
-| `/groups`                             | Private        | Searches and filters cursor-paginated WhatsApp groups.                                                |
-| `/functions`                          | Private        | Manages active-organization JavaScript functions, revisions, and parameters.                          |
-| `/mcps`                               | Private        | Manages MCP membership and reviewed MCPX package export/import.                                       |
-| `/api-keys`                           | Private        | Manages organization API keys and their function/MCP scopes.                                          |
-| `/api-playground`                     | Private        | Runs registration, messaging, media, QR-code, component, Flow, and template operations for a channel. |
-| `/admin`                              | Admin          | Manages application users, roles, bans, credentials, and sessions.                                    |
-| Any other path                        | Fallback       | Redirects to `/`, after which the private guard applies.                                              |
+| Path                                  | Classification | Behavior                                                                            |
+| ------------------------------------- | -------------- | ----------------------------------------------------------------------------------- |
+| `/design-system`                      | Public         | Available with or without a session.                                                |
+| `/login`                              | Guest          | Redirects authenticated users to `/`.                                               |
+| `/`                                   | Private        | Shows a channel-scoped WhatsApp and Business Agent overview with feature shortcuts. |
+| `/chat`                               | Private        | Displays cursor-paginated organization chats and message/event timelines.           |
+| `/chat/:chatId`                       | Private        | Opens a tenant-authorized chat directly while retaining the paginated inbox.        |
+| `/organization`                       | Private        | Manages organizations, invitations, and members.                                    |
+| `/agents`                             | Private        | Displays organization channels available for agent configuration.                   |
+| `/agents/:id`                         | Private        | Manages agent configuration, backups, AGTX export, and reviewed AGTX import.        |
+| `/agents/:id/connectors/:connectorId` | Private        | Creates or edits a connector, its tools, and recent logs.                           |
+| `/channels`                           | Private        | Manages WhatsApp channels and webhook forwarding.                                   |
+| `/contacts`                           | Private        | Searches contacts; owners/admins can create and safely delete them.                 |
+| `/groups`                             | Private        | Searches and filters cursor-paginated WhatsApp groups.                              |
+| `/functions`                          | Private        | Manages active-organization JavaScript functions, revisions, and parameters.        |
+| `/mcps`                               | Private        | Manages MCP membership and reviewed MCPX package export/import.                     |
+| `/api-keys`                           | Private        | Manages organization API keys and their function/MCP scopes.                        |
+| `/api-playground`                     | Private        | Runs all WhatsApp library operations and validates webhook payloads for a channel.  |
+| `/admin`                              | Admin          | Manages application users, roles, bans, credentials, and sessions.                  |
+| Any other path                        | Fallback       | Redirects to `/`, after which the private guard applies.                            |
 
 See [`src/router/README.md`](src/router/README.md) for route and guard details.
 
@@ -102,6 +102,10 @@ The main frontend areas are:
 `src/api.ts` creates a Hono RPC client with `hc<AppType>('/')`. The `AppType` import comes from the `@mba-demo/api` workspace, so request paths and response types are derived from the backend contract.
 
 Better Auth uses the current browser origin. In development, Vite proxies its `/api` calls to the API process. Keep browser-facing calls relative rather than hard-coding an API host unless deployment requirements change.
+
+The chat emoji picker also exposes the active organization's sticker library.
+New and saved received stickers are normalized to WhatsApp-compatible WebP in
+the browser before the relative `/api/stickers` upload.
 
 ## Styling, theme, and brand
 

@@ -73,6 +73,42 @@ describe('WhatsAppWebhookRegistrationClient', () => {
     assert.equal(body.get('access_token'), 'app/id|app-secret')
   })
 
+  it('lists the fields currently registered for the app', async () => {
+    const requests: RecordedRequest[] = []
+    const fetch: WebhookRegistrationFetch = async (input, init) => {
+      requests.push({ input, init })
+      return response({
+        data: [
+          {
+            object: 'whatsapp_business_account',
+            callback_url: 'https://app.example.com/webhook',
+            active: true,
+            fields: [
+              { name: 'messages', version: 'v26.0' },
+              { name: 'phone_number_quality_update', version: 'v26.0' },
+            ],
+          },
+        ],
+      })
+    }
+    const client = createWhatsAppWebhookRegistrationClient({
+      appId: 'app-id',
+      appSecret: 'app-secret',
+      graphApiBaseUrl: 'http://graph.test',
+      fetch,
+    })
+
+    assert.deepEqual((await client.list()).data[0]?.fields, [
+      { name: 'messages', version: 'v26.0' },
+      { name: 'phone_number_quality_update', version: 'v26.0' },
+    ])
+    assert.equal(requests[0]?.init?.method, 'GET')
+    assert.equal(
+      requestUrl(requests[0]).searchParams.get('access_token'),
+      'app-id|app-secret',
+    )
+  })
+
   it('validates inputs before making a request', async () => {
     let calls = 0
     const fetch: WebhookRegistrationFetch = async () => {
@@ -143,6 +179,30 @@ describe('WhatsAppWebhookRegistrationClient', () => {
     await assert.rejects(
       client.register(input),
       WhatsAppWebhookRegistrationResponseError,
+    )
+  })
+
+  it('preserves the status of a non-JSON Graph error', async () => {
+    const client = createWhatsAppWebhookRegistrationClient({
+      appId: 'app-id',
+      appSecret: 'app-secret',
+      fetch: async () =>
+        new Response('Callback validation failed', { status: 433 }),
+    })
+
+    await assert.rejects(
+      client.register({
+        callbackUrl: 'https://app.example.com/webhook',
+        verifyToken: 'verify-secret',
+        fields: ['messages'],
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof WhatsAppWebhookRegistrationApiError)
+        assert.equal(error.status, 433)
+        assert.equal(error.body, 'Callback validation failed')
+        assert.equal(error.message, 'Callback validation failed')
+        return true
+      },
     )
   })
 })
