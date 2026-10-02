@@ -27,6 +27,7 @@ COPY lib/whatsapp/media/package.json ./lib/whatsapp/media/package.json
 COPY lib/whatsapp/messaging/package.json ./lib/whatsapp/messaging/package.json
 COPY lib/whatsapp/moderation/package.json ./lib/whatsapp/moderation/package.json
 COPY lib/whatsapp/flows/package.json ./lib/whatsapp/flows/package.json
+COPY lib/whatsapp/marketing/package.json ./lib/whatsapp/marketing/package.json
 COPY lib/whatsapp/qr/package.json ./lib/whatsapp/qr/package.json
 COPY lib/whatsapp/registration/package.json ./lib/whatsapp/registration/package.json
 COPY lib/whatsapp/subscriptions/package.json ./lib/whatsapp/subscriptions/package.json
@@ -74,6 +75,7 @@ COPY --from=build --chown=node:node /app/lib/whatsapp/media/dist/ ./lib/whatsapp
 COPY --from=build --chown=node:node /app/lib/whatsapp/messaging/dist/ ./lib/whatsapp/messaging/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/moderation/dist/ ./lib/whatsapp/moderation/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/flows/dist/ ./lib/whatsapp/flows/dist/
+COPY --from=build --chown=node:node /app/lib/whatsapp/marketing/dist/ ./lib/whatsapp/marketing/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/qr/dist/ ./lib/whatsapp/qr/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/registration/dist/ ./lib/whatsapp/registration/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/subscriptions/dist/ ./lib/whatsapp/subscriptions/dist/
