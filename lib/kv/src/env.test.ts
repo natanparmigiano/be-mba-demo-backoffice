@@ -3,7 +3,7 @@ import { describe, it } from 'node:test'
 import { getKeyValueConfiguration, getRedisUrl } from './env.js'
 
 describe('KV environment', () => {
-  it('selects memory mode when REDIS_URL is absent', () => {
+  it('returns no Redis URL when REDIS_URL is absent', () => {
     assert.equal(getRedisUrl({}), undefined)
     assert.equal(getRedisUrl({ REDIS_URL: '  ' }), undefined)
   })
@@ -32,8 +32,8 @@ describe('KV environment', () => {
 })
 
 describe('KV adapter configuration', () => {
-  it('preserves automatic Redis and memory selection', () => {
-    assert.deepEqual(getKeyValueConfiguration({}), { adapter: 'memory' })
+  it('uses Postgres by default and Redis when configured', () => {
+    assert.deepEqual(getKeyValueConfiguration({}), { adapter: 'postgres' })
     assert.deepEqual(
       getKeyValueConfiguration({ REDIS_URL: 'redis://localhost:6379' }),
       { adapter: 'redis', redisUrl: 'redis://localhost:6379' },
@@ -43,6 +43,12 @@ describe('KV adapter configuration', () => {
   it('supports an explicit Postgres adapter', () => {
     assert.deepEqual(getKeyValueConfiguration({ KV_ADAPTER: 'postgres' }), {
       adapter: 'postgres',
+    })
+  })
+
+  it('supports explicit memory mode', () => {
+    assert.deepEqual(getKeyValueConfiguration({ KV_ADAPTER: 'memory' }), {
+      adapter: 'memory',
     })
   })
 

@@ -15,17 +15,16 @@ delivery.
 | Simple Compose    | Fastest self-contained demo                                   | One `app` container                   | Compose container       | Process memory           | Process memory           | Filesystem volume      |
 | Full Compose      | Testing the production process split locally                  | `app` and `worker` containers         | Compose container       | Redis container          | Kafka container          | MinIO                  |
 | Render Blueprint  | Small hosted demo                                             | One Render web service                | Managed Render database | Managed Render Key Value | Process memory           | Render persistent disk |
-| Generic Docker    | Kubernetes, ECS, another PaaS, or manually managed containers | One or more `app`/`worker` containers | External service        | Memory or external Redis | Memory or external Kafka | Filesystem or S3       |
+| Generic Docker    | Kubernetes, ECS, another PaaS, or manually managed containers | One or more `app`/`worker` containers | External service        | PostgreSQL or Redis      | Memory or external Kafka | Filesystem or S3       |
 
 All modes use PostgreSQL as the authoritative data store. Redis provides
 secondary auth and KV state; it does not replace PostgreSQL. Kafka is the only
 included event adapter that connects separate publisher and subscriber
 processes.
 
-Do not horizontally scale a memory-backed deployment. With `REDIS_URL`, every
-application instance shares one atomic keyspace, TTLs, counters, and auth
-secondary state. Without Redis, every instance has an independent in-memory KV
-store.
+Do not horizontally scale an explicitly memory-backed deployment. By default,
+application instances share PostgreSQL KV; `REDIS_URL` selects Redis instead.
+Both provide shared atomic keys, TTLs, counters, and auth secondary state.
 
 ## Production minimums
 
@@ -63,7 +62,9 @@ The Hono health endpoint is `GET /api/health`. Production containers listen on `
 
 The adapter choices come entirely from environment variables:
 
-- `REDIS_URL` set: use Redis. Unset: use process-local memory.
+- `KV_ADAPTER=postgres`: use the shared PostgreSQL `kv.entries` table.
+  `KV_ADAPTER=memory|redis` selects those adapters explicitly. When unset,
+  `REDIS_URL` selects Redis and its absence selects PostgreSQL.
 - Both `KAFKA_CLIENT_ID` and `KAFKA_BROKERS` set: use Kafka. Both unset: use process-local events. Setting only one is a startup error.
 - `ENABLE_WORKER_IN_PROCESS=true`: register subscribers in the web application. This is required when using memory events and no separate worker.
 - `ENABLE_WORKER_IN_PROCESS=false`: the web application only publishes. Run a `worker` process using the same Kafka brokers.
@@ -84,7 +85,7 @@ Scaling has three independent state planes:
 | State plane                    | Single-process option                                  | Multi-instance option               | What it protects                                                                                   |
 | ------------------------------ | ------------------------------------------------------ | ----------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Authoritative application data | PostgreSQL                                             | The same shared PostgreSQL database | Durable records, uniqueness, transactions, and webhook idempotency                                 |
-| KV and auth secondary state    | Memory KV                                              | Redis through `REDIS_URL`           | Shared keys, atomic counters, TTLs, and cross-instance coordination without per-process collisions |
+| KV and auth secondary state    | Memory KV                                              | PostgreSQL or Redis                 | Shared keys, atomic counters, TTLs, and cross-instance coordination without per-process collisions |
 | Event delivery                 | Memory event bus with embedded subscribers             | Kafka with separate workers         | Cross-process delivery, consumer groups, and independent worker scaling                            |
 | File storage                   | Persistent filesystem; PostgreSQL only for quick tests | Shared S3-compatible object storage | Durable bytes and direct signed upload/download access                                             |
 
@@ -92,7 +93,7 @@ Redis solves shared KV coordination; it does not turn the memory event adapter i
 
 When scaling:
 
-- App replicas should share `DATABASE_URL` and `REDIS_URL`.
+- App replicas should share `DATABASE_URL` and the same KV adapter configuration.
 - App and worker replicas should share `KAFKA_BROKERS`.
 - Worker replicas that jointly process one workload should share `KAFKA_GROUP_ID`.
 - `ENABLE_WORKER_IN_PROCESS` should be `false` when Kafka-backed workers are deployed separately.
@@ -122,6 +123,7 @@ yarn install --frozen-lockfile
 | `NODE_ENV`                    | Production             | App, auth, database | Enables production validation and behavior                                           |
 | `PORT`                        | No                     | App                 | HTTP listen port; defaults to `3000` outside supplied containers                     |
 | `DATABASE_URL`                | Production             | App and worker      | PostgreSQL connection string                                                         |
+| `KV_ADAPTER`                  | No                     | App                 | `memory`, `postgres` (default), or `redis`; `REDIS_URL` selects Redis when unset     |
 | `REDIS_URL`                   | No                     | App                 | Selects Redis KV when present; supports `redis://` and `rediss://`                   |
 | `KAFKA_CLIENT_ID`             | With `KAFKA_BROKERS`   | App and worker      | Kafka client identity                                                                |
 | `KAFKA_BROKERS`               | With `KAFKA_CLIENT_ID` | App and worker      | Comma-separated Kafka broker addresses                                               |
@@ -426,7 +428,9 @@ docker run --env-file worker.env mba-demo-backoffice:latest worker
 
 All worker replicas using the same `KAFKA_GROUP_ID` share delivery as one consumer group. Use distinct group IDs only when separate logical consumers must each receive every event.
 
-All application replicas must use the same `REDIS_URL` when KV-backed state is shared. Leaving it unset gives every replica an isolated memory store, which can produce conflicting state and prevents reliable coordination between instances.
+All application replicas must use the same database and KV adapter
+configuration. Leaving `REDIS_URL` unset uses the shared PostgreSQL database;
+`KV_ADAPTER=memory` is isolated per process and must not be horizontally scaled.
 
 ### Platform requirements
 

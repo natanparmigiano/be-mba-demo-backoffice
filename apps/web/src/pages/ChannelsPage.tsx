@@ -884,7 +884,7 @@ export function ChannelsPage() {
               <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm leading-6 text-destructive">
                 {t('channels.deleteWarning')}
               </div>
-              <dl className="grid grid-cols-3 gap-2">
+              <dl className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                 <DeletionImpact
                   label={t('channels.deletionImpact.contacts')}
                   value={deletionPreview.contacts}
@@ -896,6 +896,14 @@ export function ChannelsPage() {
                 <DeletionImpact
                   label={t('channels.deletionImpact.groups')}
                   value={deletionPreview.groups}
+                />
+                <DeletionImpact
+                  label={t('channels.deletionImpact.mcpAssociations')}
+                  value={deletionPreview.localMcpAssociations}
+                />
+                <DeletionImpact
+                  label={t('channels.deletionImpact.localMcps')}
+                  value={deletionPreview.localMcps}
                 />
               </dl>
               <Input

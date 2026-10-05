@@ -10,6 +10,7 @@ import {
   LoaderCircle,
   Pencil,
   Search,
+  Trash2,
   Upload,
 } from 'lucide-react'
 import type { InferResponseType } from 'hono/client'
@@ -30,6 +31,7 @@ import { RenameProjectDialog } from '../components/studio/RenameProjectDialog'
 import { newAgtx, openAgtx } from '../studio-agtx'
 import {
   createStudioProject,
+  deleteStudioProject,
   listStudioProjects,
   renameStudioProject,
 } from '../studio-projects'
@@ -68,6 +70,8 @@ export function StudioHomePage() {
   const [error, setError] = useState<string | null>(null)
   const [renameTarget, setRenameTarget] = useState<Project | null>(null)
   const [renameName, setRenameName] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [agentPickerOpen, setAgentPickerOpen] = useState(false)
   const [agentsLoading, setAgentsLoading] = useState(false)
   const [runningAgents, setRunningAgents] = useState<RunningAgent[]>([])
@@ -297,6 +301,28 @@ export function StudioHomePage() {
     }
   }
 
+  const deleteProject = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setError(null)
+    try {
+      await deleteStudioProject(deleteTarget.id)
+      setRecent((current) =>
+        current.filter((project) => project.id !== deleteTarget.id),
+      )
+      setProjects((current) =>
+        current.filter((project) => project.id !== deleteTarget.id),
+      )
+      setDeleteTarget(null)
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : t('studio.deleteError'),
+      )
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <div className="h-full overflow-y-auto p-6 lg:p-10">
       <input
@@ -376,6 +402,7 @@ export function StudioHomePage() {
                   locale={i18n.language}
                   onOpen={() => void navigate(`/studio/${project.id}`)}
                   onRename={() => beginRename(project)}
+                  onDelete={() => setDeleteTarget(project)}
                 />
               ))
             ) : (
@@ -439,6 +466,17 @@ export function StudioHomePage() {
                 >
                   <Pencil className="size-4" aria-hidden />
                 </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-destructive"
+                  aria-label={t('studio.deleteProject', {
+                    name: project.name,
+                  })}
+                  onClick={() => setDeleteTarget(project)}
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </Button>
               </div>
             ))}
             {!filteredProjects.length && (
@@ -457,6 +495,33 @@ export function StudioHomePage() {
         onClose={() => setRenameTarget(null)}
         onRename={() => void rename()}
       />
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteTarget(null)
+        }}
+        dismissible={!deleting}
+        title={t('studio.deleteTitle')}
+        description={t('studio.deleteDescription', {
+          name: deleteTarget?.name ?? '',
+        })}
+        icon={<Trash2 className="mt-1 size-5 text-destructive" aria-hidden />}
+      >
+        <Button
+          variant="outline"
+          disabled={deleting}
+          onClick={() => setDeleteTarget(null)}
+        >
+          {t('common.cancel')}
+        </Button>
+        <Button
+          variant="danger"
+          isLoading={deleting}
+          onClick={() => void deleteProject()}
+        >
+          {deleting ? t('studio.deleting') : t('studio.confirmDelete')}
+        </Button>
+      </Dialog>
       <Dialog
         open={agentPickerOpen}
         onOpenChange={setAgentPickerOpen}
@@ -669,18 +734,20 @@ function ProjectCard({
   locale,
   onOpen,
   onRename,
+  onDelete,
 }: {
   project: Project
   locale: string
   onOpen: () => void
   onRename: () => void
+  onDelete: () => void
 }) {
   const { t } = useTranslation()
   return (
     <article className="relative cursor-pointer rounded-2xl border bg-card shadow-sm transition hover:border-primary/40 hover:shadow-md">
       <button
         type="button"
-        className="w-full cursor-pointer p-4 pr-12 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="w-full cursor-pointer p-4 pr-24 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onClick={onOpen}
       >
         <div className="flex items-center gap-3">
@@ -706,6 +773,15 @@ function ProjectCard({
         onClick={onRename}
       >
         <Pencil className="size-4" aria-hidden />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="absolute top-3 right-12 text-destructive"
+        aria-label={t('studio.deleteProject', { name: project.name })}
+        onClick={onDelete}
+      >
+        <Trash2 className="size-4" aria-hidden />
       </Button>
     </article>
   )

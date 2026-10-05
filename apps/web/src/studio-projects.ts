@@ -130,6 +130,13 @@ export async function renameStudioProject(projectId: string, name: string) {
   }
 }
 
+export async function deleteStudioProject(projectId: string) {
+  const response = await apiClient.api.studio.projects[':id'].$delete({
+    param: { id: projectId },
+  })
+  if (!response.ok) throw await responseError(response)
+}
+
 function parseProject(body: unknown): { id: string } {
   if (
     !body ||

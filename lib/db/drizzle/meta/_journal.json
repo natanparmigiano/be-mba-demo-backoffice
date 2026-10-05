@@ -239,6 +239,13 @@
       "when": 1791229289944,
       "tag": "0033_futuristic_shape",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791233619198,
+      "tag": "0034_optimal_fabian_cortez",
+      "breakpoints": true
     }
   ]
 }

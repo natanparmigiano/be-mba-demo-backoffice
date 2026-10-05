@@ -45,6 +45,10 @@ export interface StudioProjectRepository {
     conversation?: unknown[]
     opened?: boolean
   }) => Promise<StudioProject | undefined>
+  delete: (
+    organizationId: string,
+    projectId: string,
+  ) => Promise<StudioProject | undefined>
 }
 
 export interface StudioProjectsRouteOptions {
@@ -97,6 +101,18 @@ const databaseRepository: StudioProjectRepository = {
         ...(conversation === undefined ? {} : { conversation }),
         ...(opened ? { lastOpenedAt: now } : { lastEditedAt: now }),
       })
+      .where(
+        and(
+          eq(studioProjects.id, projectId),
+          eq(studioProjects.organizationId, organizationId),
+        ),
+      )
+      .returning()
+    return row ? publicProject(row) : undefined
+  },
+  delete: async (organizationId, projectId) => {
+    const [row] = await db
+      .delete(studioProjects)
       .where(
         and(
           eq(studioProjects.id, projectId),
@@ -198,6 +214,17 @@ export const createStudioProjectsRoute = ({
       })
       if (!project) return c.json({ message: 'Project not found' }, 404)
       return c.json({ project: toResponse(project) })
+    })
+    .delete('/:id', async (c) => {
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      const project = await repository.delete(
+        access.organizationId,
+        c.req.param('id'),
+      )
+      if (!project) return c.json({ message: 'Project not found' }, 404)
+      await fileStore.delete(project.filePath)
+      return c.body(null, 204)
     })
     .put('/:id/conversation', async (c) => {
       const access = await getAccess(c.req.raw.headers)

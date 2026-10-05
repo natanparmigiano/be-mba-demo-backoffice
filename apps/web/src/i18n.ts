@@ -2008,6 +2008,8 @@ const en = {
       contacts: 'Contacts',
       messages: 'Messages',
       groups: 'Groups',
+      mcpAssociations: 'MCP links removed',
+      localMcps: 'Local MCPs deleted',
     },
     deleteConfirmationLabel: 'Confirm channel deletion',
     deleteConfirmationHint: 'Type {{confirmation}} exactly to enable deletion.',
@@ -2356,6 +2358,13 @@ const en = {
     renameProject: 'Rename {{name}}',
     projectName: 'Project name',
     renameError: 'Could not rename this project.',
+    deleteProject: 'Delete {{name}}',
+    deleteTitle: 'Delete Agent Studio project?',
+    deleteDescription:
+      'Permanently delete “{{name}}”, including its AGTX package and assistant conversation. This cannot be undone.',
+    confirmDelete: 'Delete project',
+    deleting: 'Deleting…',
+    deleteError: 'Could not delete this project.',
     projectsWelcome:
       'Create, import, and continue Agent Studio projects from one workspace.',
     recentProjects: 'Recent Agent Studio projects',
@@ -5494,6 +5503,8 @@ const pt: typeof en = {
       contacts: 'Contatos',
       messages: 'Mensagens',
       groups: 'Grupos',
+      mcpAssociations: 'Vínculos MCP removidos',
+      localMcps: 'MCPs locais excluídos',
     },
     deleteConfirmationLabel: 'Confirmar exclusão do canal',
     deleteConfirmationHint:
@@ -5849,6 +5860,13 @@ const pt: typeof en = {
     renameProject: 'Renomear {{name}}',
     projectName: 'Nome do projeto',
     renameError: 'Não foi possível renomear este projeto.',
+    deleteProject: 'Excluir {{name}}',
+    deleteTitle: 'Excluir projeto do Agent Studio?',
+    deleteDescription:
+      'Exclua permanentemente “{{name}}”, incluindo o pacote AGTX e a conversa com o assistente. Esta ação não pode ser desfeita.',
+    confirmDelete: 'Excluir projeto',
+    deleting: 'Excluindo…',
+    deleteError: 'Não foi possível excluir este projeto.',
     projectsWelcome:
       'Crie, importe e continue projetos do Agent Studio em um só espaço.',
     recentProjects: 'Projetos recentes do Agent Studio',
@@ -9008,6 +9026,8 @@ const es: typeof en = {
       contacts: 'Contactos',
       messages: 'Mensajes',
       groups: 'Grupos',
+      mcpAssociations: 'Vínculos MCP eliminados',
+      localMcps: 'MCP locales eliminados',
     },
     deleteConfirmationLabel: 'Confirmar eliminación del canal',
     deleteConfirmationHint:
@@ -9366,6 +9386,13 @@ const es: typeof en = {
     renameProject: 'Cambiar nombre de {{name}}',
     projectName: 'Nombre del proyecto',
     renameError: 'No se pudo cambiar el nombre del proyecto.',
+    deleteProject: 'Eliminar {{name}}',
+    deleteTitle: '¿Eliminar el proyecto de Agent Studio?',
+    deleteDescription:
+      'Elimina permanentemente “{{name}}”, incluido su paquete AGTX y la conversación con el asistente. Esta acción no se puede deshacer.',
+    confirmDelete: 'Eliminar proyecto',
+    deleting: 'Eliminando…',
+    deleteError: 'No se pudo eliminar este proyecto.',
     projectsWelcome:
       'Crea, importa y continúa proyectos de Agent Studio en un solo espacio.',
     recentProjects: 'Proyectos recientes de Agent Studio',

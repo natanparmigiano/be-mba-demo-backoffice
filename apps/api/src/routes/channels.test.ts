@@ -248,7 +248,13 @@ describe('channel management route', () => {
       | undefined
     let metaDeleteCalled = false
     let deletedBackupPaths: readonly string[] = []
-    const impact = { contacts: 12, groups: 3, messages: 480 }
+    const impact = {
+      contacts: 12,
+      groups: 3,
+      messages: 480,
+      localMcpAssociations: 2,
+      localMcps: 1,
+    }
     const route = createChannelManagementRoute({
       getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
       repository: createRepository({
@@ -307,21 +313,33 @@ describe('channel management route', () => {
     assert.deepEqual(deletedBackupPaths, ['agent-backups/org/7/backup.agtx'])
   })
 
-  it('blocks channel deletion previews while a local MCP is associated', async () => {
+  it('includes local MCP cascade effects in channel deletion previews', async () => {
     const route = createChannelManagementRoute({
       getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
       repository: createRepository({
-        hasLocalMcpAssociation: async () => true,
+        getDeletionPreview: async () => ({
+          confirmationText: channel.waPhoneNumber,
+          contacts: 0,
+          groups: 0,
+          messages: 0,
+          localMcpAssociations: 2,
+          localMcps: 1,
+        }),
       }),
     })
 
     const response = await route.request('/7/deletion-impact')
 
-    assert.equal(response.status, 409)
+    assert.equal(response.status, 200)
     assert.deepEqual(await response.json(), {
-      code: 'CHANNEL_USED_BY_AGENT_MCP',
-      message:
-        'This channel cannot be deleted because an agent connector uses a local MCP.',
+      impact: {
+        confirmationText: channel.waPhoneNumber,
+        contacts: 0,
+        groups: 0,
+        messages: 0,
+        localMcpAssociations: 2,
+        localMcps: 1,
+      },
     })
   })
 
@@ -2906,12 +2924,20 @@ function createRepository(
       contacts: 0,
       groups: 0,
       messages: 0,
+      localMcpAssociations: 0,
+      localMcps: 0,
     }),
     hasLocalMcpAssociation: async () => false,
     removeLocalMcpAssociation: async () => undefined,
     delete: async () => ({
       status: 'deleted',
-      impact: { contacts: 0, groups: 0, messages: 0 },
+      impact: {
+        contacts: 0,
+        groups: 0,
+        messages: 0,
+        localMcpAssociations: 0,
+        localMcps: 0,
+      },
     }),
     ...overrides,
   }

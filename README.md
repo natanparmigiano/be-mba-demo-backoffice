@@ -74,8 +74,9 @@ docker compose -f compose.simple.yaml up --build
 Open <http://localhost:8080>. In both profiles, Hono serves the React build and
 `/api`, and the `app` role applies pending migrations before accepting traffic.
 Full Compose uses Redis and Kafka across separate processes; Simple Compose
-keeps KV, events, and subscribers in one process. Override the host port with
-`WEB_PORT`, for example `WEB_PORT=8081 docker compose up`.
+explicitly selects memory KV and keeps events and subscribers in one process.
+Override the host port with `WEB_PORT`, for example
+`WEB_PORT=8081 docker compose up`.
 
 Do not expose the committed Compose defaults publicly. Outside local
 development, set a high-entropy `BETTER_AUTH_SECRET` and deployment-correct
@@ -113,7 +114,8 @@ The database defaults to `postgresql://postgres:postgres@localhost:5432/mba_demo
 | `CORS_ORIGIN`                 | No                     | Trusted browser origin; defaults to `http://localhost:5173` |
 | `PORT`                        | No                     | Hono port; defaults to `3000`                               |
 | `WEB_ROOT`                    | No                     | Static build directory; defaults to `../web/dist`           |
-| `REDIS_URL`                   | No                     | Selects Redis for KV and Pub/Sub; otherwise both use memory |
+| `KV_ADAPTER`                  | No                     | `memory`, `postgres` (default), or `redis`                  |
+| `REDIS_URL`                   | Redis KV / No          | Selects Redis KV when inferred; also enables Redis Pub/Sub  |
 | `KAFKA_CLIENT_ID`             | With brokers           | Selects Kafka together with `KAFKA_BROKERS`                 |
 | `KAFKA_BROKERS`               | With client ID         | Comma-separated Kafka brokers                               |
 | `KAFKA_GROUP_ID`              | No                     | Consumer group; defaults from the client ID                 |

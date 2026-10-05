@@ -751,6 +751,8 @@ export interface ChannelDeletionImpact {
   contacts: number
   groups: number
   messages: number
+  localMcpAssociations: number
+  localMcps: number
 }
 
 export interface ChannelDeletionPreview extends ChannelDeletionImpact {
@@ -764,7 +766,6 @@ export type ChannelDeletionResult =
       backupStoragePaths?: string[]
     }
   | { status: 'confirmation_mismatch' }
-  | { status: 'in_use' }
   | { status: 'not_found' }
 
 export interface ChannelManagementRepository {
@@ -1183,12 +1184,46 @@ const databaseRepository: ChannelManagementRepository = {
       .from(messages)
       .innerJoin(chats, eq(messages.chatId, chats.id))
       .where(eq(chats.channelId, channelId))
+    const localMcpAssociations = await db
+      .select({ mcpId: runnerAgentMcpConnectors.mcpId })
+      .from(runnerAgentMcpConnectors)
+      .where(
+        and(
+          eq(runnerAgentMcpConnectors.organizationId, organizationId),
+          eq(runnerAgentMcpConnectors.channelId, channelId),
+        ),
+      )
+    const associatedMcpIds = [
+      ...new Set(localMcpAssociations.map(({ mcpId }) => mcpId)),
+    ]
+    const allMcpAssociations = associatedMcpIds.length
+      ? await db
+          .select({
+            channelId: runnerAgentMcpConnectors.channelId,
+            mcpId: runnerAgentMcpConnectors.mcpId,
+          })
+          .from(runnerAgentMcpConnectors)
+          .where(
+            and(
+              eq(runnerAgentMcpConnectors.organizationId, organizationId),
+              inArray(runnerAgentMcpConnectors.mcpId, associatedMcpIds),
+            ),
+          )
+      : []
+    const localMcps = associatedMcpIds.filter((mcpId) =>
+      allMcpAssociations.every(
+        (association) =>
+          association.mcpId !== mcpId || association.channelId === channelId,
+      ),
+    ).length
 
     return {
       confirmationText: channel.waPhoneNumber,
       contacts: contactTotal?.value ?? 0,
       groups: groupTotal?.value ?? 0,
       messages: messageTotal?.value ?? 0,
+      localMcpAssociations: localMcpAssociations.length,
+      localMcps,
     }
   },
   hasLocalMcpAssociation: async (organizationId, channelId, connectorId) => {
@@ -1252,12 +1287,18 @@ const databaseRepository: ChannelManagementRepository = {
         .limit(1)
         .for('update')
       if (!channel) return { status: 'not_found' as const }
-      const [association] = await transaction
-        .select({ channelId: runnerAgentMcpConnectors.channelId })
+      const localMcpAssociations = await transaction
+        .select({
+          apiKeyId: runnerAgentMcpConnectors.apiKeyId,
+          mcpId: runnerAgentMcpConnectors.mcpId,
+        })
         .from(runnerAgentMcpConnectors)
-        .where(eq(runnerAgentMcpConnectors.channelId, channelId))
-        .limit(1)
-      if (association) return { status: 'in_use' as const }
+        .where(
+          and(
+            eq(runnerAgentMcpConnectors.organizationId, organizationId),
+            eq(runnerAgentMcpConnectors.channelId, channelId),
+          ),
+        )
       if (confirmation !== channel.waPhoneNumber) {
         return { status: 'confirmation_mismatch' as const }
       }
@@ -1279,6 +1320,65 @@ const databaseRepository: ChannelManagementRepository = {
         contacts: contactTotal?.value ?? 0,
         groups: groupTotal?.value ?? 0,
         messages: messageTotal?.value ?? 0,
+        localMcpAssociations: localMcpAssociations.length,
+        localMcps: 0,
+      }
+
+      if (localMcpAssociations.length) {
+        await transaction
+          .delete(runnerAgentMcpConnectors)
+          .where(
+            and(
+              eq(runnerAgentMcpConnectors.organizationId, organizationId),
+              eq(runnerAgentMcpConnectors.channelId, channelId),
+            ),
+          )
+        const apiKeyIds = localMcpAssociations.map(({ apiKeyId }) => apiKeyId)
+        await transaction
+          .update(runnerFunctionApiKeys)
+          .set({ revokedAt: new Date() })
+          .where(
+            and(
+              eq(runnerFunctionApiKeys.organizationId, organizationId),
+              inArray(runnerFunctionApiKeys.id, apiKeyIds),
+            ),
+          )
+        for (const mcpId of new Set(
+          localMcpAssociations.map(({ mcpId }) => mcpId),
+        )) {
+          const [remainingAssociation] = await transaction
+            .select({ mcpId: runnerAgentMcpConnectors.mcpId })
+            .from(runnerAgentMcpConnectors)
+            .where(
+              and(
+                eq(runnerAgentMcpConnectors.organizationId, organizationId),
+                eq(runnerAgentMcpConnectors.mcpId, mcpId),
+              ),
+            )
+            .limit(1)
+          if (remainingAssociation) continue
+          await transaction
+            .update(runnerFunctionApiKeys)
+            .set({
+              allowedMcpIds: sql`array_remove(${runnerFunctionApiKeys.allowedMcpIds}, ${mcpId})`,
+            })
+            .where(
+              and(
+                eq(runnerFunctionApiKeys.organizationId, organizationId),
+                sql`${mcpId} = any(${runnerFunctionApiKeys.allowedMcpIds})`,
+              ),
+            )
+          const deletedMcp = await transaction
+            .delete(runnerMcps)
+            .where(
+              and(
+                eq(runnerMcps.organizationId, organizationId),
+                eq(runnerMcps.id, mcpId),
+              ),
+            )
+            .returning({ id: runnerMcps.id })
+          impact.localMcps += deletedMcp.length
+        }
       }
 
       const channelChatIds = transaction
@@ -3880,21 +3980,6 @@ export const createChannelManagementRoute = ({
         access.organizationId,
         channelId,
       )
-      if (
-        await repository.hasLocalMcpAssociation(
-          access.organizationId,
-          channelId,
-        )
-      ) {
-        return c.json(
-          {
-            code: 'CHANNEL_USED_BY_AGENT_MCP' as const,
-            message:
-              'This channel cannot be deleted because an agent connector uses a local MCP.',
-          },
-          409,
-        )
-      }
       if (!impact) return c.json({ message: 'Channel not found' }, 404)
       return c.json({ impact })
     })
@@ -3959,16 +4044,6 @@ export const createChannelManagementRoute = ({
             return c.json(
               { message: 'Channel confirmation did not match' },
               400,
-            )
-          }
-          if (result.status === 'in_use') {
-            return c.json(
-              {
-                code: 'CHANNEL_USED_BY_AGENT_MCP' as const,
-                message:
-                  'This channel cannot be deleted because an agent connector uses a local MCP.',
-              },
-              409,
             )
           }
           await agentBackups

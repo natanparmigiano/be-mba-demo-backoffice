@@ -3,7 +3,7 @@ import { describe, it } from 'node:test'
 import { createKeyValueStore } from './index.js'
 
 describe('createKeyValueStore', () => {
-  it('uses memory when no Redis URL is provided', async () => {
+  it('uses memory when explicitly configured', async () => {
     const store = createKeyValueStore({ adapter: 'memory' })
 
     assert.equal(store.mode, 'memory')

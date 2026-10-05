@@ -29,13 +29,13 @@ export function getKeyValueConfiguration(
       ? configuredAdapter
       : redisUrl
         ? 'redis'
-        : 'memory'
+        : 'postgres'
 
   if (adapter === 'redis' && !redisUrl) {
     throw new Error('REDIS_URL is required when KV_ADAPTER is redis')
   }
 
-  return { adapter, redisUrl }
+  return redisUrl ? { adapter, redisUrl } : { adapter }
 }
 
 export function getRedisUrl(

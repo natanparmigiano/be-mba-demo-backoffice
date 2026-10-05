@@ -30,8 +30,8 @@ switcher. Each page then owns one route-level workflow:
 - `HomePage`: organization landing dashboard with channel-scoped WhatsApp and
   Business Agent performance counters, feature links, and quick references.
 - `ChatPage`: organization-scoped inbox and message/event timeline.
-- `StudioHomePage`: recent-project dashboard, project search, new project, and
-  local AGTX import entry points.
+- `StudioHomePage`: recent-project dashboard, project search, new project,
+  confirmed project deletion, and local AGTX import entry points.
 - `StudioPage`: full-screen persisted AGTX project editor and downloader with a
   Hashbrown-powered assistant in the right panel. The assistant receives the
   AGTX v1 authoring reference and can inspect or merge-patch the manifest and

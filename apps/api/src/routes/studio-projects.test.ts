@@ -22,7 +22,7 @@ test('Studio projects require organization access', async () => {
   assert.deepEqual(await response.json(), { message: 'Unauthorized' })
 })
 
-test('Studio projects create, list, read, and update AGTX files', async () => {
+test('Studio projects create, list, read, update, and delete AGTX files', async () => {
   const repository = createRepository()
   const fileStore = new MemoryFiles()
   const app = createStudioProjectsRoute({
@@ -91,6 +91,17 @@ test('Studio projects create, list, read, and update AGTX files', async () => {
     updatedBytes,
   )
   assert.equal(repository.lastUpdate?.organizationId, 'org-1')
+
+  const filePath = repository.projects[0]?.filePath ?? ''
+  const deleteResponse = await app.request(`/${created.project.id}`, {
+    method: 'DELETE',
+  })
+  const deletedDetailResponse = await app.request(`/${created.project.id}`)
+
+  assert.equal(deleteResponse.status, 204)
+  assert.equal(deletedDetailResponse.status, 404)
+  assert.equal(fileStore.values.has(filePath), false)
+  assert.equal(repository.lastDeleteOrganizationId, 'org-1')
 })
 
 test('Studio project queries remain scoped to the active organization', async () => {
@@ -113,6 +124,7 @@ function createRepository(): StudioProjectRepository & {
   lastGetOrganizationId?: string
   lastListOrganizationId?: string
   lastUpdate?: { organizationId: string }
+  lastDeleteOrganizationId?: string
 } {
   return new MemoryRepository()
 }
@@ -122,6 +134,7 @@ class MemoryRepository implements StudioProjectRepository {
   lastGetOrganizationId?: string
   lastListOrganizationId?: string
   lastUpdate?: { organizationId: string }
+  lastDeleteOrganizationId?: string
 
   async list({
     organizationId,
@@ -175,6 +188,13 @@ class MemoryRepository implements StudioProjectRepository {
     if (opened) project.lastOpenedAt = timestamp
     else project.lastEditedAt = timestamp
     return project
+  }
+
+  async delete(organizationId: string, projectId: string) {
+    this.lastDeleteOrganizationId = organizationId
+    const index = this.projects.findIndex((project) => project.id === projectId)
+    if (index < 0) return undefined
+    return this.projects.splice(index, 1)[0]
   }
 }
 

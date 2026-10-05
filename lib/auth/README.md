@@ -5,9 +5,9 @@ stores durable identities and organizations in PostgreSQL, places sessions and
 verification state in the selected `@mba-demo/kv` adapter, and exposes the
 handler mounted by Hono at `/api/auth/*`.
 
-Production must provide `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`. Multi-instance
-deployments must also configure shared Redis secondary storage; process memory
-cannot coordinate sessions or verification state across replicas.
+Production must provide `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`.
+Multi-instance deployments must also configure PostgreSQL or Redis secondary
+storage; process memory cannot coordinate sessions or verification state.
 
 ## Configuration
 
@@ -48,7 +48,11 @@ Durable auth entities live in PostgreSQL's `auth` schema:
 - `team` and `team_member`
 - `sso_provider`
 
-Sessions and verification state use Better Auth's secondary-storage bridge rather than duplicate PostgreSQL tables. The bridge supports reads, atomic read-and-delete, TTL-aware writes, deletion, and counters through the common KV interface. It uses Redis when `REDIS_URL` is configured and process-local memory otherwise.
+Sessions and verification state use Better Auth's secondary-storage bridge.
+The bridge supports reads, atomic read-and-delete, TTL-aware writes, deletion,
+and counters through the common KV interface. It uses Redis when configured and
+otherwise defaults to the shared PostgreSQL `kv.entries` table. Process-local
+memory requires `KV_ADAPTER=memory`.
 
 On an empty database, `bootstrapInitialAdmin()` creates the first application
 administrator before the API listens:

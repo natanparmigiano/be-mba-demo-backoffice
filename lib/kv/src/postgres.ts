@@ -20,8 +20,9 @@ export class PostgresKeyValueStore implements KeyValueStore {
   readonly mode = 'postgres' as const
 
   constructor(
-    private readonly backend: PostgresKeyValueBackend =
-      new DrizzlePostgresKeyValueBackend(db),
+    private readonly backend: PostgresKeyValueBackend = new DrizzlePostgresKeyValueBackend(
+      db,
+    ),
   ) {}
 
   get(key: string): Promise<string | null> {
@@ -32,9 +33,13 @@ export class PostgresKeyValueStore implements KeyValueStore {
     return this.backend.getDel(key)
   }
 
-  set(key: string, value: string, options: SetOptions = {}): Promise<boolean> {
+  async set(
+    key: string,
+    value: string,
+    options: SetOptions = {},
+  ): Promise<boolean> {
     validateSetOptions(options)
-    return this.backend.set(key, value, options)
+    return await this.backend.set(key, value, options)
   }
 
   del(...keys: string[]): Promise<number> {
@@ -58,23 +63,23 @@ export class PostgresKeyValueStore implements KeyValueStore {
     return this.incrBy(key, 1)
   }
 
-  incrBy(key: string, increment: number): Promise<number> {
+  async incrBy(key: string, increment: number): Promise<number> {
     validateInteger(increment, 'increment')
-    return this.backend.incrBy(key, increment)
+    return await this.backend.incrBy(key, increment)
   }
 
   decr(key: string): Promise<number> {
     return this.decrBy(key, 1)
   }
 
-  decrBy(key: string, decrement: number): Promise<number> {
+  async decrBy(key: string, decrement: number): Promise<number> {
     validateInteger(decrement, 'decrement')
-    return this.backend.incrBy(key, -decrement)
+    return await this.backend.incrBy(key, -decrement)
   }
 
-  expire(key: string, seconds: number): Promise<boolean> {
+  async expire(key: string, seconds: number): Promise<boolean> {
     validateInteger(seconds, 'seconds')
-    return this.backend.expire(key, seconds)
+    return await this.backend.expire(key, seconds)
   }
 
   persist(key: string): Promise<boolean> {
@@ -113,11 +118,7 @@ class DrizzlePostgresKeyValueBackend implements PostgresKeyValueBackend {
     return entry?.value ?? null
   }
 
-  async set(
-    key: string,
-    value: string,
-    options: SetOptions,
-  ): Promise<boolean> {
+  async set(key: string, value: string, options: SetOptions): Promise<boolean> {
     const expiresAt = options.ttlSeconds
       ? new Date(Date.now() + options.ttlSeconds * 1_000)
       : null
@@ -135,16 +136,17 @@ class DrizzlePostgresKeyValueBackend implements PostgresKeyValueBackend {
       .insert(keyValueEntries)
       .values({ key, value, expiresAt })
 
-    const written = await (options.condition === 'if-not-exists'
-      ? query.onConflictDoUpdate({
-          target: keyValueEntries.key,
-          set: { value, expiresAt },
-          setWhere: sql`${keyValueEntries.expiresAt} <= now()`,
-        })
-      : query.onConflictDoUpdate({
-          target: keyValueEntries.key,
-          set: { value, expiresAt },
-        })
+    const written = await (
+      options.condition === 'if-not-exists'
+        ? query.onConflictDoUpdate({
+            target: keyValueEntries.key,
+            set: { value, expiresAt },
+            setWhere: sql`${keyValueEntries.expiresAt} <= now()`,
+          })
+        : query.onConflictDoUpdate({
+            target: keyValueEntries.key,
+            set: { value, expiresAt },
+          })
     ).returning({ key: keyValueEntries.key })
 
     return written.length > 0
@@ -177,10 +179,13 @@ class DrizzlePostgresKeyValueBackend implements PostgresKeyValueBackend {
       expiresAt: null,
     }))
     if (values.length === 0) return
-    await this.database.insert(keyValueEntries).values(values).onConflictDoUpdate({
-      target: keyValueEntries.key,
-      set: { value: sql`excluded.value`, expiresAt: null },
-    })
+    await this.database
+      .insert(keyValueEntries)
+      .values(values)
+      .onConflictDoUpdate({
+        target: keyValueEntries.key,
+        set: { value: sql`excluded.value`, expiresAt: null },
+      })
   }
 
   async incrBy(key: string, increment: number): Promise<number> {
@@ -202,7 +207,8 @@ class DrizzlePostgresKeyValueBackend implements PostgresKeyValueBackend {
       RETURNING value
     `)
     const value = rows<{ value: string }>(result)[0]?.value
-    if (value === undefined) throw new RangeError('result must be a safe integer')
+    if (value === undefined)
+      throw new RangeError('result must be a safe integer')
     const parsed = Number(value)
     validateInteger(parsed, 'result')
     return parsed
@@ -251,7 +257,10 @@ class DrizzlePostgresKeyValueBackend implements PostgresKeyValueBackend {
 }
 
 function liveEntry() {
-  return or(isNull(keyValueEntries.expiresAt), gt(keyValueEntries.expiresAt, sql`now()`))
+  return or(
+    isNull(keyValueEntries.expiresAt),
+    gt(keyValueEntries.expiresAt, sql`now()`),
+  )
 }
 
 function rows<T>(result: unknown): T[] {

@@ -112,8 +112,8 @@ WhatsApp webhook media. Container-side object operations use `http://minio:9000`
 docker compose -f compose.simple.yaml up --build
 ```
 
-This starts only PostgreSQL and the app. Because neither `REDIS_URL` nor Kafka
-configuration is provided, KV and events select their memory adapters.
+This starts only PostgreSQL and the app. `KV_ADAPTER=memory` explicitly selects
+process-local KV, while the missing Kafka configuration selects in-memory events.
 `ENABLE_WORKER_IN_PROCESS=true` ensures publishers and subscribers share the
 same app process. Files use the durable `files-data` volume mounted at
 `/var/lib/mba-demo/files`; the rest of the application filesystem remains

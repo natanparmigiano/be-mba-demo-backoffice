@@ -36,6 +36,7 @@ Each file under `src/schema` represents a PostgreSQL schema or schema group:
 | ----------- | ----------------- | ------------------------------------------------------------ |
 | `auth.ts`   | `auth`            | Better Auth generated tables and relations                   |
 | `files.ts`  | `files`           | Non-production PostgreSQL file-storage fallback              |
+| `kv.ts`     | `kv`              | Shared string KV values and expiration timestamps            |
 | `llm.ts`    | `llm`             | Auditable Responses API request and usage history            |
 | `mba.ts`    | `mba`             | Application-owned WhatsApp chat data                         |
 | `runner.ts` | `runner`          | Versioned functions, MCP packs, API keys, and execution logs |
