@@ -119,6 +119,12 @@ describe('WhatsAppComponentsClient', () => {
     )
   })
 
+  it('returns an empty configuration when no components are configured', async () => {
+    const { client } = clientWith([response({ id: 'phone-id' })])
+
+    assert.deepEqual(await client.getConfiguration(), {})
+  })
+
   it('sets selected components and clears them with empty arrays', async () => {
     const { client, requests } = clientWith([response({ success: true })])
 
@@ -208,7 +214,7 @@ describe('WhatsAppComponentsClient', () => {
         },
       }),
       response({ success: false }),
-      response({ id: 'phone-id' }),
+      response({ conversational_automation: null }),
       new Response('not-json', { status: 200 }),
     ])
     await assert.rejects(

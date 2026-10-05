@@ -154,6 +154,7 @@ function parseCommand(value: unknown, index: number): ConversationalCommand {
 
 function parseComponents(body: unknown): ConversationalComponents {
   const value = isRecord(body) ? body.conversational_automation : undefined
+  if (value === undefined && isRecord(body)) return {}
   if (!isRecord(value)) {
     throw new WhatsAppComponentsResponseError(
       'WhatsApp Graph API returned invalid conversational components',

@@ -1,0 +1,131 @@
+format: "mba-mcp"
+version: 1
+mcp:
+  name: "mobius_design_mcp"
+  description: "Fictional Mobius Design MCP with deterministic project, consultation, and portfolio tools for the sample architecture agent."
+  functions:
+    -
+      name: "search_portfolio"
+      description: "Finds representative Mobius Design projects by project type and location."
+      currentRevision: 1
+      revisions:
+        -
+          revision: 1
+          code: |-
+            function searchPortfolio({ project_type, location, limit = 3 }) {
+              const projects = [
+                { name: 'West Side Community Library', projectType: 'civic', location: 'New York, NY', status: 'completed' },
+                { name: 'Hudson Loft Renovation', projectType: 'residential', location: 'New York, NY', status: 'completed' },
+                { name: 'Goliath National Bank Concept Branch', projectType: 'commercial', location: 'New York, NY', status: 'concept' },
+              ];
+              const filtered = projects.filter((project) =>
+                project.projectType.includes(project_type.toLowerCase()),
+              );
+
+              return {
+                query: { projectType: project_type, location: location || null },
+                projects: (filtered.length > 0 ? filtered : projects).slice(0, Math.max(1, Math.min(Number(limit), 3))),
+              };
+            }
+          parameters:
+            -
+              name: "project_type"
+              type: "string"
+              required: true
+              description: "Project category such as residential, commercial, or civic."
+            -
+              name: "location"
+              type: "string"
+              required: false
+              description: "City or neighborhood of interest."
+            -
+              name: "limit"
+              type: "integer"
+              required: false
+              description: "Maximum number of projects to return, capped at three."
+          createdAt: "2026-10-05T15:00:00.000Z"
+    -
+      name: "create_consultation_request"
+      description: "Creates a fictional request for an introductory architecture consultation."
+      currentRevision: 1
+      revisions:
+        -
+          revision: 1
+          code: |-
+            function createConsultationRequest({ contact_name, contact_email, project_type, project_location, target_budget, notes }) {
+              return {
+                requestId: 'MD-CONSULT-101',
+                status: 'received',
+                contactName: contact_name,
+                contactEmail: contact_email,
+                projectType: project_type,
+                projectLocation: project_location,
+                targetBudget: target_budget || null,
+                notes: notes || null,
+                nextStep: 'A studio coordinator will reply within two business days.',
+              };
+            }
+          parameters:
+            -
+              name: "contact_name"
+              type: "string"
+              required: true
+              description: "Prospective client's name."
+            -
+              name: "contact_email"
+              type: "string"
+              required: true
+              description: "Email address for consultation follow-up."
+            -
+              name: "project_type"
+              type: "string"
+              required: true
+              description: "Requested architecture project category."
+            -
+              name: "project_location"
+              type: "string"
+              required: true
+              description: "City and state or country where the project is located."
+            -
+              name: "target_budget"
+              type: "number"
+              required: false
+              description: "Optional preliminary construction budget in US dollars."
+            -
+              name: "notes"
+              type: "string"
+              required: false
+              description: "Optional goals, constraints, timing, or accessibility needs."
+          createdAt: "2026-10-05T15:01:00.000Z"
+    -
+      name: "check_project_status"
+      description: "Returns a deterministic milestone summary for a fictional client project."
+      currentRevision: 1
+      revisions:
+        -
+          revision: 1
+          code: |-
+            function checkProjectStatus({ project_number, client_email }) {
+              return {
+                projectNumber: project_number,
+                verifiedClientEmail: client_email,
+                phase: 'design_development',
+                latestMilestone: 'Schematic design approved',
+                nextMilestone: '50% design-development review',
+                nextMilestoneDate: '2026-10-19',
+                openClientDecisions: ['Confirm kitchen millwork finish'],
+                scheduleStatus: 'on_track',
+              };
+            }
+          parameters:
+            -
+              name: "project_number"
+              type: "string"
+              required: true
+              description: "Customer-visible Mobius Design project number."
+            -
+              name: "client_email"
+              type: "string"
+              required: true
+              description: "Client email used to verify the status request."
+          createdAt: "2026-10-05T15:02:00.000Z"

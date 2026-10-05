@@ -104,3 +104,11 @@ these six operations through an MCP named `dunder_mifflin_mcp`:
 Each function retains the connector operation's input contract but is a safe
 demonstration mock that returns deterministic JSON and performs no network or
 database access.
+
+## Mobius Design sample
+
+[`sample_mobius_design.mcpx`](./sample_mobius_design.mcpx) is the MCP package
+embedded in the [`../agtx/sample_mobius_design.agtx`](../agtx/sample_mobius_design.agtx)
+architecture-studio sample. It exposes `search_portfolio`,
+`create_consultation_request`, and `check_project_status`. The functions make
+no network or database calls and return fictional demo data.

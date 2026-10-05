@@ -124,6 +124,18 @@ or AGTX security rules. The application's Inspect package action performs the
 full manifest, path, reference, and import-requirement validation without
 applying the package.
 
+## Worked sample: Mobius Design
+
+[`sample_mobius_design.agtx`](./sample_mobius_design.agtx) is a compact
+fictional architecture-studio example inspired by the business Ted Mosby starts
+in _How I Met Your Mother_. It exercises every agent configuration surface:
+settings, allowlist, business information, QR code, prompts, command, skills,
+FAQs, website, a bundled knowledge file, and a local MCP connector. Its
+embedded `MCPs/mobius_design_mcp.mcpx` is identical to
+[`../mcpx/sample_mobius_design.mcpx`](../mcpx/sample_mobius_design.mcpx) and
+provides three deterministic demo tools. All contact details, identifiers,
+projects, and tool results are fictional.
+
 ## What information does it contain?
 
 The manifest can contain:
