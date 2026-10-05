@@ -68,8 +68,9 @@ MCP connector configured to discover six tools. The connector references
 `MCPs/dunder_mifflin_mcp.mcpx`, which is the same canonical package published
 separately as
 [`../mcpx/sample_dunder_mifflin.mcpx`](../mcpx/sample_dunder_mifflin.mcpx).
-It deliberately contains no knowledge files, API keys, certificates, or other
-secrets.
+It bundles three fictional CSV knowledge files covering the paper catalog,
+delivery guidance, and return intake. It deliberately contains no API keys,
+certificates, or other secrets.
 
 The manifest's connector host uses the reserved `.example` domain as source
 provenance. During import, the embedded MCP is imported first, a fresh scoped
@@ -117,7 +118,7 @@ order:
 7. Compare the manifest with [`schema.yml`](./schema.yml), particularly field
    names, required properties, enums, and nullability.
 8. Match each non-null `agent.knowledge.files[].path` to an archive entry under
-   `files/`. This sample has no such entries.
+   `files/`. This sample contains three CSV entries.
 
 `unzip -t` validates ZIP entry checksums; it does not validate the YAML schema
 or AGTX security rules. The application's Inspect package action performs the
@@ -160,6 +161,8 @@ The export deliberately excludes:
 - Meta system-user tokens, app secrets, and webhook verification tokens;
 - API-key values and OAuth client credentials;
 - private keys and connector certificates;
+- provider-derived connector state, including credential/certificate presence,
+  connection status and errors, and MCP tool-sync results;
 - any knowledge-file bytes that were never archived locally;
 - conversations and customer data.
 

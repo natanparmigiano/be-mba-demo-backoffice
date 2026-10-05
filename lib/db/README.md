@@ -36,8 +36,10 @@ Each file under `src/schema` represents a PostgreSQL schema or schema group:
 | ----------- | ----------------- | ------------------------------------------------------------ |
 | `auth.ts`   | `auth`            | Better Auth generated tables and relations                   |
 | `files.ts`  | `files`           | Non-production PostgreSQL file-storage fallback              |
+| `llm.ts`    | `llm`             | Auditable Responses API request and usage history            |
 | `mba.ts`    | `mba`             | Application-owned WhatsApp chat data                         |
 | `runner.ts` | `runner`          | Versioned functions, MCP packs, API keys, and execution logs |
+| `studio.ts` | `studio`          | Organization-scoped AGTX Studio projects                     |
 | `index.ts`  | —                 | Re-exports the complete registry for Drizzle                 |
 
 ### Runner functions
@@ -66,10 +68,23 @@ When adding a schema file, export it from `src/schema/index.ts`. Drizzle Kit rea
 Never hand-edit `auth.ts`; regenerate it with `yarn auth:generate` after Better
 Auth configuration or plugin changes.
 
+`llm.response_requests` is an append-only audit trail for calls made through
+the Responses API proxy and Hashbrown endpoint. It records the originating
+endpoint, request and completion time, user,
+organization and session-auth state, provider status, model, complete input
+and output payloads, and both normalized token totals and the provider's full
+usage object. User and organization identifiers are deliberately historical
+values rather than foreign keys so account deletion cannot erase or block the
+audit trail.
+
 `files.__files` stores a path and binary body for the PostgreSQL files adapter.
 It exists only to support quick testing and short-lived demos without a
 persistent filesystem. It is not recommended for production or general use;
 production deployments should use the S3-compatible files adapter.
+
+`studio.projects` stores organization-scoped Studio project metadata and the
+durable `@mba-demo/files` key for each AGTX document. Its recent-project order
+uses `last_opened_at`; `last_edited_at` advances when AGTX bytes are saved.
 
 ### MBA chats and messages
 

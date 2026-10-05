@@ -24,6 +24,7 @@ import {
 import {
   hashApiKey,
   runner,
+  type RunnerMcpImportBlocker,
   type RunnerMcpDefinition,
   type RunnerMcpPackage,
 } from '@mba-demo/runner'
@@ -484,13 +485,13 @@ const agentImportConnectorSchema = connectorSchema
   .omit({ authConfig: true })
   .extend({
     id: z.string().min(1),
-    hasAuthConfiguration: z.boolean(),
-    hasCertificate: z.boolean(),
-    connectionStatus: z.string(),
-    connectionError: z.string().nullable(),
+    hasAuthConfiguration: z.boolean().optional(),
+    hasCertificate: z.boolean().optional(),
+    connectionStatus: z.string().optional(),
+    connectionError: z.string().nullable().optional(),
     userAuthInjectionConfig:
       connectorSchema.shape.userAuthInjectionConfig.nullable(),
-    mcpToolSync: z.unknown().nullable(),
+    mcpToolSync: z.unknown().nullable().optional(),
     localMcp: z
       .object({
         name: z.string().trim().min(1).max(64),
@@ -6736,13 +6737,38 @@ async function importAgentMcps(
       true,
     )
     if (result.status !== 'imported') {
-      throw new Error(`Could not import local MCP: ${name}`)
+      const blockers = result.preview.blockers
+        .map(formatMcpImportBlocker)
+        .join('; ')
+      const reason =
+        result.status === 'overwrite_required'
+          ? 'an existing MCP requires explicit overwrite approval'
+          : blockers || 'Runner rejected the package without a blocker reason'
+      throw new Error(`Could not import local MCP ${name}: ${reason}`)
     }
     imported.set(name, result.mcp)
     completed += 1
     await reportProgress('mcps', completed, packages.size)
   }
   return imported
+}
+
+export function formatMcpImportBlocker(
+  blocker: RunnerMcpImportBlocker,
+): string {
+  const functions = blocker.functionNames.join(', ')
+  switch (blocker.code) {
+    case 'active_executions':
+      return `active executions must finish (${functions})`
+    case 'duplicate_target_names':
+      return `multiple functions resolve to the same name (${functions})`
+    case 'shared_functions':
+      return `functions are shared with another MCP (${functions})`
+    case 'target_name_conflicts':
+      return `function names already exist outside this MCP (${functions})`
+    case 'target_names_too_long':
+      return `generated function names are invalid or too long (${functions})`
+  }
 }
 
 async function replaceLocalMcpAssociation(

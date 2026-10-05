@@ -81,7 +81,7 @@ export async function readAgentImportPreview(
       if (crc32(body) !== expectedCrc) {
         throw new TypeError('AGTX manifest failed its checksum')
       }
-      return toAgentImportPreview(parseYaml(decoder.decode(body)))
+      return toAgentImportPreview(parseAgentYaml(decoder.decode(body)))
     }
     offset = bodyEnd
   }
@@ -182,7 +182,7 @@ function crc32(bytes: Uint8Array): number {
   return (crc ^ 0xffffffff) >>> 0
 }
 
-function parseYaml(value: string): unknown {
+export function parseAgentYaml(value: string): unknown {
   const lines = value
     .split(/\r?\n/)
     .filter((line) => line.trim().length > 0)

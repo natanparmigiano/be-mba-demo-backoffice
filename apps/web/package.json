@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@better-auth/sso": "1.7.6",
+    "@hashbrownai/core": "0.6.1",
+    "@hashbrownai/react": "0.6.1",
     "@monaco-editor/react": "^4.7.0",
     "better-auth": "^1.7.6",
     "hono": "^4.13.12",
@@ -23,7 +25,9 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-i18next": "^17.0.15",
-    "react-router-dom": "^7.9.5"
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.9.5",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@mba-demo/api": "0.0.0",

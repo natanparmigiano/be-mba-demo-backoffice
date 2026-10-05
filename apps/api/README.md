@@ -11,6 +11,9 @@ composition chained in `src/app.ts`.
 | Method                   | Path                                                                | Description                                                              |
 | ------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------ |
 | `GET`                    | `/api/health`                                                       | Returns `{ status: "ok", runtime: "node" }`                              |
+| `*`                      | `/api/responses/v1/*`                                               | Session-authenticated streaming proxy for an OpenAI-compatible provider  |
+| `POST`                   | `/api/hashbrown`                                                    | Session-authenticated Hashbrown AG-UI stream                             |
+| `GET/POST/PUT`           | `/api/studio/projects/*`                                            | Organization-scoped Studio project metadata and AGTX files               |
 | `GET`, `POST`            | `/api/auth/*`                                                       | Delegates requests to Better Auth                                        |
 | `GET`                    | `/api/auth/sso-availability`                                        | Reports whether any verified SSO provider is ready                       |
 | `GET`, `PUT`             | `/api/files/signed`                                                 | Filesystem download/upload authorized by an expiring HMAC URL            |

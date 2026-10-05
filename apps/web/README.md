@@ -55,6 +55,8 @@ The build command runs TypeScript project validation before creating the product
 | `/`                                   | Private        | Shows a channel-scoped WhatsApp and Business Agent overview with feature shortcuts. |
 | `/chat`                               | Private        | Displays cursor-paginated organization chats and message/event timelines.           |
 | `/chat/:chatId`                       | Private        | Opens a tenant-authorized chat directly while retaining the paginated inbox.        |
+| `/studio`                             | Private        | Lists recent organization-scoped Agent Studio projects.                             |
+| `/studio/:projectId`                  | Private        | Edits, autosaves, and downloads one Agent Studio project with an assistant.         |
 | `/organization`                       | Private        | Manages organizations, invitations, and members.                                    |
 | `/agents`                             | Private        | Displays organization channels available for agent configuration.                   |
 | `/agents/:id`                         | Private        | Manages agent configuration, backups, AGTX export, and reviewed AGTX import.        |

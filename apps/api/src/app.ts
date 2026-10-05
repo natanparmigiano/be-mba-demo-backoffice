@@ -67,6 +67,14 @@ import {
   type ContactsRouteOptions,
 } from './routes/contacts.js'
 import { createChatsRoute, type ChatsRouteOptions } from './routes/chats.js'
+import {
+  createResponsesRoute,
+  type ResponsesRouteOptions,
+} from './routes/responses.js'
+import {
+  createHashbrownRoute,
+  type HashbrownRouteOptions,
+} from './routes/hashbrown.js'
 import { createAdminOrganizationsRoute } from './routes/admin-organizations.js'
 import { createFilesRoute } from './routes/files.js'
 import { createGroupsRoute, type GroupsRouteOptions } from './routes/groups.js'
@@ -76,6 +84,10 @@ import {
   createStickersRoute,
   type StickersRouteOptions,
 } from './routes/stickers.js'
+import {
+  createStudioProjectsRoute,
+  type StudioProjectsRouteOptions,
+} from './routes/studio-projects.js'
 import {
   createWaCloudWebhookRoute,
   type WaCloudWebhookRouteOptions,
@@ -97,6 +109,8 @@ interface CreateAppOptions {
   componentsPlayground?: ComponentsPlaygroundRouteOptions
   flowsPlayground?: FlowsPlaygroundRouteOptions
   chats?: ChatsRouteOptions
+  responses?: ResponsesRouteOptions
+  hashbrown?: HashbrownRouteOptions
   contacts?: ContactsRouteOptions
   corsOrigin?: string
   eventBus?: EventBus
@@ -115,6 +129,7 @@ interface CreateAppOptions {
   templates?: TemplatesRouteOptions
   runner?: RunnerRouteOptions
   stickers?: StickersRouteOptions
+  studioProjects?: StudioProjectsRouteOptions
   waCloudWebhook?: WaCloudWebhookRouteOptions
   wabaPlayground?: WabaPlaygroundRouteOptions
   webhooksPlayground?: WebhooksPlaygroundRouteOptions
@@ -128,6 +143,8 @@ export const createApp = ({
   componentsPlayground,
   flowsPlayground,
   chats,
+  responses,
+  hashbrown,
   contacts,
   corsOrigin = 'http://localhost:5173',
   eventBus = events,
@@ -146,6 +163,7 @@ export const createApp = ({
   templates,
   runner,
   stickers,
+  studioProjects,
   waCloudWebhook,
   wabaPlayground,
   webhooksPlayground,
@@ -227,10 +245,16 @@ export const createApp = ({
     .route('/api/channels', createChannelManagementRoute(channelManagement))
     .route('/api/webhooks', createWebhooksRoute())
     .route('/api/chats', createChatsRoute({ fileStore, ...chats }))
+    .route('/api/responses/v1', createResponsesRoute(responses))
+    .route('/api/hashbrown', createHashbrownRoute(hashbrown))
     .route('/api/contacts', createContactsRoute(contacts))
     .route('/api/files', createFilesRoute(fileStore))
     .route('/api/groups', createGroupsRoute(groups))
     .route('/api/stickers', createStickersRoute({ fileStore, ...stickers }))
+    .route(
+      '/api/studio/projects',
+      createStudioProjectsRoute({ fileStore, ...studioProjects }),
+    )
     .route('/api/mcp', createMcpRoute(mcp))
     .route('/api/runner', createRunnerRoute(runner))
     .route(

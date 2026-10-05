@@ -254,6 +254,7 @@ describe('API', () => {
     assert.equal(apiResponse.status, 404)
     assert.deepEqual(await apiResponse.json(), { message: 'Not found' })
   })
+
 })
 
 function createTestChannel(

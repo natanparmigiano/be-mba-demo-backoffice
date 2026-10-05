@@ -1,0 +1,1 @@
+ALTER TABLE "studio"."projects" ADD COLUMN "conversation" jsonb DEFAULT '[]'::jsonb NOT NULL;

@@ -1,0 +1,1 @@
+ALTER TABLE "llm"."response_requests" ADD COLUMN "endpoint" text DEFAULT 'responses' NOT NULL;

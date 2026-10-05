@@ -17,6 +17,11 @@
     "test": "NODE_OPTIONS=--no-node-snapshot tsx --conditions=development --test \"src/**/*.test.ts\""
   },
   "dependencies": {
+    "@ag-ui/core": "0.0.59",
+    "@ag-ui/encoder": "0.0.59",
+    "@hashbrownai/openai": "0.6.1",
+    "@hono/node-server": "^1.19.1",
+    "@hono/zod-validator": "^0.7.2",
     "@mba-demo/auth": "0.0.0",
     "@mba-demo/db": "0.0.0",
     "@mba-demo/events": "0.0.0",
@@ -27,10 +32,10 @@
     "@mba-demo/wa-analytics": "0.0.0",
     "@mba-demo/wa-components": "0.0.0",
     "@mba-demo/wa-flows": "0.0.0",
-    "@mba-demo/wa-media": "0.0.0",
     "@mba-demo/wa-marketing": "0.0.0",
-    "@mba-demo/wa-messaging": "0.0.0",
     "@mba-demo/wa-mba": "0.0.0",
+    "@mba-demo/wa-media": "0.0.0",
+    "@mba-demo/wa-messaging": "0.0.0",
     "@mba-demo/wa-moderation": "0.0.0",
     "@mba-demo/wa-qr": "0.0.0",
     "@mba-demo/wa-registration": "0.0.0",
@@ -38,11 +43,10 @@
     "@mba-demo/wa-templates": "0.0.0",
     "@mba-demo/wa-waba": "0.0.0",
     "@mba-demo/wa-webhooks": "0.0.0",
-    "@hono/node-server": "^1.19.1",
-    "@hono/zod-validator": "^0.7.2",
     "@modelcontextprotocol/hono": "^2.0.1",
     "@modelcontextprotocol/server": "^2.2.0",
     "hono": "^4.13.12",
+    "openai": "6.10.0",
     "zod": "^4.1.11"
   },
   "devDependencies": {

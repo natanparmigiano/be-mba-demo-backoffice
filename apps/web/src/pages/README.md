@@ -30,6 +30,14 @@ switcher. Each page then owns one route-level workflow:
 - `HomePage`: organization landing dashboard with channel-scoped WhatsApp and
   Business Agent performance counters, feature links, and quick references.
 - `ChatPage`: organization-scoped inbox and message/event timeline.
+- `StudioHomePage`: recent-project dashboard, project search, new project, and
+  local AGTX import entry points.
+- `StudioPage`: full-screen persisted AGTX project editor and downloader with a
+  Hashbrown-powered assistant in the right panel. The assistant receives the
+  AGTX v1 authoring reference and can inspect or merge-patch the manifest and
+  MCPX definitions, add remote MCP connectors, and manage packaged files.
+  Dirty projects autosave through the organization-scoped API every five
+  seconds.
 - `OrganizationPage`: organizations, members, and invitations.
 - `AgentsPage`: channel grid with Meta Business Agent and Cloud API phone
   registration state plus the first configured WhatsApp message QR code.

@@ -45,6 +45,18 @@ export function NavigationSection() {
           onValueChange={setActiveTab}
           ariaLabel={t('design.navigationPatterns')}
         />
+        <Tabs
+          className="mt-4 w-fit"
+          items={tabValues.slice(0, 2).map((tab) => ({
+            value: tab,
+            label: t(`design.tabs.${tab}`),
+          }))}
+          value={activeTab === 'overview' ? 'overview' : 'activity'}
+          variant="pills"
+          size="compact"
+          onValueChange={setActiveTab}
+          ariaLabel={t('design.navigationPatterns')}
+        />
         <div className="flex min-h-24 items-center justify-center rounded-lg bg-muted/55 p-5 text-center text-sm text-muted-foreground">
           {t('design.showingPanel', { tab: t(`design.tabs.${activeTab}`) })}
         </div>

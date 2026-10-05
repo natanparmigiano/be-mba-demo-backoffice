@@ -1,4 +1,6 @@
 export * from './auth.js'
 export * from './files.js'
+export * from './llm.js'
 export * from './mba.js'
 export * from './runner.js'
+export * from './studio.js'

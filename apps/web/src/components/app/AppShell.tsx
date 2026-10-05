@@ -5,6 +5,7 @@ import {
   ChevronDown,
   MessagesSquare,
   Package,
+  PanelsTopLeft,
   ContactRound,
   FlaskConical,
   FileText,
@@ -47,6 +48,9 @@ export function AppShell() {
   const [isSigningOut, setIsSigningOut] = useState(false)
   const isChatRoute =
     location.pathname === '/chat' || location.pathname.startsWith('/chat/')
+  const isStudioRoute =
+    location.pathname === '/studio' || location.pathname.startsWith('/studio/')
+  const isWorkspaceRoute = isChatRoute || isStudioRoute
 
   const signOut = async () => {
     setIsSigningOut(true)
@@ -65,6 +69,12 @@ export function AppShell() {
       to: '/chat',
       label: t('shell.chat'),
       icon: MessagesSquare,
+      end: false,
+    },
+    {
+      to: '/studio',
+      label: t('shell.studio'),
+      icon: PanelsTopLeft,
       end: false,
     },
   ]
@@ -157,7 +167,7 @@ export function AppShell() {
     <div
       className={cn(
         'bg-background text-foreground',
-        isChatRoute ? 'h-dvh overflow-hidden' : 'min-h-screen',
+        isWorkspaceRoute ? 'h-dvh overflow-hidden' : 'min-h-screen',
       )}
     >
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r bg-card p-4 md:flex">
@@ -419,14 +429,14 @@ export function AppShell() {
       <main
         className={cn(
           'pt-16 md:pl-64',
-          isChatRoute
+          isWorkspaceRoute
             ? 'box-border h-dvh min-h-0 overflow-hidden'
             : 'min-h-screen',
         )}
       >
         <div
           className={
-            isChatRoute
+            isWorkspaceRoute
               ? 'h-full min-h-0 overflow-hidden'
               : 'mx-auto max-w-7xl p-5 sm:p-8'
           }

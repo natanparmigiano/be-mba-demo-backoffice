@@ -15,6 +15,8 @@ import { GroupsPage } from '../pages/GroupsPage'
 import { HomePage } from '../pages/HomePage'
 import { LoginPage } from '../pages/LoginPage'
 import { OrganizationPage } from '../pages/OrganizationPage'
+import { StudioPage } from '../pages/StudioPage'
+import { StudioHomePage } from '../pages/StudioHomePage'
 import { TemplatesPage } from '../pages/TemplatesPage'
 import { TemplateSendingPage } from '../pages/TemplateSendingPage'
 import { WebhooksPage } from '../pages/WebhooksPage'
@@ -59,6 +61,8 @@ export function AppRouter() {
               <Route path="/" element={<HomePage />} />
               <Route path="/chat" element={<ChatPage />} />
               <Route path="/chat/:chatId" element={<ChatPage />} />
+              <Route path="/studio" element={<StudioHomePage />} />
+              <Route path="/studio/:projectId" element={<StudioPage />} />
               <Route path="/organization" element={<OrganizationPage />} />
               <Route path="/agents" element={<AgentsPage />} />
               <Route path="/agents/:id" element={<AgentPage />} />

@@ -13,6 +13,7 @@ import {
   addMetaAgentAllowlistEntry,
   createChannelManagementRoute,
   deleteMetaAgent,
+  formatMcpImportBlocker,
   getMetaAgentBusinessInfo,
   getMetaAgentEligibility,
   getMetaAgentSettings,
@@ -24,6 +25,23 @@ import {
   replaceMetaAgentBusinessInfo,
   updateMetaAgentSettings,
 } from './channels.js'
+
+it('formats actionable local MCP import blockers', () => {
+  assert.equal(
+    formatMcpImportBlocker({
+      code: 'active_executions',
+      functionNames: ['catalog__lookup'],
+    }),
+    'active executions must finish (catalog__lookup)',
+  )
+  assert.equal(
+    formatMcpImportBlocker({
+      code: 'target_name_conflicts',
+      functionNames: ['catalog__lookup', 'catalog__search'],
+    }),
+    'function names already exist outside this MCP (catalog__lookup, catalog__search)',
+  )
+})
 import type {
   AgentConnectorsService,
   AgentEvaluationsService,
@@ -930,7 +948,7 @@ describe('channel management route', () => {
         command_description: string
       }>,
     }
-    const packageFile = createImportPackage()
+    const packageFile = createImportPackage(false, true)
     const route = createChannelManagementRoute({
       getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
       repository: createRepository({ list: async () => [channel] }),
@@ -1345,6 +1363,13 @@ describe('channel management route', () => {
     const archive = parseAgentArchive(new Uint8Array(agentBytes))
     const manifest = archive.manifest as {
       agent: {
+        knowledge: {
+          files: Array<{
+            fileName: string
+            path: string | null
+            included: boolean
+          }>
+        }
         skills: Array<{ skill: string }>
         connectors: Array<{
           name: string
@@ -1366,6 +1391,34 @@ describe('channel management route', () => {
     const embeddedMcp = archive.entries.get('MCPs/dunder_mifflin_mcp.mcpx')
     assert.ok(embeddedMcp)
     assert.equal(new TextDecoder().decode(embeddedMcp), mcpText)
+    assert.deepEqual(
+      manifest.agent.knowledge.files.map(({ fileName, path, included }) => ({
+        fileName,
+        path,
+        included,
+        bundled: path ? archive.entries.has(path) : false,
+      })),
+      [
+        {
+          fileName: 'dunder-mifflin-paper-catalog.csv',
+          path: 'files/001-dunder-mifflin-paper-catalog.csv',
+          included: true,
+          bundled: true,
+        },
+        {
+          fileName: 'dunder-mifflin-delivery-guide.csv',
+          path: 'files/002-dunder-mifflin-delivery-guide.csv',
+          included: true,
+          bundled: true,
+        },
+        {
+          fileName: 'dunder-mifflin-returns-checklist.csv',
+          path: 'files/003-dunder-mifflin-returns-checklist.csv',
+          included: true,
+          bundled: true,
+        },
+      ],
+    )
     assert.equal(
       connector?.mcpToolSync?.toolCount,
       mcpPackage.mcp.functions.length,
@@ -2864,7 +2917,10 @@ function createRepository(
   }
 }
 
-function createImportPackage(includeEvaluations = false): File {
+function createImportPackage(
+  includeEvaluations = false,
+  omitProviderConnectorMetadata = false,
+): File {
   const document = stringifyYaml({
     format: 'agtx',
     version: 1,
@@ -2952,13 +3008,17 @@ function createImportPackage(includeEvaluations = false): File {
           baseUrl: 'https://orders.example.com',
           connectorProtocol: 'HTTP',
           authType: 'NONE',
-          hasAuthConfiguration: false,
           requiresCertificate: false,
-          hasCertificate: false,
-          connectionStatus: 'ACTIVE',
-          connectionError: null,
           userAuthInjectionConfig: null,
-          mcpToolSync: null,
+          ...(omitProviderConnectorMetadata
+            ? {}
+            : {
+                hasAuthConfiguration: false,
+                hasCertificate: false,
+                connectionStatus: 'ACTIVE',
+                connectionError: null,
+                mcpToolSync: null,
+              }),
           tools: [
             {
               id: 'tool-source',
@@ -2985,13 +3045,17 @@ function createImportPackage(includeEvaluations = false): File {
           baseUrl: 'https://mcp.example.com/api/mcp/1',
           connectorProtocol: 'MCP',
           authType: 'NONE',
-          hasAuthConfiguration: false,
           requiresCertificate: false,
-          hasCertificate: false,
-          connectionStatus: 'ACTIVE',
-          connectionError: null,
           userAuthInjectionConfig: null,
-          mcpToolSync: null,
+          ...(omitProviderConnectorMetadata
+            ? {}
+            : {
+                hasAuthConfiguration: false,
+                hasCertificate: false,
+                connectionStatus: 'ACTIVE',
+                connectionError: null,
+                mcpToolSync: null,
+              }),
           tools: [
             {
               id: 'legacy-mcp-tool-source',
