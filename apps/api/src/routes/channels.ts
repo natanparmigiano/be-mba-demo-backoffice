@@ -1810,6 +1810,10 @@ export const createChannelManagementRoute = ({
 
       try {
         const imported = await readAgentImportPackage(c.req.raw)
+        validateLocalMcpConnectorConfigurations(
+          imported.manifest,
+          new URL(c.req.url).origin,
+        )
         const requirements = getAgentImportRequirements(imported)
         return c.json({
           summary: {
@@ -4048,6 +4052,20 @@ function localMcpAuthConfig(apiKey: string): ConnectorAuthConfig {
   }
 }
 
+function localMcpConnectorAuthConfig(
+  apiKey: string,
+): z.infer<typeof connectorAuthConfigSchema> {
+  return {
+    apiKey: {
+      headers: [
+        { fieldName: 'Authorization', value: apiKey, prefix: 'Bearer ' },
+      ],
+      queryParams: [],
+      bodyParams: [],
+    },
+  }
+}
+
 async function assertPreparedLocalMcpAssociation(
   organizationId: string,
   association: z.infer<typeof localMcpAssociationSchema>,
@@ -5927,6 +5945,25 @@ function getAgentImportRequirements(imported: ParsedAgentImportPackage) {
   }
 }
 
+function validateLocalMcpConnectorConfigurations(
+  manifest: AgentImportManifest,
+  origin: string,
+): void {
+  for (const connector of manifest.agent.connectors) {
+    if (!connector.localMcp) continue
+    createConnectorSchema.parse({
+      name: connector.name,
+      description: connector.description,
+      baseUrl: `${origin}/api/mcp/1`,
+      connectorProtocol: 'MCP',
+      authType: 'API_KEY',
+      authConfig: localMcpConnectorAuthConfig('placeholder'),
+      userAuthInjectionConfig: connector.userAuthInjectionConfig ?? undefined,
+      requiresCertificate: connector.requiresCertificate,
+    })
+  }
+}
+
 async function prepareAgentImport(
   request: Request,
 ): Promise<PreparedAgentImport> {
@@ -5992,7 +6029,7 @@ async function prepareAgentImport(
         : connector.connectorProtocol,
       authType: connector.localMcp ? 'API_KEY' : connector.authType,
       authConfig: connector.localMcp
-        ? localMcpAuthConfig('placeholder')
+        ? localMcpConnectorAuthConfig('placeholder')
         : supplied?.authConfig,
       userAuthInjectionConfig: connector.userAuthInjectionConfig ?? undefined,
       requiresCertificate: connector.requiresCertificate,
@@ -6811,7 +6848,7 @@ async function reconcileConnectors(
       connectorProtocol: localMcp ? 'MCP' : connector.connectorProtocol,
       authType: localMcp ? 'API_KEY' : connector.authType,
       authConfig: localApiKey
-        ? localMcpAuthConfig(localApiKey.apiKey)
+        ? localMcpConnectorAuthConfig(localApiKey.apiKey)
         : supplied?.authConfig,
       userAuthInjectionConfig: connector.userAuthInjectionConfig ?? undefined,
       requiresCertificate: connector.requiresCertificate,
