@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next'
 import type { InferResponseType } from 'hono/client'
 import {
   Bot,
+  FilterX,
   Hand,
   LoaderCircle,
   MessagesSquare,
@@ -34,7 +35,15 @@ import {
   type StickerLibraryItem,
   type StickerMessage,
 } from '../components/chat'
-import { Avatar, Button, cn, Pill } from '../components/ui'
+import {
+  Avatar,
+  Button,
+  cn,
+  Input,
+  Pill,
+  SearchBox,
+  Select,
+} from '../components/ui'
 
 type ChatsResponse = InferResponseType<typeof apiClient.api.chats.$get, 200>
 type ChatSummary = ChatsResponse['chats'][number]
@@ -57,6 +66,17 @@ type ChatMessageRequest = Parameters<
 type Handler = ChatSummary['handledBy']
 type HandoffError = { chatId: number; message: string }
 type RealtimeState = 'idle' | 'connecting' | 'connected' | 'disconnected'
+type ChannelOption = InferResponseType<
+  typeof apiClient.api.channels.$get,
+  200
+>['channels'][number]
+interface ChatFilters {
+  search?: string
+  channelId?: string
+  handledBy?: Handler
+  startDate?: string
+  endDate?: string
+}
 
 const CHAT_PAGE_SIZE = 30
 const TIMELINE_PAGE_SIZE = 50
@@ -71,6 +91,13 @@ export function ChatWorkspace() {
   const activeOrganizationQuery = authClient.useActiveOrganization()
   const activeOrganizationId = activeOrganizationQuery.data?.id
   const [chats, setChats] = useState<ChatSummary[]>([])
+  const [channels, setChannels] = useState<ChannelOption[]>([])
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [channelId, setChannelId] = useState('')
+  const [handledBy, setHandledBy] = useState<Handler | ''>('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [nextChatCursor, setNextChatCursor] = useState<string | null>(null)
   const [timelineItems, setTimelineItems] = useState<ApiTimelineItem[]>([])
   const [timelineChatId, setTimelineChatId] = useState<number | null>(null)
@@ -106,6 +133,36 @@ export function ChatWorkspace() {
 
   selectedIdRef.current = selectedId
 
+  const chatFilters = useMemo<ChatFilters>(
+    () => ({
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      ...(channelId ? { channelId } : {}),
+      ...(handledBy ? { handledBy } : {}),
+      ...(startDate ? { startDate: startOfLocalDay(startDate) } : {}),
+      ...(endDate ? { endDate: endOfLocalDay(endDate) } : {}),
+    }),
+    [channelId, debouncedSearch, endDate, handledBy, startDate],
+  )
+  const hasChatFilters = Boolean(
+    search || channelId || handledBy || startDate || endDate,
+  )
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  useEffect(() => {
+    if (!activeOrganizationId) {
+      setChannels([])
+      return
+    }
+    void (async () => {
+      const response = await apiClient.api.channels.$get()
+      if (response.ok) setChannels((await response.json()).channels)
+    })()
+  }, [activeOrganizationId])
+
   const refreshInbox = useCallback(
     async (preserveChatId: number | null): Promise<boolean> => {
       const requestId = ++chatRequestId.current
@@ -114,7 +171,7 @@ export function ChatWorkspace() {
 
       try {
         const [result, selected] = await Promise.all([
-          fetchChats(undefined, t('chatWorkspace.loadFailed')),
+          fetchChats(undefined, chatFilters, t('chatWorkspace.loadFailed')),
           preserveChatId
             ? fetchChat(preserveChatId, t('chatWorkspace.chatNotFound'))
             : Promise.resolve(undefined),
@@ -132,7 +189,7 @@ export function ChatWorkspace() {
         return false
       }
     },
-    [t],
+    [chatFilters, t],
   )
 
   const refreshChatRegion = useCallback(
@@ -146,7 +203,7 @@ export function ChatWorkspace() {
 
       try {
         const [chatResult, selected, timelineResult] = await Promise.all([
-          fetchChats(undefined, t('chatWorkspace.loadFailed')),
+          fetchChats(undefined, chatFilters, t('chatWorkspace.loadFailed')),
           fetchChat(chatId, t('chatWorkspace.chatNotFound')),
           fetchTimeline(
             chatId,
@@ -183,7 +240,7 @@ export function ChatWorkspace() {
         return false
       }
     },
-    [t],
+    [chatFilters, t],
   )
 
   useEffect(() => {
@@ -211,6 +268,7 @@ export function ChatWorkspace() {
       try {
         const result = await fetchChats(
           undefined,
+          chatFilters,
           t('chatWorkspace.loadFailed'),
         )
         if (chatRequestId.current !== requestId) return
@@ -229,7 +287,7 @@ export function ChatWorkspace() {
         if (chatRequestId.current === requestId) setIsLoadingChats(false)
       }
     })()
-  }, [activeOrganizationId, t])
+  }, [activeOrganizationId, chatFilters, t])
 
   useEffect(() => {
     const requestId = ++selectedChatRequestId.current
@@ -487,7 +545,11 @@ export function ChatWorkspace() {
     setIsLoadingMoreChats(true)
     setChatError(null)
     try {
-      const result = await fetchChats(cursor, t('chatWorkspace.loadFailed'))
+      const result = await fetchChats(
+        cursor,
+        chatFilters,
+        t('chatWorkspace.loadFailed'),
+      )
       if (chatRequestId.current !== requestId) return
       setChats((current) => reconcileChatPage(current, result.chats))
       setNextChatCursor(result.nextCursor)
@@ -603,7 +665,7 @@ export function ChatWorkspace() {
   )
 
   return (
-    <section className="grid h-full max-h-full min-h-0 grid-rows-[16rem_minmax(0,1fr)] overflow-hidden bg-card lg:grid-cols-[22rem_minmax(0,1fr)] lg:grid-rows-1">
+    <section className="grid h-full max-h-full min-h-0 grid-rows-[26rem_minmax(0,1fr)] overflow-hidden bg-card lg:grid-cols-[22rem_minmax(0,1fr)] lg:grid-rows-1">
       <h1 className="sr-only">{t('chatWorkspace.title')}</h1>
 
       <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-b bg-card lg:border-r lg:border-b-0">
@@ -612,6 +674,79 @@ export function ChatWorkspace() {
           <p className="text-xs text-muted-foreground">
             {t('chatWorkspace.inboxDescription')}
           </p>
+        </div>
+
+        <div className="grid shrink-0 gap-2 border-b p-3">
+          <SearchBox
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t('chatWorkspace.searchContactPlaceholder')}
+            aria-label={t('chatWorkspace.searchContactLabel')}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Select
+              value={channelId}
+              onChange={(event) => setChannelId(event.target.value)}
+              aria-label={t('chatWorkspace.channelFilter')}
+              className="h-9"
+            >
+              <option value="">{t('chatWorkspace.allChannels')}</option>
+              {channels.map((channel) => (
+                <option key={channel.id} value={channel.id}>
+                  {channel.name}
+                </option>
+              ))}
+            </Select>
+            <Select
+              value={handledBy}
+              onChange={(event) =>
+                setHandledBy(event.target.value as Handler | '')
+              }
+              aria-label={t('chatWorkspace.holderFilter')}
+              className="h-9"
+            >
+              <option value="">{t('chatWorkspace.allHolders')}</option>
+              <option value="mba">{t('chatWorkspace.handlers.mba')}</option>
+              <option value="application">
+                {t('chatWorkspace.handlers.application')}
+              </option>
+            </Select>
+            <Input
+              type="date"
+              value={startDate}
+              max={endDate || undefined}
+              onChange={(event) => setStartDate(event.target.value)}
+              aria-label={t('chatWorkspace.startDate')}
+              className="h-9 px-2 text-xs"
+            />
+            <Input
+              type="date"
+              value={endDate}
+              min={startDate || undefined}
+              onChange={(event) => setEndDate(event.target.value)}
+              aria-label={t('chatWorkspace.endDate')}
+              className="h-9 px-2 text-xs"
+            />
+          </div>
+          {hasChatFilters && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="justify-self-start"
+              onClick={() => {
+                setSearch('')
+                setDebouncedSearch('')
+                setChannelId('')
+                setHandledBy('')
+                setStartDate('')
+                setEndDate('')
+              }}
+            >
+              <FilterX className="size-4" aria-hidden />
+              {t('chatWorkspace.clearFilters')}
+            </Button>
+          )}
         </div>
 
         {chatError && (
@@ -1013,18 +1148,28 @@ function LoadingState({ label }: { label: string }) {
 
 async function fetchChats(
   cursor: string | undefined,
+  filters: ChatFilters,
   fallback: string,
 ): Promise<ChatsResponse> {
   const response = await apiClient.api.chats.$get({
     query: {
       limit: String(CHAT_PAGE_SIZE),
       ...(cursor ? { cursor } : {}),
+      ...filters,
     },
   })
   if (!response.ok) {
     throw new Error(await readApiError(response, fallback))
   }
   return response.json()
+}
+
+function startOfLocalDay(value: string): string {
+  return new Date(`${value}T00:00:00`).toISOString()
+}
+
+function endOfLocalDay(value: string): string {
+  return new Date(`${value}T23:59:59.999`).toISOString()
 }
 
 async function fetchChat(

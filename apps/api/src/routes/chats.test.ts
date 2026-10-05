@@ -150,7 +150,7 @@ describe('chats route', () => {
     assert.deepEqual(query.params, [])
   })
 
-  it('lists organization chats with a parsed keyset cursor', async () => {
+  it('lists organization chats with parsed pagination and filters', async () => {
     let receivedOrganizationId: string | undefined
     let receivedQuery: Parameters<ChatsRepository['list']>[1] | undefined
     const cursor = encodeChatCursor({ id: chat.id, updatedAt: chat.updatedAt })
@@ -165,8 +165,10 @@ describe('chats route', () => {
       }),
     })
 
+    const startDate = '2026-10-01T03:00:00.000Z'
+    const endDate = '2026-10-06T02:59:59.999Z'
     const response = await route.request(
-      `/?limit=25&cursor=${encodeURIComponent(cursor)}`,
+      `/?limit=25&cursor=${encodeURIComponent(cursor)}&search=Ada&channelId=7&handledBy=application&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
     )
 
     assert.equal(response.status, 200)
@@ -174,6 +176,11 @@ describe('chats route', () => {
     assert.deepEqual(receivedQuery, {
       cursor: { id: chat.id, updatedAt: chat.updatedAt },
       limit: 25,
+      search: 'Ada',
+      channelId: 7,
+      handledBy: 'application',
+      startDate,
+      endDate,
     })
     assert.deepEqual(await response.json(), {
       chats: [chat],

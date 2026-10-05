@@ -1,5 +1,5 @@
 export type SetCondition = 'if-exists' | 'if-not-exists'
-export type KeyValueMode = 'memory' | 'redis'
+export type KeyValueMode = 'memory' | 'postgres' | 'redis'
 
 export interface SetOptions {
   condition?: SetCondition

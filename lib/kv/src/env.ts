@@ -1,5 +1,43 @@
 type RuntimeEnvironment = Readonly<Record<string, string | undefined>>
 
+export type KeyValueAdapter = 'memory' | 'postgres' | 'redis'
+
+export interface KeyValueConfiguration {
+  adapter: KeyValueAdapter
+  redisUrl?: string
+}
+
+export function getKeyValueConfiguration(
+  env: RuntimeEnvironment = getRuntimeEnvironment(),
+): KeyValueConfiguration {
+  const redisUrl = getRedisUrl(env)
+  const configuredAdapter = env.KV_ADAPTER?.trim().toLowerCase()
+
+  if (
+    configuredAdapter &&
+    configuredAdapter !== 'memory' &&
+    configuredAdapter !== 'postgres' &&
+    configuredAdapter !== 'redis'
+  ) {
+    throw new Error('KV_ADAPTER must be memory, postgres, or redis')
+  }
+
+  const adapter: KeyValueAdapter =
+    configuredAdapter === 'memory' ||
+    configuredAdapter === 'postgres' ||
+    configuredAdapter === 'redis'
+      ? configuredAdapter
+      : redisUrl
+        ? 'redis'
+        : 'memory'
+
+  if (adapter === 'redis' && !redisUrl) {
+    throw new Error('REDIS_URL is required when KV_ADAPTER is redis')
+  }
+
+  return { adapter, redisUrl }
+}
+
 export function getRedisUrl(
   env: RuntimeEnvironment = getRuntimeEnvironment(),
 ): string | undefined {

@@ -48,6 +48,8 @@ import {
   and,
   desc,
   eq,
+  gte,
+  ilike,
   isNotNull,
   lt,
   lte,
@@ -71,6 +73,11 @@ const MAX_PAGE_SIZE = 100
 
 const listChatsQuerySchema = z.object({
   cursor: z.string().trim().min(1).max(500).optional(),
+  search: z.string().trim().min(1).max(200).optional(),
+  channelId: z.coerce.number().int().positive().optional(),
+  handledBy: z.enum(['mba', 'application']).optional(),
+  startDate: z.iso.datetime().optional(),
+  endDate: z.iso.datetime().optional(),
   limit: z.coerce
     .number()
     .int()
@@ -265,6 +272,11 @@ export type ChatTimelineItem = ChatMessageTimelineItem | ChatEventTimelineItem
 interface ChatListQuery {
   cursor?: ChatCursor
   limit: number
+  search?: string
+  channelId?: number
+  handledBy?: ChatHandler
+  startDate?: string
+  endDate?: string
 }
 
 interface TimelineQuery {
@@ -440,6 +452,11 @@ export const createChatsRoute = ({
           await resolvedRepository.list(access.organizationId, {
             cursor,
             limit: query.limit,
+            ...(query.search ? { search: query.search } : {}),
+            ...(query.channelId ? { channelId: query.channelId } : {}),
+            ...(query.handledBy ? { handledBy: query.handledBy } : {}),
+            ...(query.startDate ? { startDate: query.startDate } : {}),
+            ...(query.endDate ? { endDate: query.endDate } : {}),
           }),
         )
       },
@@ -1039,6 +1056,24 @@ async function listChats(
 ): Promise<ChatListResult> {
   const conditions: SQL[] = [eq(chats.organizationId, organizationId)]
 
+  if (query.search) {
+    const pattern = `%${escapeLikePattern(query.search)}%`
+    const searchCondition = or(
+      ilike(contacts.profileName, pattern),
+      ilike(contacts.profileUsername, pattern),
+      ilike(groups.subject, pattern),
+    )
+    if (searchCondition) conditions.push(searchCondition)
+  }
+  if (query.channelId) conditions.push(eq(chats.channelId, query.channelId))
+  if (query.handledBy) conditions.push(eq(chats.handledBy, query.handledBy))
+  if (query.startDate) {
+    conditions.push(gte(chats.updatedAt, new Date(query.startDate)))
+  }
+  if (query.endDate) {
+    conditions.push(lte(chats.updatedAt, new Date(query.endDate)))
+  }
+
   if (query.cursor) {
     const cursorDate = new Date(query.cursor.updatedAt)
     const cursorCondition = or(
@@ -1063,6 +1098,13 @@ async function listChats(
           })
         : null,
   }
+}
+
+function escapeLikePattern(value: string): string {
+  return value
+    .replaceAll('\\', '\\\\')
+    .replaceAll('%', '\\%')
+    .replaceAll('_', '\\_')
 }
 
 async function getChat(
