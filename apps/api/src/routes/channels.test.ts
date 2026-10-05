@@ -2397,7 +2397,28 @@ describe('channel management route', () => {
     }
   })
 
-  it('rejects a callback URL that does not belong to the channel', async () => {
+  it('allows overriding the webhook callback URL', async () => {
+    let requestedCallbackUrl: string | undefined
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
+      repository: createRepository(),
+      registerWebhook: async (_configuration, callbackUrl) => {
+        requestedCallbackUrl = callbackUrl
+      },
+    })
+
+    const callbackUrl = 'https://testing.example.com/meta/callback?channel=7'
+    const response = await route.request('/7/set-webhook', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ callbackUrl }),
+    })
+
+    assert.equal(response.status, 200)
+    assert.equal(requestedCallbackUrl, callbackUrl)
+  })
+
+  it('rejects callback URLs with embedded credentials', async () => {
     const route = createChannelManagementRoute({
       getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
       repository: createRepository(),
@@ -2407,7 +2428,7 @@ describe('channel management route', () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        callbackUrl: 'https://example.com/api/wa-cloud/webhook/8',
+        callbackUrl: 'https://user:secret@example.com/webhook',
       }),
     })
 
@@ -2467,11 +2488,11 @@ describe('Meta webhook registration', () => {
       requests[0]?.url,
       'https://graph.facebook.com/v26.0/app-id/subscriptions',
     )
-    assert.equal(typeof requests[0]?.init?.body, 'string')
-    const body = requests[0].init?.body
+    assert.equal(requests[0]?.init?.body instanceof URLSearchParams, true)
+    const body = requests[0].init?.body?.toString()
     assert.equal(
       body,
-      'object=whatsapp_business_account&callback_url=https://example.com/api/wa-cloud/webhook/7&verify_token=verify-secret&fields=messages,calls,messaging_handovers,account_settings_update,standby,business_status_update,flows,message_template_components_update,message_template_quality_update,message_template_status_update,phone_number_quality_update,phone_number_name_update,template_category_update,template_correct_category_detection&access_token=app-id|app-secret',
+      'object=whatsapp_business_account&callback_url=https%3A%2F%2Fexample.com%2Fapi%2Fwa-cloud%2Fwebhook%2F7&verify_token=verify-secret&fields=messages%2Ccalls%2Cmessaging_handovers%2Caccount_settings_update%2Cstandby%2Cbusiness_status_update%2Cflows%2Cmessage_template_components_update%2Cmessage_template_quality_update%2Cmessage_template_status_update%2Cphone_number_quality_update%2Cphone_number_name_update%2Ctemplate_category_update%2Ctemplate_correct_category_detection&access_token=app-id%7Capp-secret',
     )
     assert.deepEqual(MBA_WEBHOOK_SUBSCRIPTION_FIELDS, [
       'messages',

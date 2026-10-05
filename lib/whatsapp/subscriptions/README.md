@@ -75,9 +75,8 @@ The registration client submits URL-encoded form data to
 `/<APP_ID>/subscriptions` using the app access token
 `<APP_ID>|<APP_SECRET>`; it does not use the system-user access token. Meta's
 app access token is sent only in the form body, preventing the app secret from
-appearing in URLs and intermediary request logs. The form serializer preserves
-the literal callback URL, comma-separated fields, and app-token pipe to match
-Meta's accepted cURL request while escaping form delimiters inside values.
+appearing in URLs and intermediary request logs. The request body uses the
+platform `URLSearchParams` serializer for standard form encoding.
 `WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS` covers every field currently parsed by
 `@mba-demo/wa-webhooks`, including `messages` (which also carries message
 status updates), business/account updates, `standby`, `message_echoes`, and

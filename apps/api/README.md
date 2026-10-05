@@ -58,7 +58,7 @@ composition chained in `src/app.ts`.
 | `DELETE`                 | `/api/channels/:id/agent-knowledge/files/:fileId`                   | Removes an agent knowledge file                                          |
 | `POST`, `DELETE`         | `/api/channels/:id/agent`                                           | Onboards or removes a Meta Business Agent for an owned channel           |
 | `GET`                    | `/api/channels/:id/verify-token`                                    | Returns a channel's webhook verification token to an owner/admin         |
-| `POST`                   | `/api/channels/:id/set-webhook`                                     | Registers the app-level WhatsApp webhook subscription                    |
+| `POST`                   | `/api/channels/:id/set-webhook`                                     | Registers the app webhook with an optional callback URL override         |
 | `GET`                    | `/api/channels/:id/deletion-impact`                                 | Counts local contacts, groups, and messages before channel deletion      |
 | `PATCH`                  | `/api/channels/:id`                                                 | Updates an active-organization channel                                   |
 | `DELETE`                 | `/api/channels/:id`                                                 | Confirms and manually deletes a channel's local dependency graph         |

@@ -144,6 +144,7 @@ export function ChannelsPage() {
   const [isBusy, setIsBusy] = useState(false)
   const [isRegistrationBusy, setIsRegistrationBusy] = useState(false)
   const [registrationPin, setRegistrationPin] = useState('')
+  const [webhookCallbackUrl, setWebhookCallbackUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [dialogError, setDialogError] = useState<string | null>(null)
@@ -232,6 +233,7 @@ export function ChannelsPage() {
     setDeletionPreview(null)
     setDeleteConfirmation('')
     setRegistrationPin('')
+    setWebhookCallbackUrl('')
     setIsLoadingDeletionPreview(false)
     if (isFormPage) void navigate('/channels')
   }
@@ -427,7 +429,7 @@ export function ChannelsPage() {
 
   const setChannelWebhook = async () => {
     if (!selectedChannel) return
-    const callbackUrl = `${window.location.origin}/api/wa-cloud/webhook/${selectedChannel.id}`
+    const callbackUrl = webhookCallbackUrl.trim()
     setIsBusy(true)
     setDialogError(null)
     setNotice(null)
@@ -690,6 +692,9 @@ export function ChannelsPage() {
                 onEdit={() => openEditDialog(channel)}
                 onSetWebhook={() => {
                   setSelectedChannel(channel)
+                  setWebhookCallbackUrl(
+                    `${window.location.origin}/api/wa-cloud/webhook/${channel.id}`,
+                  )
                   setDialogError(null)
                   setDialog('set-webhook')
                 }}
@@ -832,22 +837,25 @@ export function ChannelsPage() {
               appId: selectedChannel?.waAppId,
             })}
           </div>
-          <div className="rounded-lg border bg-muted/30 p-3">
-            <p className="text-xs font-semibold text-muted-foreground">
-              {t('channels.newWebhookUrl')}
-            </p>
-            <code className="mt-1 block break-all text-xs">
-              {selectedChannel
-                ? `${window.location.origin}/api/wa-cloud/webhook/${selectedChannel.id}`
-                : ''}
-            </code>
-          </div>
+          <Input
+            type="url"
+            label={t('channels.newWebhookUrl')}
+            hint={t('channels.newWebhookUrlHint')}
+            value={webhookCallbackUrl}
+            disabled={isBusy}
+            required
+            onChange={(event) => setWebhookCallbackUrl(event.target.value)}
+          />
           <DialogError message={dialogError} />
           <div className="flex justify-end gap-2">
             <Button variant="ghost" disabled={isBusy} onClick={closeDialog}>
               {t('channels.cancel')}
             </Button>
-            <Button isLoading={isBusy} onClick={() => void setChannelWebhook()}>
+            <Button
+              isLoading={isBusy}
+              disabled={!webhookCallbackUrl.trim()}
+              onClick={() => void setChannelWebhook()}
+            >
               {t('channels.setWebhook')}
             </Button>
           </div>

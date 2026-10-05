@@ -172,20 +172,6 @@ function normalizeFields(
   return normalized
 }
 
-function rawFormValue(value: string): string {
-  return encodeURIComponent(value)
-    .replaceAll('%3A', ':')
-    .replaceAll('%2F', '/')
-    .replaceAll('%2C', ',')
-    .replaceAll('%7C', '|')
-}
-
-function rawFormBody(values: Record<string, string>): string {
-  return Object.entries(values)
-    .map(([name, value]) => `${name}=${rawFormValue(value)}`)
-    .join('&')
-}
-
 function parseJson(text: string): unknown {
   if (!text) return undefined
   try {
@@ -322,13 +308,12 @@ export class WhatsAppWebhookRegistrationClient implements WhatsAppWebhookRegistr
     input: RegisterWhatsAppWebhookInput,
     options: WhatsAppWebhookRegistrationRequestOptions = {},
   ): Promise<WhatsAppWebhookRegistrationResult> {
-    const body = rawFormBody({
-      object: WEBHOOK_OBJECT,
-      callback_url: normalizeCallbackUrl(input.callbackUrl),
-      verify_token: required('verifyToken', input.verifyToken),
-      fields: normalizeFields(input.fields).join(','),
-      access_token: this.#accessToken,
-    })
+    const body = new URLSearchParams()
+    body.set('object', WEBHOOK_OBJECT)
+    body.set('callback_url', normalizeCallbackUrl(input.callbackUrl))
+    body.set('verify_token', required('verifyToken', input.verifyToken))
+    body.set('fields', normalizeFields(input.fields).join(','))
+    body.set('access_token', this.#accessToken)
     const response = await this.#fetch(this.#subscriptionsUrl, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },

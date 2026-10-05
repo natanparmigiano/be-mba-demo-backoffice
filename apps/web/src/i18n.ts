@@ -1987,6 +1987,8 @@ const en = {
     setWebhookWarning:
       'This replaces the app-level WhatsApp webhook subscription for Meta app {{appId}}. It uses the app ID and app secret, not the system-user access token.',
     newWebhookUrl: 'New webhook URL',
+    newWebhookUrlHint:
+      'Override this URL when Meta must reach the webhook through another HTTP(S) endpoint.',
     setWebhook: 'Register app webhook',
     webhookSet: 'App webhook subscription registered: {{url}}',
     deleteTitle: 'Delete channel?',
@@ -4999,6 +5001,8 @@ const pt: typeof en = {
     setWebhookWarning:
       'Isso substitui a inscrição de webhook do WhatsApp no nível da aplicação Meta {{appId}}. São usados o ID e o segredo da aplicação, não o token de acesso do usuário do sistema.',
     newWebhookUrl: 'Nova URL do webhook',
+    newWebhookUrlHint:
+      'Substitua esta URL quando a Meta precisar acessar o webhook por outro endpoint HTTP(S).',
     setWebhook: 'Registrar webhook da aplicação',
     webhookSet: 'Inscrição de webhook da aplicação registrada: {{url}}',
     deleteTitle: 'Excluir canal?',
@@ -8041,6 +8045,8 @@ const es: typeof en = {
     setWebhookWarning:
       'Esto reemplaza la suscripción al webhook de WhatsApp de la aplicación de Meta {{appId}}. Utiliza el identificador y el secreto de la aplicación, no el token de acceso del usuario del sistema.',
     newWebhookUrl: 'Nueva URL del webhook',
+    newWebhookUrlHint:
+      'Cambia esta URL cuando Meta deba acceder al webhook mediante otro endpoint HTTP(S).',
     setWebhook: 'Registrar webhook de la aplicación',
     webhookSet: 'Suscripción al webhook de la aplicación registrada: {{url}}',
     deleteTitle: '¿Eliminar canal?',

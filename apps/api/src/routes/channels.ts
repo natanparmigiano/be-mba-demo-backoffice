@@ -3795,13 +3795,11 @@ export const createChannelManagementRoute = ({
         const { callbackUrl } = c.req.valid('json')
         const callback = new URL(callbackUrl)
         if (
+          (callback.protocol !== 'https:' && callback.protocol !== 'http:') ||
           callback.username ||
-          callback.password ||
-          callback.search ||
-          callback.hash ||
-          callback.pathname !== `/api/wa-cloud/webhook/${channelId}`
+          callback.password
         ) {
-          return c.json({ message: 'Invalid channel webhook URL' }, 400)
+          return c.json({ message: 'Invalid webhook callback URL' }, 400)
         }
 
         const configuration = await repository.getWebhookConfiguration(

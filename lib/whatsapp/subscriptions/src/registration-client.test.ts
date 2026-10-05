@@ -58,11 +58,11 @@ describe('WhatsAppWebhookRegistrationClient', () => {
       new Headers(request?.init?.headers).get('content-type'),
       'application/x-www-form-urlencoded',
     )
-    assert.equal(typeof request?.init?.body, 'string')
-    const body = request.init.body
+    assert.equal(request?.init?.body instanceof URLSearchParams, true)
+    const body = request?.init?.body?.toString()
     assert.equal(
       body,
-      `object=whatsapp_business_account&callback_url=https://app.example.com/api/wa-cloud/webhook/7&verify_token=verify-secret&fields=${WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS.join(',')}&access_token=app/id|app-secret`,
+      `object=whatsapp_business_account&callback_url=https%3A%2F%2Fapp.example.com%2Fapi%2Fwa-cloud%2Fwebhook%2F7&verify_token=verify-secret&fields=${WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS.join('%2C')}&access_token=app%2Fid%7Capp-secret`,
     )
   })
 
