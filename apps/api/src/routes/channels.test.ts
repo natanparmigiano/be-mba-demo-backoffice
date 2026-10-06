@@ -1493,6 +1493,93 @@ describe('channel management route', () => {
     })
   })
 
+  it('requires HTTPS connector base URLs outside replaced local MCP provenance', async () => {
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+    })
+    const connectorInput = {
+      name: 'orders_connector',
+      description: 'Order service',
+      baseUrl: 'http://orders.example.com',
+      connectorProtocol: 'HTTP',
+      authType: 'NONE',
+      requiresCertificate: false,
+    }
+
+    const createResponse = await route.request(
+      '/7/agent-connectors',
+      jsonRequest('POST', connectorInput),
+    )
+    const updateResponse = await route.request(
+      '/7/agent-connectors/connector-one',
+      jsonRequest('PUT', { ...connectorInput, connectorProtocol: 'MCP' }),
+    )
+    const restImportForm = new FormData()
+    restImportForm.set(
+      'package',
+      createImportPackage(false, false, 'http://orders.example.com'),
+    )
+    const restImportResponse = await route.request('/7/agent-import/inspect', {
+      method: 'POST',
+      body: restImportForm,
+    })
+
+    assert.equal(createResponse.status, 400)
+    assert.equal(updateResponse.status, 400)
+    assert.equal(restImportResponse.status, 400)
+    assert.match(
+      ((await restImportResponse.json()) as { message: string }).message,
+      /HTTPS/,
+    )
+
+    const sample = parseAgentArchive(
+      new Uint8Array(
+        await readFile(
+          new URL(
+            '../../../../docs/agtx/sample_dunder_mifflin.agtx',
+            import.meta.url,
+          ),
+        ),
+      ),
+    )
+    const manifestText = new TextDecoder().decode(
+      sample.entries.get('agent.yaml'),
+    )
+    assert.match(manifestText, /https:\/\/mcp\.dundermifflin\.example/)
+    const provenanceBytes = createAgentExportArchive(
+      [...sample.entries].map(([path, body]) => ({
+        path,
+        body:
+          path === 'agent.yaml'
+            ? new TextEncoder().encode(
+                manifestText.replaceAll(
+                  'https://mcp.dundermifflin.example',
+                  'http://mcp.dundermifflin.example',
+                ),
+              )
+            : body,
+      })),
+    )
+    const localMcpImportForm = new FormData()
+    localMcpImportForm.set(
+      'package',
+      new File([provenanceBytes.slice().buffer], 'local-mcp.agtx', {
+        type: 'application/vnd.mba.agent+zip',
+      }),
+    )
+    const localMcpImportResponse = await route.request(
+      'http://backoffice.example/7/agent-import/inspect',
+      { method: 'POST', body: localMcpImportForm },
+    )
+
+    assert.equal(
+      localMcpImportResponse.status,
+      200,
+      await localMcpImportResponse.clone().text(),
+    )
+  })
+
   it('reports the exact failed import step and reason', async () => {
     const logged: Array<Record<string, unknown>> = []
     const providerRequestTimes: number[] = []
@@ -2946,6 +3033,7 @@ function createRepository(
 function createImportPackage(
   includeEvaluations = false,
   omitProviderConnectorMetadata = false,
+  ordersBaseUrl = 'https://orders.example.com',
 ): File {
   const document = stringifyYaml({
     format: 'agtx',
@@ -3031,7 +3119,7 @@ function createImportPackage(
           id: 'connector-source',
           name: 'orders_connector',
           description: 'Orders',
-          baseUrl: 'https://orders.example.com',
+          baseUrl: ordersBaseUrl,
           connectorProtocol: 'HTTP',
           authType: 'NONE',
           requiresCertificate: false,

@@ -106,8 +106,9 @@ switcher. Each page then owns one route-level workflow:
 - `/agents/:id/connectors/:connectorId` provides the full connector form,
   connector-tool CRUD, and recent connector logs. The `new` connector ID opens
   the creation form. New connectors can be associated with a local MCP, which
-  creates a dedicated 12-month API key and locks the provider-managed fields;
-  associated connectors expose key rotation and expiry warnings. Connector
+  creates a dedicated 12-month API key and an HTTPS `/api/mcp/:id` base URL,
+  and locks the provider-managed fields. Associated connectors expose key
+  rotation and expiry warnings. Connector base URLs must use HTTPS. Connector
   names are normalized to snake_case while skill
   titles are normalized to kebab-case. Connector tool names also normalize to
   snake_case.

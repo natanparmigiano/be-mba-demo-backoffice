@@ -110,7 +110,9 @@ order:
 4. Review `agent.settings`, `businessInfo`, `skills`, `qrCodes`, `components`,
    and `knowledge` for the behavior and information that import will reconcile.
 5. Review every connector's `baseUrl`, `connectorProtocol`, and `authType`.
-   HTTP connectors also carry nested tool definitions; MCP tools are refreshed
+   Every connector `baseUrl` must use HTTPS, except a `localMcp` connector's
+   provenance URL, which import replaces with an HTTPS URL on the destination
+   host. HTTP connectors also carry nested tool definitions; MCP tools are refreshed
    from the server and are intentionally absent. Connector credentials are
    always absent.
 6. For connectors with `localMcp`, match its `path` to an MCPX entry under
@@ -416,7 +418,8 @@ IDs are not portable identities.
 MCP connectors omit `tools` from export because their tool catalog belongs to
 the MCP server. During import, any legacy MCP `tools` field is ignored. For an
 embedded local MCP, import installs the MCP first, generates a 12-month scoped
-API key, rewrites `baseUrl` to the destination host, creates or updates the Meta
+API key, rewrites `baseUrl` to the destination host over HTTPS (even when TLS
+terminates at a proxy in front of the API), creates or updates the Meta
 connector, and records the channel/MCP/connector association. It then calls
 Meta's MCP tool refresh action so the current tools are discovered from the
 configured server.

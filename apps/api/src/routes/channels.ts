@@ -256,8 +256,8 @@ const connectorSchema = z
         'Connector name must use snake_case',
       ),
     description: z.string().trim().min(1).max(10_000),
-    baseUrl: z.string().trim().url().max(2_048).refine(isHttpUrl, {
-      message: 'Base URL must use HTTP or HTTPS',
+    baseUrl: z.string().trim().url().max(2_048).refine(isHttpsUrl, {
+      message: 'Base URL must use HTTPS',
     }),
     connectorProtocol: z.enum(['HTTP', 'MCP']).default('HTTP'),
     authType: z.enum(['OAUTH2_CLIENT_CREDENTIALS', 'API_KEY', 'NONE']),
@@ -485,6 +485,10 @@ const agentImportConnectorSchema = connectorSchema
   .omit({ authConfig: true })
   .extend({
     id: z.string().min(1),
+    // Local MCP base URLs are provenance and are replaced during import.
+    baseUrl: z.string().trim().url().max(2_048).refine(isHttpUrl, {
+      message: 'Base URL must use HTTP or HTTPS',
+    }),
     hasAuthConfiguration: z.boolean().optional(),
     hasCertificate: z.boolean().optional(),
     connectionStatus: z.string().optional(),
@@ -516,6 +520,13 @@ const agentImportConnectorSchema = connectorSchema
         code: 'custom',
         path: ['localMcp'],
         message: 'Local MCP associations require the MCP protocol',
+      })
+    }
+    if (!connector.localMcp && !isHttpsUrl(connector.baseUrl)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['baseUrl'],
+        message: 'Base URL must use HTTPS',
       })
     }
   })
@@ -1913,7 +1924,7 @@ export const createChannelManagementRoute = ({
         const imported = await readAgentImportPackage(c.req.raw)
         validateLocalMcpConnectorConfigurations(
           imported.manifest,
-          new URL(c.req.url).origin,
+          httpsOrigin(c.req.url),
         )
         const requirements = getAgentImportRequirements(imported)
         return c.json({
@@ -2819,7 +2830,7 @@ export const createChannelManagementRoute = ({
           allowedFunctionIds: [],
           allowedMcpIds: [mcp.id],
         })
-        const origin = new URL(c.req.url).origin
+        const origin = httpsOrigin(c.req.url)
         return c.json(
           {
             association: {
@@ -4277,6 +4288,22 @@ function isHttpUrl(value: string): boolean {
   } catch {
     return false
   }
+}
+
+function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+// TLS usually terminates at a proxy, so the request URL seen by Node is plain
+// HTTP. Connector endpoints must always be published as HTTPS.
+function httpsOrigin(requestUrl: string): string {
+  const url = new URL(requestUrl)
+  url.protocol = 'https:'
+  return url.origin
 }
 
 export async function registerMetaWebhook(
@@ -6043,7 +6070,7 @@ function validateLocalMcpConnectorConfigurations(
 async function prepareAgentImport(
   request: Request,
 ): Promise<PreparedAgentImport> {
-  const origin = new URL(request.url).origin
+  const origin = httpsOrigin(request.url)
   const imported = await readAgentImportPackage(request)
   const rawOptions = imported.form.get('options')
   const options = agentImportOptionsSchema.parse(
