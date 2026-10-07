@@ -124,6 +124,7 @@ export const hi: typeof en = {
   shell: {
     productName: 'MBA Desk',
     productArea: 'वर्कस्पेस',
+    managementArea: 'प्रबंधन',
     home: 'होम',
     queue: 'कतार',
     chat: 'चैट',
@@ -1118,6 +1119,15 @@ export const hi: typeof en = {
     tryAgain: 'पुनः प्रयास करें',
     organizationNotCreated: 'संगठन नहीं बनाया गया।',
     operationFailed: 'ऑपरेशन विफल रहा।',
+    pendingInvitations: 'लंबित आमंत्रण',
+    pendingInvitationsDescription:
+      'उन संगठनों की समीक्षा करें जिन्होंने आपको शामिल होने के लिए आमंत्रित किया है।',
+    refreshInvitations: 'आमंत्रण रीफ़्रेश करें',
+    invitedAs: '{{role}} के रूप में आमंत्रित',
+    rejectInvitation: 'अस्वीकार करें',
+    acceptInvitation: 'स्वीकार करें',
+    invitationAccepted: 'आप {{organization}} में शामिल हो गए।',
+    invitationRejected: 'आपने {{organization}} का आमंत्रण अस्वीकार कर दिया।',
   },
   admin: {
     metaDescription:

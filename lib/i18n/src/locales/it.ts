@@ -126,6 +126,7 @@ export const it: typeof en = {
   shell: {
     productName: 'MBA Desk',
     productArea: 'Spazio di lavoro',
+    managementArea: 'Gestione',
     home: 'Home',
     queue: 'Coda',
     chat: 'Chat',
@@ -1150,6 +1151,15 @@ export const it: typeof en = {
     tryAgain: 'Riprova',
     organizationNotCreated: "L'organizzazione non è stata creata.",
     operationFailed: "L'operazione non è riuscita.",
+    pendingInvitations: 'Inviti in sospeso',
+    pendingInvitationsDescription:
+      'Controlla le organizzazioni che ti hanno invitato.',
+    refreshInvitations: 'Aggiorna inviti',
+    invitedAs: 'Invitato come {{role}}',
+    rejectInvitation: 'Rifiuta',
+    acceptInvitation: 'Accetta',
+    invitationAccepted: 'Hai aderito a {{organization}}.',
+    invitationRejected: 'Hai rifiutato l’invito a {{organization}}.',
   },
   admin: {
     metaDescription:

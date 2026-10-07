@@ -22,8 +22,9 @@ yarn db:migrate
 yarn dev
 ```
 
-Open <http://localhost:5173> after the commands complete. PostgreSQL, Redis,
-Kafka, and MinIO run in containers; the API and frontend run locally in watch
+Open the workspace app at <http://localhost:5173> or the manager app at
+<http://localhost:5174> after the commands complete. PostgreSQL, Redis, Kafka,
+and MinIO run in containers; the API and both frontends run locally in watch
 mode, and Vite proxies `/api` to Hono at <http://localhost:3000>.
 
 For the first sign-in, use the `admin@meta.com` credentials printed once in the
@@ -85,7 +86,7 @@ development, set a high-entropy `BETTER_AUTH_SECRET` and deployment-correct
 ## Commands
 
 ```bash
-yarn dev        # run the API and frontend together
+yarn dev        # run the API and both split frontends together
 yarn format     # format the repository with Prettier
 yarn lint       # lint the repository with ESLint
 yarn typecheck  # type-check every workspace

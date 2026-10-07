@@ -122,6 +122,7 @@ export const zhTW: typeof en = {
   shell: {
     productName: 'MBA Desk',
     productArea: '工作區',
+    managementArea: '管理',
     home: '首頁',
     queue: '佇列',
     chat: '聊天',
@@ -1044,6 +1045,14 @@ export const zhTW: typeof en = {
     tryAgain: '重試',
     organizationNotCreated: '組織未能建立。',
     operationFailed: '操作失敗。',
+    pendingInvitations: '待處理邀請',
+    pendingInvitationsDescription: '查看邀請你加入的組織。',
+    refreshInvitations: '重新整理邀請',
+    invitedAs: '受邀角色：{{role}}',
+    rejectInvitation: '拒絕',
+    acceptInvitation: '接受',
+    invitationAccepted: '你已加入 {{organization}}。',
+    invitationRejected: '你已拒絕 {{organization}} 的邀請。',
   },
   admin: {
     metaDescription: '管理組織、使用者、憑據、會話和支援訪問。',

@@ -80,6 +80,7 @@ import { createFilesRoute } from './routes/files.js'
 import { createGroupsRoute, type GroupsRouteOptions } from './routes/groups.js'
 import { createTeamsRoute, type TeamsRouteOptions } from './routes/teams.js'
 import { createOrganizationLogosRoute } from './routes/organization-logos.js'
+import { createOrganizationInvitationsRoute } from './routes/organization-invitations.js'
 import { createMcpRoute, type McpRouteOptions } from './routes/mcp.js'
 import { createRunnerRoute, type RunnerRouteOptions } from './routes/runner.js'
 import {
@@ -246,6 +247,10 @@ export const createApp = ({
       createWebhooksPlaygroundRoute(webhooksPlayground),
     )
     .route('/api/admin/organizations', createAdminOrganizationsRoute())
+    .route(
+      '/api/organization-invitations',
+      createOrganizationInvitationsRoute(),
+    )
     .route('/api/channels', createChannelManagementRoute(channelManagement))
     .route('/api/webhooks', createWebhooksRoute())
     .route('/api/chats', createChatsRoute({ fileStore, ...chats }))

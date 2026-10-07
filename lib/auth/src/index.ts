@@ -25,6 +25,16 @@ export const auth = betterAuth({
     schemaName: 'auth',
   }),
   secondaryStorage: createSecondaryStorage(kv),
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user, context) => {
+          if (context?.path !== '/admin/create-user') return undefined
+          return { data: { ...user, emailVerified: true } }
+        },
+      },
+    },
+  },
   emailAndPassword: {
     enabled: true,
   },
@@ -151,6 +161,7 @@ export async function bootstrapInitialAdmin(
           name: INITIAL_ADMIN_NAME,
           password,
           role: 'admin',
+          data: { emailVerified: true },
         },
       })
     },

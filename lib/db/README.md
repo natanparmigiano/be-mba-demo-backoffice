@@ -78,6 +78,11 @@ default switches on the organization row. `auth.team_member` is the
 many-to-many boundary between teams and users; application writes must also
 verify that selected users belong to the team's organization.
 
+Application administrators provision password users directly, so those users
+are marked email-verified at creation. Migration `0043` backfills accounts
+created before that invariant was introduced, allowing Better Auth's
+invitation-recipient endpoints to verify ownership consistently.
+
 `llm.response_requests` is an append-only audit trail for calls made through
 the Responses API proxy and Hashbrown endpoint. It records the originating
 endpoint, request and completion time, user,

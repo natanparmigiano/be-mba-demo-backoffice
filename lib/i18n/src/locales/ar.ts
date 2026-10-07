@@ -122,6 +122,7 @@ export const ar: typeof en = {
   shell: {
     productName: 'MBA Desk',
     productArea: 'مساحة العمل',
+    managementArea: 'الإدارة',
     home: 'الرئيسية',
     queue: 'قائمة الانتظار',
     chat: 'الدردشة',
@@ -1079,6 +1080,14 @@ export const ar: typeof en = {
     tryAgain: 'إعادة المحاولة',
     organizationNotCreated: 'لم يتم إنشاء المؤسسة.',
     operationFailed: 'فشلت العملية.',
+    pendingInvitations: 'الدعوات المعلّقة',
+    pendingInvitationsDescription: 'راجع المؤسسات التي دعتك للانضمام إليها.',
+    refreshInvitations: 'تحديث الدعوات',
+    invitedAs: 'تمت دعوتك بدور {{role}}',
+    rejectInvitation: 'رفض',
+    acceptInvitation: 'قبول',
+    invitationAccepted: 'انضممت إلى {{organization}}.',
+    invitationRejected: 'رفضت دعوة {{organization}}.',
   },
   admin: {
     metaDescription:

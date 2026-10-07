@@ -302,6 +302,13 @@
       "when": 1791395900110,
       "tag": "0042_tricky_sleepwalker",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791402225378,
+      "tag": "0043_verify_existing_user_emails",
+      "breakpoints": true
     }
   ]
 }

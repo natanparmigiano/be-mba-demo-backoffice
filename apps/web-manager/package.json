@@ -1,0 +1,40 @@
+{
+  "name": "@mba-desk/web-manager",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@mba-desk/i18n": "0.0.0",
+    "@mba-desk/ui": "0.0.0",
+    "@mba-desk/web-shared": "0.0.0",
+    "@hashbrownai/core": "0.6.1",
+    "@hashbrownai/react": "0.6.1",
+    "@monaco-editor/react": "^4.7.0",
+    "hono": "^4.13.12",
+    "i18next": "^26.4.2",
+    "lucide-react": "^1.48.0",
+    "monaco-editor": "^0.52.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-i18next": "^17.0.15",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.9.5",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.16",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.3",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7"
+  }
+}

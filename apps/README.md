@@ -1,15 +1,18 @@
 # Applications
 
-This directory contains the repository's three executable boundaries: the HTTP
-API, browser application, and SSO administration CLI.
+This directory contains the repository's executable API, browser applications,
+and SSO administration CLI.
 Applications may depend on `lib` packages; shared libraries must never depend
 on applications.
 
-| Workspace                      | Primary responsibility                          |
-| ------------------------------ | ----------------------------------------------- |
-| [`api`](api/README.md)         | HTTP, auth, workers, and production web serving |
-| [`web`](web/README.md)         | React browser application                       |
-| [`sso-cli`](sso-cli/README.md) | SSO provider administration over HTTP           |
+| Workspace                                  | Primary responsibility                          |
+| ------------------------------------------ | ----------------------------------------------- |
+| [`api`](api/README.md)                     | HTTP, auth, workers, and production web serving |
+| [`web`](web/README.md)                     | React browser application                       |
+| [`web-shared`](web-shared/README.md)       | Shared browser application layer                |
+| [`web-workspace`](web-workspace/README.md) | Operational React application                   |
+| [`web-manager`](web-manager/README.md)     | Management React application                    |
+| [`sso-cli`](sso-cli/README.md)             | SSO provider administration over HTTP           |
 
 ## API
 
@@ -18,7 +21,10 @@ on applications.
 ## Web
 
 [`web`](web/README.md) contains the React/Vite application. Hono serves its
-production build from the shared image; local development uses Vite.
+production build from the shared image. The split `web-workspace` and
+`web-manager` applications run as separate Vite servers during development;
+the legacy app remains the production static target until deployment changes
+are made separately.
 
 ## SSO CLI
 

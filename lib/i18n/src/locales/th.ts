@@ -123,6 +123,7 @@ export const th: typeof en = {
   shell: {
     productName: 'โต๊ะทำงาน MBA',
     productArea: 'พื้นที่ทำงาน',
+    managementArea: 'การจัดการ',
     home: 'บ้าน',
     queue: 'คิว',
     chat: 'แชท',
@@ -1091,6 +1092,14 @@ export const th: typeof en = {
     tryAgain: 'ลองอีกครั้ง',
     organizationNotCreated: 'ไม่ได้สร้างองค์กร',
     operationFailed: 'การดำเนินการล้มเหลว',
+    pendingInvitations: 'คำเชิญที่รอดำเนินการ',
+    pendingInvitationsDescription: 'ตรวจสอบองค์กรที่เชิญคุณให้เข้าร่วม',
+    refreshInvitations: 'รีเฟรชคำเชิญ',
+    invitedAs: 'ได้รับเชิญเป็น {{role}}',
+    rejectInvitation: 'ปฏิเสธ',
+    acceptInvitation: 'ยอมรับ',
+    invitationAccepted: 'คุณเข้าร่วม {{organization}} แล้ว',
+    invitationRejected: 'คุณปฏิเสธคำเชิญจาก {{organization}} แล้ว',
   },
   admin: {
     metaDescription:

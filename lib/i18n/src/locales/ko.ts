@@ -123,6 +123,7 @@ export const ko: typeof en = {
   shell: {
     productName: 'MBA 데스크',
     productArea: '작업공간',
+    managementArea: '관리',
     home: '홈',
     queue: '대기열',
     chat: '채팅',
@@ -1087,6 +1088,14 @@ export const ko: typeof en = {
     tryAgain: '다시 시도하세요',
     organizationNotCreated: '조직이 생성되지 않았습니다.',
     operationFailed: '작업이 실패했습니다.',
+    pendingInvitations: '대기 중인 초대',
+    pendingInvitationsDescription: '가입 초대를 받은 조직을 확인하세요.',
+    refreshInvitations: '초대 새로고침',
+    invitedAs: '{{role}} 역할로 초대됨',
+    rejectInvitation: '거절',
+    acceptInvitation: '수락',
+    invitationAccepted: '{{organization}}에 가입했습니다.',
+    invitationRejected: '{{organization}}의 초대를 거절했습니다.',
   },
   admin: {
     metaDescription:

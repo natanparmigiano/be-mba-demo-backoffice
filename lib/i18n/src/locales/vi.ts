@@ -126,6 +126,7 @@ export const vi: typeof en = {
   shell: {
     productName: 'MBA Desk',
     productArea: 'Không gian làm việc',
+    managementArea: 'Quản lý',
     home: 'Trang chủ',
     queue: 'Hàng đợi',
     chat: 'Trò chuyện',
@@ -1125,6 +1126,14 @@ export const vi: typeof en = {
     tryAgain: 'Thử lại',
     organizationNotCreated: 'Không tạo được tổ chức.',
     operationFailed: 'Thao tác không thành công.',
+    pendingInvitations: 'Lời mời đang chờ',
+    pendingInvitationsDescription: 'Xem các tổ chức đã mời bạn tham gia.',
+    refreshInvitations: 'Làm mới lời mời',
+    invitedAs: 'Được mời với vai trò {{role}}',
+    rejectInvitation: 'Từ chối',
+    acceptInvitation: 'Chấp nhận',
+    invitationAccepted: 'Bạn đã tham gia {{organization}}.',
+    invitationRejected: 'Bạn đã từ chối lời mời vào {{organization}}.',
   },
   admin: {
     metaDescription:

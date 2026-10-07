@@ -123,6 +123,7 @@ export const ja: typeof en = {
   shell: {
     productName: 'MBA Desk',
     productArea: 'ワークスペース',
+    managementArea: '管理',
     home: 'ホーム',
     queue: 'キュー',
     chat: 'チャット',
@@ -1120,6 +1121,14 @@ export const ja: typeof en = {
     tryAgain: '再試行',
     organizationNotCreated: '組織は作成されませんでした。',
     operationFailed: '操作に失敗しました。',
+    pendingInvitations: '保留中の招待',
+    pendingInvitationsDescription: '参加招待を受けた組織を確認します。',
+    refreshInvitations: '招待を更新',
+    invitedAs: '{{role}}として招待',
+    rejectInvitation: '拒否',
+    acceptInvitation: '承認',
+    invitationAccepted: '{{organization}}に参加しました。',
+    invitationRejected: '{{organization}}への招待を拒否しました。',
   },
   admin: {
     metaDescription:

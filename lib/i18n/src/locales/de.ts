@@ -127,6 +127,7 @@ export const de: typeof en = {
   shell: {
     productName: 'MBA Desk',
     productArea: 'Workspace',
+    managementArea: 'Verwaltung',
     home: 'Startseite',
     queue: 'Warteschlange',
     chat: 'Chat',
@@ -1161,6 +1162,15 @@ export const de: typeof en = {
     tryAgain: 'Erneut versuchen',
     organizationNotCreated: 'Die Organisation wurde nicht erstellt.',
     operationFailed: 'Der Vorgang ist fehlgeschlagen.',
+    pendingInvitations: 'Ausstehende Einladungen',
+    pendingInvitationsDescription:
+      'Prüfe die Organisationen, die dich eingeladen haben.',
+    refreshInvitations: 'Einladungen aktualisieren',
+    invitedAs: 'Eingeladen als {{role}}',
+    rejectInvitation: 'Ablehnen',
+    acceptInvitation: 'Annehmen',
+    invitationAccepted: 'Du bist {{organization}} beigetreten.',
+    invitationRejected: 'Du hast die Einladung zu {{organization}} abgelehnt.',
   },
   admin: {
     metaDescription:

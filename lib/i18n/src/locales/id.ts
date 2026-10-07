@@ -123,6 +123,7 @@ export const id: typeof en = {
   shell: {
     productName: 'MBA Desk',
     productArea: 'Ruang kerja',
+    managementArea: 'Manajemen',
     home: 'Beranda',
     queue: 'Antrean',
     chat: 'Chat',
@@ -1118,6 +1119,15 @@ export const id: typeof en = {
     tryAgain: 'Coba lagi',
     organizationNotCreated: 'Organisasi tidak dibuat.',
     operationFailed: 'Operasi gagal.',
+    pendingInvitations: 'Undangan tertunda',
+    pendingInvitationsDescription:
+      'Tinjau organisasi yang mengundang Anda untuk bergabung.',
+    refreshInvitations: 'Muat ulang undangan',
+    invitedAs: 'Diundang sebagai {{role}}',
+    rejectInvitation: 'Tolak',
+    acceptInvitation: 'Terima',
+    invitationAccepted: 'Anda bergabung dengan {{organization}}.',
+    invitationRejected: 'Anda menolak undangan ke {{organization}}.',
   },
   admin: {
     metaDescription:

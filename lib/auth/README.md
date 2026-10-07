@@ -82,6 +82,12 @@ yarn auth:create-admin --email admin@example.com --name "Admin" --role admin
 
 Application admin roles and organization roles are deliberately independent. An application admin manages users globally; an organization owner/admin manages that organization's membership.
 
+Users provisioned through the Better Auth admin endpoint are treated as
+pre-verified because an application administrator controls their initial
+credentials. The admin client sends `emailVerified: true`, and a database hook
+enforces the same invariant for every `/admin/create-user` request. Existing
+accounts are backfilled by database migration `0043`.
+
 ## Updating the auth schema
 
 After changing Better Auth configuration or plugins:

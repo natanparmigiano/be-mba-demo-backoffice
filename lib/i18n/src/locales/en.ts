@@ -120,6 +120,7 @@ export const en = {
   shell: {
     productName: 'MBA Desk',
     productArea: 'Workspace',
+    managementArea: 'Management',
     home: 'Home',
     queue: 'Queue',
     chat: 'Chat',
@@ -1101,6 +1102,15 @@ export const en = {
     tryAgain: 'Try again',
     organizationNotCreated: 'The organization was not created.',
     operationFailed: 'The operation failed.',
+    pendingInvitations: 'Pending invitations',
+    pendingInvitationsDescription:
+      'Review organizations that invited you to join.',
+    refreshInvitations: 'Refresh invitations',
+    invitedAs: 'Invited as {{role}}',
+    rejectInvitation: 'Reject',
+    acceptInvitation: 'Accept',
+    invitationAccepted: 'You joined {{organization}}.',
+    invitationRejected: 'You declined the invitation to {{organization}}.',
   },
   admin: {
     metaDescription:

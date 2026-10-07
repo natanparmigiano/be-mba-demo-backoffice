@@ -125,6 +125,7 @@ export const ru: typeof en = {
   shell: {
     productName: 'MBA Desk',
     productArea: 'Рабочее пространство',
+    managementArea: 'Управление',
     home: 'Главная',
     queue: 'Очередь',
     chat: 'Чат',
@@ -1140,6 +1141,15 @@ export const ru: typeof en = {
     tryAgain: 'Повторить',
     organizationNotCreated: 'Организация не была создана.',
     operationFailed: 'Операция не выполнена.',
+    pendingInvitations: 'Ожидающие приглашения',
+    pendingInvitationsDescription:
+      'Просмотрите организации, которые пригласили вас присоединиться.',
+    refreshInvitations: 'Обновить приглашения',
+    invitedAs: 'Приглашение с ролью {{role}}',
+    rejectInvitation: 'Отклонить',
+    acceptInvitation: 'Принять',
+    invitationAccepted: 'Вы присоединились к {{organization}}.',
+    invitationRejected: 'Вы отклонили приглашение в {{organization}}.',
   },
   admin: {
     metaDescription:
