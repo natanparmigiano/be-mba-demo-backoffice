@@ -28,6 +28,8 @@ const chat: ChatSummary = {
   updatedAt: '2026-09-30T12:00:00.000Z',
   unreadMessageCount: 3,
   latestInboundMessageAt: '2026-09-30T11:59:00.000Z',
+  assignedTeam: null,
+  assignedUser: null,
   channel: {
     id: 4,
     name: 'Brazil support',
@@ -155,7 +157,7 @@ describe('chats route', () => {
     let receivedQuery: Parameters<ChatsRepository['list']>[1] | undefined
     const cursor = encodeChatCursor({ id: chat.id, updatedAt: chat.updatedAt })
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       repository: createRepository({
         list: async (organizationId, query) => {
           receivedOrganizationId = organizationId
@@ -168,7 +170,7 @@ describe('chats route', () => {
     const startDate = '2026-10-01T03:00:00.000Z'
     const endDate = '2026-10-06T02:59:59.999Z'
     const response = await route.request(
-      `/?limit=25&cursor=${encodeURIComponent(cursor)}&search=Ada&channelId=7&handledBy=application&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
+      `/?limit=25&cursor=${encodeURIComponent(cursor)}&search=Ada&channelId=7&teamId=team-one&handledBy=application&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
     )
 
     assert.equal(response.status, 200)
@@ -178,6 +180,7 @@ describe('chats route', () => {
       limit: 25,
       search: 'Ada',
       channelId: 7,
+      teamId: 'team-one',
       handledBy: 'application',
       startDate,
       endDate,
@@ -885,7 +888,7 @@ describe('chats route', () => {
     let storedTarget: 'mba' | 'application' | undefined
     const published: Array<{ channel: string; value: string }> = []
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       handoff: async (_context, handledBy) => {
         serviceTarget = handledBy
       },
@@ -896,9 +899,10 @@ describe('chats route', () => {
       }),
       repository: createRepository({
         getHandoffContext: async () => handoffContext,
-        setHandler: async (organizationId, chatId, handledBy) => {
+        setHandler: async (organizationId, chatId, handledBy, userId) => {
           assert.equal(organizationId, 'org-one')
           assert.equal(chatId, 31)
+          assert.equal(userId, 'user-1')
           storedTarget = handledBy
           return true
         },
@@ -918,6 +922,83 @@ describe('chats route', () => {
     assert.equal(published[0]?.channel, 'chats.31')
     assert.equal(published[1]?.channel, 'organizations.org-one.chats')
     assert.match(published[0]?.value ?? '', /"type":"conversation.updated"/)
+  })
+
+  it('assigns a chat to the current organization user', async () => {
+    let assignment:
+      | {
+          organizationId: string
+          chatId: number
+          userId: string
+          force: boolean
+        }
+      | undefined
+    const route = createChatsRoute({
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
+      repository: createRepository({
+        assignToUser: async (organizationId, chatId, userId, force) => {
+          assignment = { organizationId, chatId, userId, force }
+          return 'ok'
+        },
+      }),
+    })
+
+    const response = await route.request('/31/assignment', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'assign' }),
+    })
+
+    assert.equal(response.status, 200)
+    assert.deepEqual(assignment, {
+      organizationId: 'org-one',
+      chatId: 31,
+      userId: 'user-1',
+      force: false,
+    })
+  })
+
+  it('requires confirmation before replacing another user assignment', async () => {
+    const route = createChatsRoute({
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
+      repository: createRepository({
+        assignToUser: async () => 'conflict',
+      }),
+    })
+
+    const response = await route.request('/31/assignment', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'assign' }),
+    })
+
+    assert.equal(response.status, 409)
+    assert.deepEqual(await response.json(), {
+      message: 'Chat is assigned to another user',
+      conflict: true,
+    })
+  })
+
+  it('only releases the current user assignment', async () => {
+    let releasedUserId: string | undefined
+    const route = createChatsRoute({
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
+      repository: createRepository({
+        releaseAssignment: async (_organizationId, _chatId, userId) => {
+          releasedUserId = userId
+          return 'ok'
+        },
+      }),
+    })
+
+    const response = await route.request('/31/assignment', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'release' }),
+    })
+
+    assert.equal(response.status, 200)
+    assert.equal(releasedUserId, 'user-1')
   })
 
   it('treats an already-owned chat as an idempotent handoff', async () => {
@@ -1076,11 +1157,13 @@ function createRepository(
   overrides: Partial<ChatsRepository> = {},
 ): ChatsRepository {
   return {
+    assignToUser: async () => 'ok',
     get: async () => chat,
     getHandoffContext: async () => handoffContext,
     list: async () => ({ chats: [], nextCursor: null }),
     markRead: async () => true,
     owns: async () => true,
+    releaseAssignment: async () => 'ok',
     setHandler: async () => true,
     timeline: async () => ({ items: [], nextCursor: null }),
     ...overrides,

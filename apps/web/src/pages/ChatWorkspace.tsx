@@ -39,10 +39,12 @@ import {
   Avatar,
   Button,
   cn,
+  Dialog,
   Input,
   Pill,
   SearchBox,
   Select,
+  Tabs,
 } from '../components/ui'
 
 type ChatsResponse = InferResponseType<typeof apiClient.api.chats.$get, 200>
@@ -70,9 +72,14 @@ type ChannelOption = InferResponseType<
   typeof apiClient.api.channels.$get,
   200
 >['channels'][number]
+type TeamOption = InferResponseType<
+  typeof apiClient.api.teams.$get,
+  200
+>['teams'][number]
 interface ChatFilters {
   search?: string
   channelId?: string
+  teamId?: string
   handledBy?: Handler
   startDate?: string
   endDate?: string
@@ -89,12 +96,16 @@ export function ChatWorkspace() {
   const selectedId = parseChatRouteId(routeChatId)
   const hasInvalidRouteChatId = routeChatId !== undefined && selectedId === null
   const activeOrganizationQuery = authClient.useActiveOrganization()
+  const sessionQuery = authClient.useSession()
   const activeOrganizationId = activeOrganizationQuery.data?.id
+  const currentUserId = sessionQuery.data?.user.id
   const [chats, setChats] = useState<ChatSummary[]>([])
   const [channels, setChannels] = useState<ChannelOption[]>([])
+  const [teams, setTeams] = useState<TeamOption[]>([])
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [channelId, setChannelId] = useState('')
+  const [teamId, setTeamId] = useState('')
   const [handledBy, setHandledBy] = useState<Handler | ''>('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -115,6 +126,9 @@ export function ChatWorkspace() {
   )
   const [isLoadingSelectedChat, setIsLoadingSelectedChat] = useState(false)
   const [handoffChatId, setHandoffChatId] = useState<number | null>(null)
+  const [assignmentChatId, setAssignmentChatId] = useState<number | null>(null)
+  const [assignmentConfirmTarget, setAssignmentConfirmTarget] =
+    useState<ChatSummary | null>(null)
   const [handoffError, setHandoffError] = useState<HandoffError | null>(null)
   const [realtimeState, setRealtimeState] = useState<RealtimeState>('idle')
   const [realtimeGeneration, setRealtimeGeneration] = useState(0)
@@ -137,14 +151,15 @@ export function ChatWorkspace() {
     () => ({
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       ...(channelId ? { channelId } : {}),
+      ...(teamId ? { teamId } : {}),
       ...(handledBy ? { handledBy } : {}),
       ...(startDate ? { startDate: startOfLocalDay(startDate) } : {}),
       ...(endDate ? { endDate: endOfLocalDay(endDate) } : {}),
     }),
-    [channelId, debouncedSearch, endDate, handledBy, startDate],
+    [channelId, debouncedSearch, endDate, handledBy, startDate, teamId],
   )
   const hasChatFilters = Boolean(
-    search || channelId || handledBy || startDate || endDate,
+    search || channelId || teamId || handledBy || startDate || endDate,
   )
 
   useEffect(() => {
@@ -155,11 +170,18 @@ export function ChatWorkspace() {
   useEffect(() => {
     if (!activeOrganizationId) {
       setChannels([])
+      setTeams([])
       return
     }
     void (async () => {
-      const response = await apiClient.api.channels.$get()
-      if (response.ok) setChannels((await response.json()).channels)
+      const [channelsResponse, teamsResponse] = await Promise.all([
+        apiClient.api.channels.$get(),
+        apiClient.api.teams.$get(),
+      ])
+      if (channelsResponse.ok) {
+        setChannels((await channelsResponse.json()).channels)
+      }
+      if (teamsResponse.ok) setTeams((await teamsResponse.json()).teams)
     })()
   }, [activeOrganizationId])
 
@@ -623,11 +645,8 @@ export function ChatWorkspace() {
         )
       }
       const result = await response.json()
-      setChats((current) =>
-        current.map((item) =>
-          item.id === chat.id ? { ...item, handledBy: result.handledBy } : item,
-        ),
-      )
+      void result
+      await refreshChatRegion(chat.id)
     } catch (reason) {
       setHandoffError({
         chatId: chat.id,
@@ -635,6 +654,44 @@ export function ChatWorkspace() {
       })
     } finally {
       setHandoffChatId((current) => (current === chat.id ? null : current))
+    }
+  }
+
+  const changeAssignment = async (
+    chat: ChatSummary,
+    action: 'assign' | 'release',
+    force = false,
+  ) => {
+    if (assignmentChatId !== null) return
+    setAssignmentChatId(chat.id)
+    setHandoffError(null)
+    try {
+      const response = await apiClient.api.chats[':id'].assignment.$patch({
+        param: { id: String(chat.id) },
+        json: action === 'assign' ? { action, force } : { action },
+      })
+      if (!response.ok) {
+        const body: unknown = await response.json().catch(() => undefined)
+        const record = asRecord(body)
+        if (response.status === 409 && record?.conflict === true) {
+          setAssignmentConfirmTarget(chat)
+          return
+        }
+        throw new Error(
+          record && typeof record.message === 'string'
+            ? record.message
+            : t('chatWorkspace.assignmentFailed'),
+        )
+      }
+      setAssignmentConfirmTarget(null)
+      await refreshChatRegion(chat.id)
+    } catch (reason) {
+      setHandoffError({
+        chatId: chat.id,
+        message: getErrorMessage(reason, t('chatWorkspace.assignmentFailed')),
+      })
+    } finally {
+      setAssignmentChatId((current) => (current === chat.id ? null : current))
     }
   }
 
@@ -738,6 +795,7 @@ export function ChatWorkspace() {
                 setSearch('')
                 setDebouncedSearch('')
                 setChannelId('')
+                setTeamId('')
                 setHandledBy('')
                 setStartDate('')
                 setEndDate('')
@@ -747,6 +805,27 @@ export function ChatWorkspace() {
               {t('chatWorkspace.clearFilters')}
             </Button>
           )}
+          <Tabs
+            items={[
+              { value: '', label: t('chatWorkspace.allTeams') },
+              ...teams.map((team) => ({
+                value: team.id,
+                label: team.name,
+                icon: (
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: team.color }}
+                    aria-hidden
+                  />
+                ),
+              })),
+            ]}
+            value={teamId}
+            onValueChange={setTeamId}
+            ariaLabel={t('chatWorkspace.teamFilter')}
+            variant="pills"
+            size="compact"
+          />
         </div>
 
         {chatError && (
@@ -826,7 +905,7 @@ export function ChatWorkspace() {
                         </span>
                         <span className="mt-1.5 flex min-w-0 items-center gap-1.5">
                           <HandlerPill handler={chat.handledBy} />
-                          <Pill>{t(`chatWorkspace.kinds.${chat.kind}`)}</Pill>
+                          <AssignmentPills chat={chat} t={t} />
                         </span>
                       </span>
                     </Link>
@@ -910,7 +989,8 @@ export function ChatWorkspace() {
               await saveStickerFile(source, t, true)
             }}
             headerActions={
-              <div className="ml-auto flex shrink-0 items-center gap-2">
+              <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+                <AssignmentPills chat={selectedChat} t={t} />
                 <OwnerIndicator handler={selectedChat.handledBy} />
                 <Button
                   type="button"
@@ -932,6 +1012,32 @@ export function ChatWorkspace() {
                       : 'chatWorkspace.passToAi',
                   )}
                 </Button>
+                {selectedChat.handledBy === 'application' &&
+                  (selectedChat.assignedUser?.id === currentUserId ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      isLoading={assignmentChatId === selectedChat.id}
+                      onClick={() =>
+                        void changeAssignment(selectedChat, 'release')
+                      }
+                    >
+                      {t('chatWorkspace.releaseAssignment')}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      isLoading={assignmentChatId === selectedChat.id}
+                      onClick={() =>
+                        void changeAssignment(selectedChat, 'assign')
+                      }
+                    >
+                      {t('chatWorkspace.assignToMe')}
+                    </Button>
+                  ))}
               </div>
             }
             notice={
@@ -1058,6 +1164,34 @@ export function ChatWorkspace() {
           </div>
         )}
       </div>
+      <Dialog
+        open={Boolean(assignmentConfirmTarget)}
+        onOpenChange={(open) => !open && setAssignmentConfirmTarget(null)}
+        title={t('chatWorkspace.reassignTitle')}
+        description={t('chatWorkspace.reassignDescription', {
+          name:
+            assignmentConfirmTarget?.assignedUser?.name ??
+            t('chatWorkspace.unassigned'),
+        })}
+      >
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setAssignmentConfirmTarget(null)}
+        >
+          {t('common.cancel')}
+        </Button>
+        <Button
+          type="button"
+          isLoading={assignmentChatId === (assignmentConfirmTarget?.id ?? null)}
+          onClick={() => {
+            const target = assignmentConfirmTarget
+            if (target) void changeAssignment(target, 'assign', true)
+          }}
+        >
+          {t('chatWorkspace.confirmReassign')}
+        </Button>
+      </Dialog>
     </section>
   )
 }
@@ -1131,6 +1265,31 @@ function OwnerIndicator({ handler }: { handler: Handler }) {
         <span className="block text-xs font-bold">{owner}</span>
       </span>
     </div>
+  )
+}
+
+function AssignmentPills({ chat, t }: { chat: ChatSummary; t: TFunction }) {
+  return (
+    <>
+      <Pill tone={chat.assignedTeam ? 'neutral' : 'danger'}>
+        {chat.assignedTeam && (
+          <span
+            className="size-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: chat.assignedTeam.color }}
+            aria-hidden
+          />
+        )}
+        {t('chatWorkspace.assignedTeam', {
+          name: chat.assignedTeam?.name ?? t('chatWorkspace.unassigned'),
+        })}
+      </Pill>
+      <Pill tone={chat.assignedUser ? 'neutral' : 'danger'}>
+        <UserRound className="size-3" aria-hidden />
+        {t('chatWorkspace.assignedUser', {
+          name: chat.assignedUser?.name ?? t('chatWorkspace.unassigned'),
+        })}
+      </Pill>
+    </>
   )
 }
 

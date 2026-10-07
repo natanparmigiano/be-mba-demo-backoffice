@@ -17,7 +17,7 @@ import type {
   WhatsAppMessageStatus as WhatsAppWebhookMessageStatus,
 } from '@mba-desk/wa-webhooks'
 import { sql } from 'drizzle-orm'
-import { organization } from './auth.js'
+import { organization, team, user } from './auth.js'
 import {
   type AnyPgColumn,
   bigint,
@@ -491,6 +491,14 @@ export const chats = mbaSchema.table(
     contactId: bigint('contact_id', { mode: 'number' }),
     // Internal `mba.groups` identity for a group chat; null for direct chats.
     groupId: bigint('group_id', { mode: 'number' }),
+    // Optional organization team responsible for handling this conversation.
+    assignedTeamId: text('assigned_team_id').references(() => team.id, {
+      onDelete: 'set null',
+    }),
+    // Optional organization user directly responsible for this conversation.
+    assignedUserId: text('assigned_user_id').references(() => user.id, {
+      onDelete: 'set null',
+    }),
     // Denormalized pointer to the newest message in this chat for cursor and range lookups.
     latestMessageId: bigint('latest_message_id', {
       mode: 'number',
@@ -514,6 +522,8 @@ export const chats = mbaSchema.table(
     uniqueIndex('chats_contact_uidx').on(table.contactId),
     uniqueIndex('chats_group_uidx').on(table.groupId),
     index('chats_channel_id_idx').on(table.channelId),
+    index('chats_assigned_team_id_idx').on(table.assignedTeamId),
+    index('chats_assigned_user_id_idx').on(table.assignedUserId),
     index('chats_organization_updated_id_idx').on(
       table.organizationId,
       table.updatedAt,

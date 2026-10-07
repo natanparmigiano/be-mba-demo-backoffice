@@ -29,7 +29,7 @@ switcher. Each page then owns one route-level workflow:
 
 - `HomePage`: organization landing dashboard with channel-scoped WhatsApp and
   Business Agent performance counters, feature links, and quick references.
-- `ChatPage`: organization-scoped inbox and message/event timeline.
+- `ChatPage`: organization-scoped inbox and message/event timeline, with assigned team and user labels in inbox rows and the conversation header. Empty assignments use red unassigned labels, and the filter region provides an All tab followed by every organization team. Human-held chats support self-assignment, guarded reassignment from another user, and releasing the current user's assignment.
 - `StudioHomePage`: recent-project dashboard, project search, new project,
   confirmed project deletion, and local AGTX import entry points.
 - `StudioPage`: full-screen persisted AGTX project editor and downloader with a

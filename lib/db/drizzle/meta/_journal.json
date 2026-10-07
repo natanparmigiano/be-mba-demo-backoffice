@@ -267,6 +267,13 @@
       "when": 1791379295681,
       "tag": "0037_wild_whiplash",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791382284284,
+      "tag": "0038_mean_wendigo",
+      "breakpoints": true
     }
   ]
 }

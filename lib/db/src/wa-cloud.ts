@@ -23,6 +23,7 @@ import type {
 } from '@mba-desk/wa-webhooks'
 import { and, eq, isNull, lt, lte, ne, or, sql } from 'drizzle-orm'
 import { db, type Database } from './client.js'
+import { team } from './schema/auth.js'
 import {
   channels,
   chatEvents,
@@ -536,10 +537,7 @@ class IngestionContext {
     const handover = value.control_passed
     const handledBy = getChatHandlerForHandoverRole(handover.new_owner_role)
     if (handledBy) {
-      await this.transaction
-        .update(chats)
-        .set({ handledBy, updatedAt: new Date() })
-        .where(and(eq(chats.id, chatId), ne(chats.handledBy, handledBy)))
+      await this.updateChatHandlerAssignment(chatId, handledBy)
     }
 
     await this.persistChatEvent({
@@ -765,10 +763,7 @@ class IngestionContext {
 
     const sourceHandler = getChatHandlerForMessageSource(source)
     if (sourceHandler) {
-      await this.transaction
-        .update(chats)
-        .set({ handledBy: sourceHandler, updatedAt: new Date() })
-        .where(and(eq(chats.id, chatId), ne(chats.handledBy, sourceHandler)))
+      await this.updateChatHandlerAssignment(chatId, sourceHandler)
     }
 
     const effectiveHandler =
@@ -1444,6 +1439,37 @@ class IngestionContext {
       .limit(1)
     if (!chat) throw new Error(`Cannot resolve handler for chat ${chatId}`)
     return chat.handledBy
+  }
+
+  private async updateChatHandlerAssignment(
+    chatId: number,
+    handledBy: ChatHandler,
+  ): Promise<void> {
+    const [defaultTeam] =
+      handledBy === 'application'
+        ? await this.transaction
+            .select({ id: team.id })
+            .from(team)
+            .where(
+              and(
+                eq(team.organizationId, this.channel.organizationId),
+                eq(team.default, true),
+              ),
+            )
+            .limit(1)
+        : []
+
+    await this.transaction
+      .update(chats)
+      .set({
+        handledBy,
+        assignedTeamId:
+          handledBy === 'application' ? (defaultTeam?.id ?? null) : null,
+        assignedUserId:
+          handledBy === 'application' ? chats.assignedUserId : null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(chats.id, chatId), ne(chats.handledBy, handledBy)))
   }
 
   private async advanceLatestMessage(

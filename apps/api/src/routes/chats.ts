@@ -10,6 +10,8 @@ import {
   member,
   messages,
   persistWhatsAppOutboundMessage,
+  team,
+  user,
 } from '@mba-desk/db'
 import { files as defaultFiles, type FileStore } from '@mba-desk/files'
 import {
@@ -59,6 +61,7 @@ import {
 } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { streamSSE, type SSEMessage } from 'hono/streaming'
+import { alias } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 import {
   chatInboxRealtimeChannel,
@@ -75,6 +78,7 @@ const listChatsQuerySchema = z.object({
   cursor: z.string().trim().min(1).max(500).optional(),
   search: z.string().trim().min(1).max(200).optional(),
   channelId: z.coerce.number().int().positive().optional(),
+  teamId: z.string().trim().min(1).max(128).optional(),
   handledBy: z.enum(['mba', 'application']).optional(),
   startDate: z.iso.datetime().optional(),
   endDate: z.iso.datetime().optional(),
@@ -104,6 +108,11 @@ const templatesQuerySchema = z.object({
 const handoffBodySchema = z.object({
   handledBy: z.enum(['mba', 'application']),
 })
+
+const assignmentBodySchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('assign'), force: z.boolean().default(false) }),
+  z.object({ action: z.literal('release') }),
+])
 
 const chatMessageSchema = z.object({
   clientMessageId: z.string().uuid(),
@@ -165,6 +174,7 @@ const timelineCursorSchema = z.object({
 
 interface OrganizationAccess {
   organizationId: string
+  userId?: string
 }
 
 interface ChatCursor {
@@ -187,6 +197,16 @@ export interface ChatSummary {
   updatedAt: string
   unreadMessageCount: number
   latestInboundMessageAt: string | null
+  assignedTeam: {
+    id: string
+    name: string
+    color: string
+  } | null
+  assignedUser: {
+    id: string
+    name: string
+    email: string
+  } | null
   channel: {
     id: number
     name: string
@@ -274,6 +294,7 @@ interface ChatListQuery {
   limit: number
   search?: string
   channelId?: number
+  teamId?: string
   handledBy?: ChatHandler
   startDate?: string
   endDate?: string
@@ -387,7 +408,19 @@ export interface ChatsRepository {
     organizationId: string,
     chatId: number,
     handledBy: ChatHandler,
+    userId: string,
   ) => Promise<boolean>
+  assignToUser: (
+    organizationId: string,
+    chatId: number,
+    userId: string,
+    force: boolean,
+  ) => Promise<'ok' | 'conflict' | 'not_found'>
+  releaseAssignment: (
+    organizationId: string,
+    chatId: number,
+    userId: string,
+  ) => Promise<'ok' | 'not_assigned' | 'not_found'>
   owns: (organizationId: string, chatId: number) => Promise<boolean>
 }
 
@@ -425,6 +458,8 @@ export const createChatsRoute = ({
     list: listChats,
     markRead: markChatRead,
     owns: ownsChat,
+    assignToUser: assignChatToUser,
+    releaseAssignment: releaseChatAssignment,
     setHandler: setChatHandler,
     timeline: (organizationId, chatId, query) =>
       getChatTimeline(organizationId, chatId, query, fileStore),
@@ -454,6 +489,7 @@ export const createChatsRoute = ({
             limit: query.limit,
             ...(query.search ? { search: query.search } : {}),
             ...(query.channelId ? { channelId: query.channelId } : {}),
+            ...(query.teamId ? { teamId: query.teamId } : {}),
             ...(query.handledBy ? { handledBy: query.handledBy } : {}),
             ...(query.startDate ? { startDate: query.startDate } : {}),
             ...(query.endDate ? { endDate: query.endDate } : {}),
@@ -1020,6 +1056,7 @@ export const createChatsRoute = ({
           access.organizationId,
           chatId,
           handledBy,
+          access.userId ?? '',
         )
         if (!updated) {
           return c.json(
@@ -1034,6 +1071,62 @@ export const createChatsRoute = ({
           'conversation.updated',
         )
         return c.json({ handledBy })
+      },
+    )
+    .patch(
+      '/:id/assignment',
+      zValidator('json', assignmentBodySchema, (result, c) => {
+        if (!result.success) {
+          return c.json({ message: 'Invalid assignment request' }, 400)
+        }
+      }),
+      async (c) => {
+        const chatId = parsePositiveSafeInteger(c.req.param('id'))
+        if (!chatId) return c.json({ message: 'Invalid chat ID' }, 400)
+        const access = await getAccess(c.req.raw.headers)
+        if (!access?.userId) return c.json({ message: 'Unauthorized' }, 401)
+
+        const input = c.req.valid('json')
+        if (input.action === 'assign') {
+          const result = await resolvedRepository.assignToUser(
+            access.organizationId,
+            chatId,
+            access.userId,
+            input.force,
+          )
+          if (result === 'not_found') {
+            return c.json({ message: 'Chat not found' }, 404)
+          }
+          if (result === 'conflict') {
+            return c.json(
+              { message: 'Chat is assigned to another user', conflict: true },
+              409,
+            )
+          }
+        } else {
+          const result = await resolvedRepository.releaseAssignment(
+            access.organizationId,
+            chatId,
+            access.userId,
+          )
+          if (result === 'not_found') {
+            return c.json({ message: 'Chat not found' }, 404)
+          }
+          if (result === 'not_assigned') {
+            return c.json(
+              { message: 'Chat is not assigned to the current user' },
+              409,
+            )
+          }
+        }
+
+        await publishChatRealtimeEventSafely(
+          realtime,
+          access.organizationId,
+          chatId,
+          'conversation.updated',
+        )
+        return c.json({ assigned: input.action === 'assign' })
       },
     )
 }
@@ -1066,6 +1159,7 @@ async function listChats(
     if (searchCondition) conditions.push(searchCondition)
   }
   if (query.channelId) conditions.push(eq(chats.channelId, query.channelId))
+  if (query.teamId) conditions.push(eq(chats.assignedTeamId, query.teamId))
   if (query.handledBy) conditions.push(eq(chats.handledBy, query.handledBy))
   if (query.startDate) {
     conditions.push(gte(chats.updatedAt, new Date(query.startDate)))
@@ -1119,6 +1213,9 @@ async function getChat(
 }
 
 async function queryChatSummaryRows(conditions: SQL[], limit: number) {
+  const assignedTeam = alias(team, 'assigned_team')
+  const assignedUser = alias(user, 'assigned_user')
+
   return db
     .select({
       id: chats.id,
@@ -1127,6 +1224,12 @@ async function queryChatSummaryRows(conditions: SQL[], limit: number) {
       updatedAt: chats.updatedAt,
       latestMessageId: chats.latestMessageId,
       unreadMessageCount: chats.unreadMessageCount,
+      assignedTeamId: assignedTeam.id,
+      assignedTeamName: assignedTeam.name,
+      assignedTeamColor: assignedTeam.color,
+      assignedUserId: assignedUser.id,
+      assignedUserName: assignedUser.name,
+      assignedUserEmail: assignedUser.email,
       channelId: channels.id,
       channelPhoneNumber: channels.waPhoneNumber,
       channelName: channels.name,
@@ -1153,6 +1256,8 @@ async function queryChatSummaryRows(conditions: SQL[], limit: number) {
     .innerJoin(channels, eq(chats.channelId, channels.id))
     .leftJoin(contacts, eq(chats.contactId, contacts.id))
     .leftJoin(groups, eq(chats.groupId, groups.id))
+    .leftJoin(assignedTeam, eq(chats.assignedTeamId, assignedTeam.id))
+    .leftJoin(assignedUser, eq(chats.assignedUserId, assignedUser.id))
     .leftJoin(messages, eq(chats.latestMessageId, messages.id))
     .where(and(...conditions))
     .orderBy(desc(chats.updatedAt), desc(chats.id))
@@ -1169,6 +1274,22 @@ function toChatSummary(row: ChatSummaryRow): ChatSummary {
     updatedAt: row.updatedAt.toISOString(),
     unreadMessageCount: row.unreadMessageCount,
     latestInboundMessageAt: row.latestInboundMessageAt?.toISOString() ?? null,
+    assignedTeam:
+      row.assignedTeamId === null
+        ? null
+        : {
+            id: row.assignedTeamId,
+            name: row.assignedTeamName!,
+            color: row.assignedTeamColor!,
+          },
+    assignedUser:
+      row.assignedUserId === null
+        ? null
+        : {
+            id: row.assignedUserId,
+            name: row.assignedUserName!,
+            email: row.assignedUserEmail!,
+          },
     channel: {
       id: row.channelId,
       name: row.channelName,
@@ -1359,14 +1480,103 @@ async function setChatHandler(
   organizationId: string,
   chatId: number,
   handledBy: ChatHandler,
+  userId: string,
 ): Promise<boolean> {
-  const [updated] = await db
-    .update(chats)
-    .set({ handledBy, updatedAt: new Date() })
-    .where(and(eq(chats.id, chatId), eq(chats.organizationId, organizationId)))
-    .returning({ id: chats.id })
+  return db.transaction(async (transaction) => {
+    const [defaultTeam] =
+      handledBy === 'application'
+        ? await transaction
+            .select({ id: team.id })
+            .from(team)
+            .where(
+              and(
+                eq(team.organizationId, organizationId),
+                eq(team.default, true),
+              ),
+            )
+            .limit(1)
+        : []
+    const [updated] = await transaction
+      .update(chats)
+      .set({
+        handledBy,
+        assignedTeamId:
+          handledBy === 'application' ? (defaultTeam?.id ?? null) : null,
+        assignedUserId: handledBy === 'application' ? userId : null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(chats.id, chatId), eq(chats.organizationId, organizationId)),
+      )
+      .returning({ id: chats.id })
 
-  return Boolean(updated)
+    return Boolean(updated)
+  })
+}
+
+async function assignChatToUser(
+  organizationId: string,
+  chatId: number,
+  userId: string,
+  force: boolean,
+): Promise<'ok' | 'conflict' | 'not_found'> {
+  return db.transaction(async (transaction) => {
+    const [chat] = await transaction
+      .select({ assignedUserId: chats.assignedUserId })
+      .from(chats)
+      .where(
+        and(eq(chats.id, chatId), eq(chats.organizationId, organizationId)),
+      )
+      .limit(1)
+      .for('update')
+    if (!chat) return 'not_found'
+    if (chat.assignedUserId && chat.assignedUserId !== userId && !force) {
+      return 'conflict'
+    }
+
+    const [organizationMember] = await transaction
+      .select({ id: member.id })
+      .from(member)
+      .where(
+        and(
+          eq(member.organizationId, organizationId),
+          eq(member.userId, userId),
+        ),
+      )
+      .limit(1)
+    if (!organizationMember) return 'not_found'
+
+    await transaction
+      .update(chats)
+      .set({ assignedUserId: userId, updatedAt: new Date() })
+      .where(eq(chats.id, chatId))
+    return 'ok'
+  })
+}
+
+async function releaseChatAssignment(
+  organizationId: string,
+  chatId: number,
+  userId: string,
+): Promise<'ok' | 'not_assigned' | 'not_found'> {
+  return db.transaction(async (transaction) => {
+    const [chat] = await transaction
+      .select({ assignedUserId: chats.assignedUserId })
+      .from(chats)
+      .where(
+        and(eq(chats.id, chatId), eq(chats.organizationId, organizationId)),
+      )
+      .limit(1)
+      .for('update')
+    if (!chat) return 'not_found'
+    if (chat.assignedUserId !== userId) return 'not_assigned'
+
+    await transaction
+      .update(chats)
+      .set({ assignedUserId: null, updatedAt: new Date() })
+      .where(eq(chats.id, chatId))
+    return 'ok'
+  })
 }
 
 export async function transferChatControl(
@@ -1830,7 +2040,7 @@ async function getOrganizationAccess(
     )
     .limit(1)
 
-  return membership ? { organizationId } : undefined
+  return membership ? { organizationId, userId: session.user.id } : undefined
 }
 
 export function encodeChatCursor(cursor: ChatCursor): string {

@@ -106,6 +106,7 @@ composition chained in `src/app.ts`.
 | `POST`                   | `/api/chats/:id/messages`                                           | Sends and persists a non-interactive human-owned chat message            |
 | `PATCH`                  | `/api/chats/:id/read`                                               | Marks the latest inbound message at Meta, then advances the local cursor |
 | `PATCH`                  | `/api/chats/:id/handoff`                                            | Transfers thread control between a human operator and the Business AI    |
+| `PATCH`                  | `/api/chats/:id/assignment`                                         | Assigns the current member or releases their own chat assignment         |
 | `GET`                    | `/api/contacts`                                                     | Lists active-organization contacts with search and cursor pagination     |
 | `POST`                   | `/api/contacts`                                                     | Creates a contact on an organization-owned channel                       |
 | `GET`                    | `/api/contacts/:id`                                                 | Returns contact details for the active organization                      |

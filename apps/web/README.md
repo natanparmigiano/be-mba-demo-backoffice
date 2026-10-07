@@ -121,12 +121,15 @@ Theme preference defaults to the operating system and is stored under `mba-theme
 
 ## Internationalization
 
-All user-facing copy belongs in `src/i18n.ts`. English, Brazilian Portuguese, and Spanish are supported. Browser preference is used until the user explicitly chooses a language; that selection is then stored under `mba-language-override` and takes precedence on future visits.
+All user-facing copy belongs in `src/i18n.ts`. English, Brazilian Portuguese,
+Spanish, French, and Simplified Chinese are supported. Browser preference is
+used until the user explicitly chooses a language; that selection is then
+stored under `mba-language-override` and takes precedence on future visits.
 
 When adding copy:
 
 1. Add the key to the English resource first; it defines the inferred resource shape.
-2. Add equivalent Portuguese and Spanish entries.
+2. Add equivalent Portuguese, Spanish, French, and Simplified Chinese entries.
 3. Render the key with `useTranslation()` rather than embedding visible text in a component.
 4. Use interpolation for dynamic content instead of concatenating translated fragments.
 

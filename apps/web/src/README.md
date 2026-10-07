@@ -72,7 +72,8 @@ The language detector checks, in order:
 
 Automatic browser detection is not cached. `LanguageSwitcher` writes the override key only after a user selection, which prevents later initialization from replacing an explicit choice. `languageChanged` also keeps the document's `lang` attribute synchronized.
 
-The English resource object is the canonical type source. All locale resources must retain the same key structure so `useTranslation()` remains type-safe.
+The English resource object is the canonical type source. All locale resources
+must retain the same key structure so `useTranslation()` remains type-safe.
 
 ## Styling rules
 
@@ -87,7 +88,7 @@ The English resource object is the canonical type source. All locale resources m
 1. Add or extend the route in `router/AppRouter.tsx` under the correct guard.
 2. Build the route-level screen in `pages/`.
 3. Extract reusable controls into `components/ui` or a focused feature folder.
-4. Add every user-visible string to all three locales.
+4. Add every user-visible string to all five locales.
 5. Use `apiClient` for typed backend calls and `useAuth` for session data.
 6. Add reusable UI examples to `/design-system`.
 7. Run the frontend typecheck and production build.
