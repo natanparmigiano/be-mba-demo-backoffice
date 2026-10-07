@@ -108,7 +108,10 @@ export class MemoryKeyValueStore implements KeyValueStore {
 
     const nextValue = parseInteger(current.value) + 1
     validateInteger(nextValue, 'result')
-    this.entries.set(key, { value: String(nextValue), expiresAt: current.expiresAt })
+    this.entries.set(key, {
+      value: String(nextValue),
+      expiresAt: current.expiresAt,
+    })
     return nextValue
   }
 

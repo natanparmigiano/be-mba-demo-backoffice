@@ -7,8 +7,8 @@ export class RedisKeyValueStore implements KeyValueStore {
   private readonly client: RedisClientType
   private connecting: Promise<void> | undefined
 
-  constructor(url: string) {
-    this.client = createClient({ url })
+  constructor(url: string, client?: RedisClientType) {
+    this.client = client ?? createClient({ url })
     this.client.on('error', (error: Error) => {
       console.error('Redis client error', error)
     })

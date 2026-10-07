@@ -7,8 +7,10 @@ const invitation = {
   organizationId: 'organization-1',
   organizationName: 'Acme',
   role: 'member',
+  status: 'pending',
   expiresAt: '2099-12-01T00:00:00.000Z',
 }
+const { status: _status, ...invitationSummary } = invitation
 
 describe('organization invitation routes', () => {
   it('requires an authenticated session', async () => {
@@ -48,7 +50,7 @@ describe('organization invitation routes', () => {
 
     const response = await route.request('/')
     assert.equal(response.status, 200)
-    assert.deepEqual(await response.json(), [invitation])
+    assert.deepEqual(await response.json(), [invitationSummary])
     assert.deepEqual(emails, ['user@example.com'])
   })
 
@@ -69,6 +71,35 @@ describe('organization invitation routes', () => {
 
     const response = await route.request('/')
     assert.equal(response.status, 200)
-    assert.deepEqual(await response.json(), [replacement])
+    const { status: _status, ...replacementSummary } = replacement
+    assert.deepEqual(await response.json(), [replacementSummary])
+  })
+
+  it('hides rejected and expired invitations', async () => {
+    const route = createOrganizationInvitationsRoute({
+      getSession: async () => ({
+        user: { id: 'user-1', email: 'user@example.com' },
+      }),
+      isEmailVerified: async () => true,
+      listInvitations: async () => [
+        invitation,
+        {
+          ...invitation,
+          id: 'rejected-invitation',
+          organizationId: 'organization-2',
+          status: 'rejected',
+        },
+        {
+          ...invitation,
+          id: 'expired-invitation',
+          organizationId: 'organization-3',
+          expiresAt: '2020-01-01T00:00:00.000Z',
+        },
+      ],
+    })
+
+    const response = await route.request('/')
+    assert.equal(response.status, 200)
+    assert.deepEqual(await response.json(), [invitationSummary])
   })
 })

@@ -25,13 +25,13 @@ The module-level `kv` export is created from the process environment.
 
 ## Supported operations
 
-| Category      | Operations                              |
-| ------------- | --------------------------------------- |
-| Read/write    | `get`, `getDel`, `set`, `del`, `exists` |
-| Multiple keys | `mGet`, `mSet`                          |
+| Category      | Operations                                             |
+| ------------- | ------------------------------------------------------ |
+| Read/write    | `get`, `getDel`, `set`, `del`, `exists`                |
+| Multiple keys | `mGet`, `mSet`                                         |
 | Counters      | `incr`, `incrBy`, `incrementWithTtl`, `decr`, `decrBy` |
-| Expiration    | `expire`, `persist`, `ttl`              |
-| Lifecycle     | `ping`, `close`                         |
+| Expiration    | `expire`, `persist`, `ttl`                             |
+| Lifecycle     | `ping`, `close`                                        |
 
 `set` supports:
 

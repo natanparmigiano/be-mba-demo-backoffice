@@ -16,18 +16,31 @@ export interface OrganizationInvitationSummary {
   expiresAt: string
 }
 
+interface OrganizationInvitationRecord extends OrganizationInvitationSummary {
+  status: string
+}
+
 function uniqueCurrentInvitations(
-  invitations: OrganizationInvitationSummary[],
+  invitations: OrganizationInvitationRecord[],
 ) {
   const byOrganization = new Map<string, OrganizationInvitationSummary>()
+  const now = Date.now()
 
   for (const invitation of invitations) {
+    if (
+      invitation.status !== 'pending' ||
+      !(Date.parse(invitation.expiresAt) > now)
+    ) {
+      continue
+    }
+
+    const { status: _status, ...summary } = invitation
     const current = byOrganization.get(invitation.organizationId)
     if (
       !current ||
       Date.parse(invitation.expiresAt) > Date.parse(current.expiresAt)
     ) {
-      byOrganization.set(invitation.organizationId, invitation)
+      byOrganization.set(invitation.organizationId, summary)
     }
   }
 
@@ -37,7 +50,7 @@ function uniqueCurrentInvitations(
 interface OrganizationInvitationDependencies {
   getSession: (headers: Headers) => Promise<InvitationSession | null>
   isEmailVerified: (userId: string) => Promise<boolean>
-  listInvitations: (email: string) => Promise<OrganizationInvitationSummary[]>
+  listInvitations: (email: string) => Promise<OrganizationInvitationRecord[]>
 }
 
 const defaultDependencies: OrganizationInvitationDependencies = {
@@ -58,6 +71,7 @@ const defaultDependencies: OrganizationInvitationDependencies = {
       organizationId: invitation.organizationId,
       organizationName: invitation.organizationName,
       role: invitation.role,
+      status: invitation.status,
       expiresAt: invitation.expiresAt.toISOString(),
     }))
   },
