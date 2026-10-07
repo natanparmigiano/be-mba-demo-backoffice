@@ -29,7 +29,7 @@ export const designSystemSections = [
   {
     id: 'feedback',
     translationKey: 'design.nav.feedback',
-    searchAliases: 'feedback alerts dialog modal toast empty state',
+    searchAliases: 'feedback alerts dialog modal toast empty state progress',
   },
   {
     id: 'chat',

@@ -1,14 +1,13 @@
 # Components
 
 Keep reusable presentation in this directory and route/data orchestration in
-`pages`. Dependencies flow from generic UI primitives to feature components and
+`pages`. Dependencies flow from `@mba-desk/ui` primitives to feature components and
 then to pages or design-system examples—never in the opposite direction.
 
 ## Structure
 
 | Folder/file            | Purpose                                                                 |
 | ---------------------- | ----------------------------------------------------------------------- |
-| `ui/`                  | General-purpose visual primitives and small interaction patterns.       |
 | `chat/`                | Typed message schema, renderer, sample data, and conversation showcase. |
 | `api-playground/`      | Shared request cards, executable code examples, and OpenAPI downloads.  |
 | `runner/`              | Lazy Monaco editor and parameter-aware JavaScript language service.     |
@@ -22,7 +21,7 @@ then to pages or design-system examples—never in the opposite direction.
 Keep dependencies flowing in this direction:
 
 ```text
-ui primitives
+@mba-desk/ui primitives
   -> feature components (chat)
      -> design-system examples or pages
 ```
@@ -53,7 +52,7 @@ Avoid creating components solely for one wrapper element or one styling class.
 - Use semantic color utilities rather than literal theme colors.
 - Require accessible labels for icon-only controls.
 - Keep visible copy in i18n resources; generic primitives receive already-translated strings.
-- Export public primitives from the folder's `index.ts`.
+- Import public primitives from `@mba-desk/ui`.
 
 Organization logo selection stays in `app/OrganizationLogoPicker.tsx`. It
 normalizes browser-supported images to a cropped 512-by-512 PNG before upload.

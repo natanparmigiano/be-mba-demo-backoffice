@@ -16,7 +16,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
 import { resetOrganizationPrimaryColor } from '../components/theme/organization-color'
 import { ThemeSwitcher } from '../components/theme/ThemeSwitcher'
-import { Button, Checkbox, Input } from '../components/ui'
+import { Button, Checkbox, Input } from '@mba-desk/ui'
 import type { AuthRedirectState } from '../router/RouteGuards'
 
 export function LoginPage() {

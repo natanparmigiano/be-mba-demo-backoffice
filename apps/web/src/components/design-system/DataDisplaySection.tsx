@@ -17,6 +17,7 @@ import {
   SearchBox,
   SectionCard,
   SectionHeading,
+  PageHeader,
   StatCard,
   Table,
   TableBody,
@@ -24,7 +25,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../ui'
+} from '@mba-desk/ui'
 
 const people = [
   {
@@ -90,6 +91,14 @@ export function DataDisplaySection() {
         title={t('design.dataTitle')}
         description={t('design.dataDescription')}
       />
+      <div className="mb-5 rounded-2xl border bg-card p-5 sm:p-6">
+        <PageHeader
+          eyebrow={t('design.dataEyebrow')}
+          title={t('design.dataTitle')}
+          description={t('design.dataDescription')}
+          actions={<Button>{t('design.addMember')}</Button>}
+        />
+      </div>
       <SectionCard
         title={t('design.teamMembers')}
         description={`${t('design.selectedCount', { count: selectedPeople.length })} · ${t('design.shownCount', { count: filteredPeople.length })}`}
@@ -152,6 +161,11 @@ export function DataDisplaySection() {
                     <Avatar
                       name={person.name}
                       status={person.status === 'active' ? 'online' : 'offline'}
+                      statusLabel={t(
+                        person.status === 'active'
+                          ? 'common.status.online'
+                          : 'common.status.offline',
+                      )}
                     />
                     <div>
                       <p className="font-semibold">{person.name}</p>

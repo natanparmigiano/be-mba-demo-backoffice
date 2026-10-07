@@ -15,7 +15,7 @@ import {
   type Ref,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Avatar, Button, cn } from '../ui'
+import { Avatar, Button, cn } from '@mba-desk/ui'
 import { createInitialMessages } from './fixtures'
 import { MessageRow, MessageStatusIndicator } from './MessageRenderer'
 import type { ChatMessage, ChatTimelineItem, StickerMessage } from './types'
@@ -34,6 +34,7 @@ export interface ChatShowcaseProps {
   showProfileIntro?: boolean
   showStatusLegend?: boolean
   showHeaderActions?: boolean
+  showHeader?: boolean
   showComposer?: boolean
   emptyState?: ReactNode
   messagePlaceholder?: string
@@ -60,6 +61,7 @@ export function ChatShowcase({
   showProfileIntro = true,
   showStatusLegend = true,
   showHeaderActions = true,
+  showHeader = true,
   showComposer = true,
   emptyState,
   messagePlaceholder,
@@ -123,51 +125,56 @@ export function ChatShowcase({
         className,
       )}
     >
-      <div
-        ref={messagesViewportRef}
-        className={cn(
-          'flex shrink-0 items-center gap-3 border-b',
-          variant === 'showcase' ? 'px-4 py-3' : 'h-14 px-3',
-        )}
-      >
-        <Avatar
-          name={resolvedContactName}
-          status={variant === 'showcase' ? 'online' : undefined}
-          size={variant === 'showcase' ? 'lg' : 'md'}
-        />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-bold">{resolvedContactName}</p>
-          <p
-            className={cn(
-              'truncate text-xs',
-              variant === 'showcase' ? 'text-success' : 'text-muted-foreground',
-            )}
-          >
-            {contactSubtitle ?? t('chat.activeNow')}
-          </p>
+      {showHeader && (
+        <div
+          ref={messagesViewportRef}
+          className={cn(
+            'flex shrink-0 items-center gap-3 border-b',
+            variant === 'showcase' ? 'px-4 py-3' : 'h-14 px-3',
+          )}
+        >
+          <Avatar
+            name={resolvedContactName}
+            status={variant === 'showcase' ? 'online' : undefined}
+            statusLabel={t('common.status.online')}
+            size={variant === 'showcase' ? 'lg' : 'md'}
+          />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold">{resolvedContactName}</p>
+            <p
+              className={cn(
+                'truncate text-xs',
+                variant === 'showcase'
+                  ? 'text-success'
+                  : 'text-muted-foreground',
+              )}
+            >
+              {contactSubtitle ?? t('chat.activeNow')}
+            </p>
+          </div>
+          {headerActions ??
+            (showHeaderActions && (
+              <div className="ml-auto flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-9 text-primary"
+                  aria-label={t('chat.conversationDetails')}
+                >
+                  <Info className="size-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-9"
+                  aria-label={t('chat.conversationMenu')}
+                >
+                  <MoreHorizontal className="size-5" />
+                </Button>
+              </div>
+            ))}
         </div>
-        {headerActions ??
-          (showHeaderActions && (
-            <div className="ml-auto flex gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-9 text-primary"
-                aria-label={t('chat.conversationDetails')}
-              >
-                <Info className="size-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-9"
-                aria-label={t('chat.conversationMenu')}
-              >
-                <MoreHorizontal className="size-5" />
-              </Button>
-            </div>
-          ))}
-      </div>
+      )}
 
       {notice}
 

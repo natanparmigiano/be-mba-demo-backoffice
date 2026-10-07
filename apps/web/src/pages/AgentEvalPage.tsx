@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
-import { Button, Pill, SectionCard } from '../components/ui'
+import { Button, Pill, Progress, SectionCard } from '@mba-desk/ui'
 
 type ChannelsResponse = InferResponseType<
   typeof apiClient.api.channels.$get,
@@ -199,13 +199,6 @@ export function AgentEvalPage() {
     )
   }
 
-  const progressPercent = job?.progress
-    ? Math.min(
-        100,
-        Math.max(0, (job.progress.completed / job.progress.total) * 100 || 0),
-      )
-    : 0
-
   return (
     <div className="grid gap-6">
       <header className="flex flex-wrap items-center gap-4 rounded-2xl border bg-card p-5 shadow-xs sm:p-6">
@@ -376,19 +369,11 @@ export function AgentEvalPage() {
                     })}
                   </span>
                 </div>
-                <div
-                  aria-label={t('evaluation.progressLabel')}
-                  aria-valuemax={job.progress.total}
-                  aria-valuemin={0}
-                  aria-valuenow={job.progress.completed}
-                  className="h-2 overflow-hidden rounded-full bg-muted"
-                  role="progressbar"
-                >
-                  <div
-                    className="h-full rounded-full bg-primary transition-[width]"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
+                <Progress
+                  label={t('evaluation.progressLabel')}
+                  max={job.progress.total}
+                  value={job.progress.completed}
+                />
               </div>
             )}
 

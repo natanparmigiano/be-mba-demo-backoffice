@@ -76,7 +76,12 @@ describe('Responses API provider proxy', () => {
       apiKey: 'provider-secret',
       authorize: async () => ({ safetyIdentifier: 'user-123' }),
       fetch: async (input) => {
-        upstreamUrl = String(input)
+        upstreamUrl =
+          typeof input === 'string'
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input.url
         return new Response('{"client_secret":{"value":"ephemeral"}}', {
           headers: { 'content-type': 'application/json' },
         })

@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { apiClient } from '../../../api'
-import { Input, Select, Textarea } from '../../ui'
+import { Input, Select, Textarea } from '@mba-desk/ui'
 import {
   PlaygroundOperationCard,
   type PlaygroundOperationState,
-} from '../PlaygroundOperationCard'
+} from '..'
 import type { PlaygroundRequestExample } from '../PlaygroundRequestActions'
 
 type Props = {

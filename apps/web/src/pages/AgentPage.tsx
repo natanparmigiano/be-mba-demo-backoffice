@@ -59,12 +59,13 @@ import {
   Dialog,
   Input,
   Pill,
+  Progress,
   Select,
   Switch,
   TagInput,
   Tabs,
   Textarea,
-} from '../components/ui'
+} from '@mba-desk/ui'
 
 type ChannelsResponse = InferResponseType<
   typeof apiClient.api.channels.$get,
@@ -3801,19 +3802,10 @@ function AgentImportPanel({
               {progress}%
             </span>
           </div>
-          <div
-            className="h-2 overflow-hidden rounded-full bg-muted"
-            role="progressbar"
-            aria-label={t('agent.importPanel.progressTitle')}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress}
-          >
-            <div
-              className="h-full rounded-full bg-primary transition-[width] duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+          <Progress
+            label={t('agent.importPanel.progressTitle')}
+            value={progress}
+          />
           {error && (
             <div
               className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-destructive"
@@ -4482,19 +4474,7 @@ function AgentBackupProgress({
           {progress}%
         </span>
       </div>
-      <div
-        className="h-2 overflow-hidden rounded-full bg-muted"
-        role="progressbar"
-        aria-label={t('agent.backups.progressTitle')}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={progress}
-      >
-        <div
-          className="h-full rounded-full bg-primary transition-[width] duration-300"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+      <Progress label={t('agent.backups.progressTitle')} value={progress} />
       <ol className="grid gap-2" aria-live="polite">
         {agentExportSteps.map((step, index) => {
           const isComplete = complete || index < currentIndex
@@ -4727,19 +4707,11 @@ function AgentExportPanel({
                 {progress}%
               </span>
             </div>
-            <div
-              className="mt-3 h-2 overflow-hidden rounded-full bg-muted"
-              role="progressbar"
-              aria-label={t('agent.exportPanel.progressTitle')}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={progress}
-            >
-              <div
-                className="h-full rounded-full bg-primary transition-[width] duration-300"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+            <Progress
+              className="mt-3"
+              label={t('agent.exportPanel.progressTitle')}
+              value={progress}
+            />
           </div>
 
           <ol className="grid gap-2" aria-live="polite">

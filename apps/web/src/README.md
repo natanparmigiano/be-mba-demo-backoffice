@@ -11,7 +11,7 @@ with the component that owns it.
 | --------------------------- | --------------------------------------------------- |
 | `assets/`                   | Vite-managed brand images and SVG variants          |
 | `auth/`                     | Better Auth client, session provider, and `useAuth` |
-| `components/ui/`            | Reusable application primitives                     |
+| `@mba-desk/ui`              | Reusable primitives and centralized semantic styles |
 | `components/theme/`         | Theme state and selector                            |
 | `components/chat/`          | Typed WhatsApp-style message model and renderer     |
 | `components/design-system/` | Public component catalog sections and navigation    |
@@ -23,7 +23,7 @@ with the component that owns it.
 `main.tsx` performs the application-wide setup:
 
 1. Imports `i18n.ts`, which initializes i18next before components render.
-2. Imports `styles.css`, which loads Tailwind and defines semantic tokens.
+2. Imports `@mba-desk/ui/styles.css`, which loads Tailwind and defines semantic tokens.
 3. Mounts React in strict mode.
 4. Wraps the application in `ThemeProvider`.
 5. Renders `App`, which delegates navigation to `AppRouter`.
@@ -35,9 +35,10 @@ Top-level source files:
 - `App.tsx`: intentionally small application boundary around `AppRouter`.
 - `DesignSystemPage.tsx`: composition root for the public design-system route.
 - `api.ts`: typed Hono RPC client.
-- `i18n.ts`: resources, language detection, and document language synchronization.
+- `i18n.ts`: resource registration, language detection, and document language synchronization.
 - `i18next.d.ts`: TypeScript augmentation for typed translation keys.
-- `styles.css`: Tailwind import, theme variables, and shared CSS utilities.
+- `locales/`: one complete translation resource per supported language.
+- `@mba-desk/ui/styles.css`: Tailwind import, theme variables, and shared CSS utilities.
 
 ## State boundaries
 
@@ -72,23 +73,24 @@ The language detector checks, in order:
 
 Automatic browser detection is not cached. `LanguageSwitcher` writes the override key only after a user selection, which prevents later initialization from replacing an explicit choice. `languageChanged` also keeps the document's `lang` attribute synchronized.
 
-The English resource object is the canonical type source. All locale resources
-must retain the same key structure so `useTranslation()` remains type-safe.
+The English resource in `locales/en.ts` is the canonical type source. All
+locale resources must retain the same key structure so `useTranslation()`
+remains type-safe.
 
 ## Styling rules
 
-- Use semantic Tailwind utilities backed by variables in `styles.css`.
+- Use semantic Tailwind utilities backed by variables in `@mba-desk/ui/styles.css`.
 - Use the `dark:` variant only for structural differences; prefer semantic variables for colors.
 - Use `cn()` for conditional class joining. It does not perform Tailwind conflict resolution.
-- Place reusable visual patterns in `components/ui`; keep page-specific layout in the page or feature folder.
+- Place reusable visual patterns in `@mba-desk/ui`; keep page-specific layout in the page or feature folder.
 - Use the `.bg-brand-gradient` utility only for branded surfaces intended to carry white foreground content.
 
 ## Adding a feature
 
 1. Add or extend the route in `router/AppRouter.tsx` under the correct guard.
 2. Build the route-level screen in `pages/`.
-3. Extract reusable controls into `components/ui` or a focused feature folder.
-4. Add every user-visible string to all five locales.
+3. Extract generic controls into `@mba-desk/ui` or domain presentation into a focused feature folder.
+4. Add every user-visible string to all supported locales.
 5. Use `apiClient` for typed backend calls and `useAuth` for session data.
 6. Add reusable UI examples to `/design-system`.
 7. Run the frontend typecheck and production build.

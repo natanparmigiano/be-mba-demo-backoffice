@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from 'react'
-import { cn } from '../ui'
+import { cn } from '@mba-desk/ui'
 
 const INLINE_MARKERS = [
   { marker: '```', tag: 'monospace' },

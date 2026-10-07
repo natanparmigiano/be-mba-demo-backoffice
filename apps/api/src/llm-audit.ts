@@ -45,7 +45,9 @@ export async function safelyPersistLlmAuditEntry(
 }
 
 export function extractTokenUsage(output: unknown) {
-  const candidates = Array.isArray(output) ? [...output].reverse() : [output]
+  const candidates: unknown[] = Array.isArray(output)
+    ? output.map((value: unknown) => value).reverse()
+    : [output]
   for (const candidate of candidates) {
     if (!candidate || typeof candidate !== 'object') continue
     const record = candidate as Record<string, unknown>

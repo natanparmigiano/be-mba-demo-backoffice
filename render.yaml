@@ -13,6 +13,8 @@ services:
         fromDatabase:
           name: mba-desk-postgres
           property: connectionString
+      - key: ENCRYPTION_KEY
+        sync: false
       - key: REDIS_URL
         fromService:
           type: keyvalue

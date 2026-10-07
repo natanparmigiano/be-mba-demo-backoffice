@@ -1,6 +1,6 @@
 import { ChevronDown, Play } from 'lucide-react'
 import { useState, type ReactNode, type SubmitEvent } from 'react'
-import { Button } from '../ui'
+import { Button } from '@mba-desk/ui'
 import {
   PlaygroundRequestActions,
   type PlaygroundRequestExample,
@@ -9,14 +9,7 @@ import {
   usePlaygroundPostmanVariableReplacements,
   useRegisterPlaygroundPostmanEntry,
 } from './PlaygroundPostmanRegistry'
-
-export type { PlaygroundRequestExample } from './PlaygroundRequestActions'
-
-export type PlaygroundOperationState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'success'; result: unknown }
-  | { status: 'error'; message: string }
+import type { PlaygroundOperationState } from './PlaygroundOperation'
 
 export function PlaygroundOperationCard({
   method,

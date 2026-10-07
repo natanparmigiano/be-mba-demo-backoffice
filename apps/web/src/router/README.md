@@ -45,6 +45,7 @@ BrowserRouter
 │   └── PrivateRoute
 │       └── AppShell
 │           ├── / -> HomePage
+│           ├── /queue -> QueuePage
 │           ├── /chat -> ChatPage
 │           ├── /chat/:chatId -> ChatPage
 │           ├── /organization -> OrganizationPage

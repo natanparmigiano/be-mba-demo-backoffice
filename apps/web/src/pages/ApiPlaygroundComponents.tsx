@@ -4,8 +4,8 @@ import { apiClient } from '../api'
 import {
   PlaygroundOperationCard,
   type PlaygroundOperationState,
-} from '../components/api-playground/PlaygroundOperationCard'
-import { Textarea } from '../components/ui'
+} from '../components/api-playground'
+import { Textarea } from '@mba-desk/ui'
 
 type Props = {
   channelId: string

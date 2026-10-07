@@ -7,7 +7,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button, SectionCard, SectionHeading } from '../ui'
+import { Button, SectionCard, SectionHeading } from '@mba-desk/ui'
 
 export function ButtonsSection() {
   const { t } = useTranslation()

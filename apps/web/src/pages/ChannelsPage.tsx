@@ -46,10 +46,12 @@ import {
   Dialog,
   EmptyState,
   Input,
+  InlineFeedback,
+  PageHeader,
   Pill,
   Tabs,
   Textarea,
-} from '../components/ui'
+} from '@mba-desk/ui'
 
 interface ChannelSummary {
   id: number
@@ -591,44 +593,27 @@ export function ChannelsPage() {
 
   return (
     <div className="grid gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
-            {t('channels.eyebrow')}
-          </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
-            {t('channels.title')}
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t('channels.description', {
-              organization:
-                activeOrganization?.name ?? t('channels.activeOrganization'),
-            })}
-          </p>
-        </div>
-        {canManage && (
-          <Button
-            className="self-start sm:self-auto"
-            onClick={openCreateDialog}
-          >
-            <Plus className="size-4" aria-hidden />
-            {t('channels.newChannel')}
-          </Button>
-        )}
-      </header>
+      <PageHeader
+        eyebrow={t('channels.eyebrow')}
+        title={t('channels.title')}
+        description={t('channels.description', {
+          organization:
+            activeOrganization?.name ?? t('channels.activeOrganization'),
+        })}
+        actions={
+          canManage ? (
+            <Button onClick={openCreateDialog}>
+              <Plus className="size-4" aria-hidden />
+              {t('channels.newChannel')}
+            </Button>
+          ) : undefined
+        }
+      />
 
       {(error || notice) && (
-        <p
-          className={cn(
-            'rounded-xl border p-3 text-sm',
-            error
-              ? 'border-destructive/30 bg-destructive/10 text-destructive'
-              : 'border-success/30 bg-success/10 text-success',
-          )}
-          role="status"
-        >
+        <InlineFeedback tone={error ? 'error' : 'success'}>
           {error ?? notice}
-        </p>
+        </InlineFeedback>
       )}
 
       <section className="rounded-2xl border bg-card p-5 sm:p-6">

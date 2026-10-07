@@ -16,6 +16,8 @@ import {
   cn,
   Dialog,
   EmptyState,
+  InlineFeedback,
+  PageHeader,
   SearchBox,
   Select,
   Table,
@@ -24,7 +26,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../components/ui'
+} from '@mba-desk/ui'
 
 type GroupsResponse = InferResponseType<typeof apiClient.api.groups.$get, 200>
 type GroupSummary = GroupsResponse['groups'][number]
@@ -249,40 +251,26 @@ export function GroupsPage() {
 
   return (
     <div className="grid gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
-            {t('groups.eyebrow')}
-          </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
-            {t('groups.title')}
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t('groups.description')}
-          </p>
-        </div>
-        <Button
-          className="self-start sm:self-auto"
-          variant="outline"
-          disabled={isLoading}
-          onClick={() => setRefreshVersion((version) => version + 1)}
-        >
-          <RefreshCw
-            className={cn('size-4', isLoading && 'animate-spin')}
-            aria-hidden
-          />
-          {t('groups.refresh')}
-        </Button>
-      </header>
+      <PageHeader
+        eyebrow={t('groups.eyebrow')}
+        title={t('groups.title')}
+        description={t('groups.description')}
+        actions={
+          <Button
+            variant="outline"
+            disabled={isLoading}
+            onClick={() => setRefreshVersion((version) => version + 1)}
+          >
+            <RefreshCw
+              className={cn('size-4', isLoading && 'animate-spin')}
+              aria-hidden
+            />
+            {t('groups.refresh')}
+          </Button>
+        }
+      />
 
-      {error && (
-        <p
-          className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
+      {error && <InlineFeedback tone="error">{error}</InlineFeedback>}
 
       <section className="grid gap-4 rounded-2xl border bg-card p-5 sm:p-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">

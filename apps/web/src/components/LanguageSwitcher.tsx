@@ -1,21 +1,18 @@
 import { useTranslation } from 'react-i18next'
-import { LANGUAGE_OVERRIDE_STORAGE_KEY } from '../i18n'
-
-const languages = [
-  { code: 'en', badge: 'EN', flag: '🇺🇸', labelKey: 'common.english' },
-  { code: 'pt', badge: 'PT', flag: '🇧🇷', labelKey: 'common.portuguese' },
-  { code: 'es', badge: 'ES', flag: '🇪🇸', labelKey: 'common.spanish' },
-  { code: 'fr', badge: 'FR', flag: '🇫🇷', labelKey: 'common.french' },
-  { code: 'zh', badge: 'CN', flag: '🇨🇳', labelKey: 'common.chinese' },
-] as const
-
-type LanguageCode = (typeof languages)[number]['code']
+import {
+  languageDefinitions,
+  LANGUAGE_OVERRIDE_STORAGE_KEY,
+  normalizeLanguage,
+  resolveLanguageDefinition,
+  type LanguageCode,
+} from '@mba-desk/i18n'
 
 export function LanguageSwitcher() {
   const { t, i18n } = useTranslation()
-  const currentLanguage = (i18n.resolvedLanguage ?? i18n.language).split('-')[0]
-  const selectedLanguage =
-    languages.find(({ code }) => code === currentLanguage) ?? languages[0]
+  const currentLanguage = normalizeLanguage(
+    i18n.resolvedLanguage ?? i18n.language,
+  )
+  const selectedLanguage = resolveLanguageDefinition(currentLanguage)
 
   const selectLanguage = (language: LanguageCode) => {
     try {
@@ -39,7 +36,7 @@ export function LanguageSwitcher() {
         onChange={(event) => selectLanguage(event.target.value as LanguageCode)}
         aria-label={t('common.language')}
       >
-        {languages.map(({ code, flag, labelKey }) => (
+        {languageDefinitions.map(({ code, flag, labelKey }) => (
           <option key={code} value={code}>
             {flag} {t(labelKey)}
           </option>

@@ -2,11 +2,11 @@ import type { InferRequestType } from 'hono/client'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { apiClient } from '../api'
-import { Checkbox, Input, Textarea } from '../components/ui'
+import { Checkbox, Input, Textarea } from '@mba-desk/ui'
 import {
   PlaygroundOperationCard,
   type PlaygroundOperationState,
-} from '../components/api-playground/PlaygroundOperationCard'
+} from '../components/api-playground'
 
 type SendMessageInput = InferRequestType<
   (typeof apiClient.api.playground.messaging)[':channelId']['send']['$post']

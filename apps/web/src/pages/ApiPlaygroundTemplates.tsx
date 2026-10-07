@@ -4,8 +4,8 @@ import { apiClient } from '../api'
 import {
   PlaygroundOperationCard,
   type PlaygroundOperationState,
-} from '../components/api-playground/PlaygroundOperationCard'
-import { Input, Textarea } from '../components/ui'
+} from '../components/api-playground'
+import { Input, Textarea } from '@mba-desk/ui'
 
 type Props = { channelId: string; wabaId: string; mutationDisabled: boolean }
 type T = ReturnType<typeof useTranslation>['t']

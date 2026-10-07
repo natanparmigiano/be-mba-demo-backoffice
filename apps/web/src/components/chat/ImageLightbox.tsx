@@ -23,7 +23,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { cn } from '../ui'
+import { cn } from '@mba-desk/ui'
 
 const MIN_SCALE = 0.5
 const MAX_SCALE = 5

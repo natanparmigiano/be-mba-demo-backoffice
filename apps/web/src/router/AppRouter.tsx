@@ -15,6 +15,7 @@ import { GroupsPage } from '../pages/GroupsPage'
 import { HomePage } from '../pages/HomePage'
 import { LoginPage } from '../pages/LoginPage'
 import { OrganizationPage } from '../pages/OrganizationPage'
+import { QueuePage } from '../pages/QueuePage'
 import { StudioPage } from '../pages/StudioPage'
 import { StudioHomePage } from '../pages/StudioHomePage'
 import { TemplatesPage } from '../pages/TemplatesPage'
@@ -62,6 +63,7 @@ export function AppRouter() {
               <Route path="/" element={<HomePage />} />
               <Route path="/chat" element={<ChatPage />} />
               <Route path="/chat/:chatId" element={<ChatPage />} />
+              <Route path="/queue" element={<QueuePage />} />
               <Route path="/studio" element={<StudioHomePage />} />
               <Route path="/studio/:projectId" element={<StudioPage />} />
               <Route path="/organization" element={<OrganizationPage />} />

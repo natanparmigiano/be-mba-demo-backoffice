@@ -14,7 +14,7 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { organization } from './auth.js'
-import { channels } from './mba.js'
+import { channels } from './chats.js'
 
 export const runnerSchema = pgSchema('runner')
 

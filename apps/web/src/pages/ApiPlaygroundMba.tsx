@@ -4,9 +4,9 @@ import { apiClient } from '../api'
 import {
   PlaygroundOperationCard,
   type PlaygroundOperationState,
-} from '../components/api-playground/PlaygroundOperationCard'
+} from '../components/api-playground'
 import type { PlaygroundRequestExample } from '../components/api-playground/PlaygroundRequestActions'
-import { Textarea } from '../components/ui'
+import { Textarea } from '@mba-desk/ui'
 
 const readActions = [
   'getEligibility',

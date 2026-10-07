@@ -13,11 +13,13 @@ import {
   Button,
   Dialog,
   EmptyState,
+  InlineFeedback,
+  Progress,
   SectionCard,
   SectionHeading,
   Toast,
   useTimedToast,
-} from '../ui'
+} from '@mba-desk/ui'
 
 export function FeedbackSection() {
   const { t } = useTranslation()
@@ -35,6 +37,12 @@ export function FeedbackSection() {
         <div className="grid gap-5 lg:grid-cols-2">
           <SectionCard title={t('design.alerts')}>
             <div className="grid gap-3">
+              <InlineFeedback tone="success">
+                {t('design.importComplete')}
+              </InlineFeedback>
+              <InlineFeedback tone="error">
+                {t('design.paymentExpiring')}
+              </InlineFeedback>
               <Alert
                 icon={Info}
                 title={t('design.newVersion')}
@@ -78,6 +86,13 @@ export function FeedbackSection() {
               >
                 {t('design.showToast')}
               </Button>
+            </div>
+            <div className="mt-6">
+              <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold">
+                <span>{t('design.importComplete')}</span>
+                <span className="text-muted-foreground">72%</span>
+              </div>
+              <Progress label={t('design.importComplete')} value={72} />
             </div>
             <div className="mt-6 rounded-xl border border-dashed bg-muted/35 p-5">
               <p className="text-sm font-semibold">{t('design.emptyState')}</p>

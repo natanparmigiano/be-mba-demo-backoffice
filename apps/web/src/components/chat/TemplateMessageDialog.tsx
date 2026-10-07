@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Dialog, Input, Pill } from '../ui'
+import { Button, Dialog, Input, Pill } from '@mba-desk/ui'
 import { WhatsAppText } from './WhatsAppText'
 
 interface TemplateExample {

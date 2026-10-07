@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
-import { Button, EmptyState, Input, Select } from '../components/ui'
+import { Button, EmptyState, Input, Select } from '@mba-desk/ui'
 
 type Response = InferResponseType<typeof apiClient.api.webhooks.$get, 200>
 type WebhookRow = Response['webhooks'][number]

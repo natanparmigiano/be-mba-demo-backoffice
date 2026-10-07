@@ -11,9 +11,9 @@ COPY package.json yarn.lock ./
 COPY apps/api/package.json ./apps/api/package.json
 COPY apps/sso-cli/package.json ./apps/sso-cli/package.json
 COPY apps/web/package.json ./apps/web/package.json
-COPY apps/webhook-generator/package.json ./apps/webhook-generator/package.json
 COPY lib/auth/package.json ./lib/auth/package.json
 COPY lib/db/package.json ./lib/db/package.json
+COPY lib/encryption/package.json ./lib/encryption/package.json
 COPY lib/events/package.json ./lib/events/package.json
 COPY lib/files/package.json ./lib/files/package.json
 COPY lib/kv/package.json ./lib/kv/package.json

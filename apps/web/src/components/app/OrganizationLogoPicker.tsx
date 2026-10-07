@@ -8,7 +8,7 @@ import {
   type PointerEvent,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Dialog, Input } from '../ui'
+import { Button, Dialog, Input } from '@mba-desk/ui'
 import { OrganizationLogo } from './OrganizationLogo'
 
 const OUTPUT_SIZE = 512

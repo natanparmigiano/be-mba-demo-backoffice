@@ -28,7 +28,7 @@ the default primary color while preserving the user's light/dark preference.
 
 ## Semantic tokens
 
-Core brand tokens in `styles.css`:
+Core brand tokens in `@mba-desk/ui/styles.css`:
 
 | Token          | Light                    | Dark                     |
 | -------------- | ------------------------ | ------------------------ |

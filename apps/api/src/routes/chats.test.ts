@@ -25,6 +25,7 @@ const chat: ChatSummary = {
   id: 31,
   kind: 'direct',
   handledBy: 'application',
+  handoffAt: '2026-09-30T11:30:00.000Z',
   updatedAt: '2026-09-30T12:00:00.000Z',
   unreadMessageCount: 3,
   latestInboundMessageAt: '2026-09-30T11:59:00.000Z',
@@ -170,7 +171,7 @@ describe('chats route', () => {
     const startDate = '2026-10-01T03:00:00.000Z'
     const endDate = '2026-10-06T02:59:59.999Z'
     const response = await route.request(
-      `/?limit=25&cursor=${encodeURIComponent(cursor)}&search=Ada&channelId=7&teamId=team-one&handledBy=application&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
+      `/?limit=25&cursor=${encodeURIComponent(cursor)}&search=Ada&channelId=7&teamId=team-one&handledBy=application&assignment=mine&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
     )
 
     assert.equal(response.status, 200)
@@ -182,6 +183,7 @@ describe('chats route', () => {
       channelId: 7,
       teamId: 'team-one',
       handledBy: 'application',
+      assignedUserId: 'user-1',
       startDate,
       endDate,
     })
@@ -195,7 +197,7 @@ describe('chats route', () => {
     let receivedOrganizationId: string | undefined
     let receivedChatId: number | undefined
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       repository: createRepository({
         get: async (organizationId, chatId) => {
           receivedOrganizationId = organizationId
@@ -213,11 +215,30 @@ describe('chats route', () => {
     assert.deepEqual(await response.json(), { chat })
   })
 
+  it('lists the organization-scoped unassigned human queue', async () => {
+    let receivedOrganizationId: string | undefined
+    const route = createChatsRoute({
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
+      repository: createRepository({
+        listQueue: async (organizationId) => {
+          receivedOrganizationId = organizationId
+          return { chats: [chat] }
+        },
+      }),
+    })
+
+    const response = await route.request('/queue')
+
+    assert.equal(response.status, 200)
+    assert.equal(receivedOrganizationId, 'org-one')
+    assert.deepEqual(await response.json(), { chats: [chat] })
+  })
+
   it('lists approved templates for the chat WABA with cursor pagination', async () => {
     let receivedContext: unknown
     let receivedQuery: unknown
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       listTemplates: async (context, query) => {
         receivedContext = context
         receivedQuery = query
@@ -285,7 +306,7 @@ describe('chats route', () => {
   it('does not expose templates for a chat outside the organization', async () => {
     let listed = false
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       listTemplates: async () => {
         listed = true
         return { data: [] }
@@ -354,7 +375,7 @@ describe('chats route', () => {
       },
     })
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       realtime,
       repository: createRepository(),
     })
@@ -404,7 +425,7 @@ describe('chats route', () => {
       },
     })
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       realtime,
       repository: createRepository({
         owns: async (organizationId, chatId) =>
@@ -441,7 +462,7 @@ describe('chats route', () => {
   it('rejects malformed list and timeline cursors', async () => {
     let repositoryCalled = false
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       repository: createRepository({
         list: async () => {
           repositoryCalled = true
@@ -490,7 +511,7 @@ describe('chats route', () => {
 
   it('does not expose a chat outside the active organization', async () => {
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       repository: createRepository({
         get: async () => undefined,
         getHandoffContext: async () => undefined,
@@ -526,7 +547,7 @@ describe('chats route', () => {
     const calls: string[] = []
     const published: Array<{ channel: string; value: string }> = []
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       markProviderRead: async (context) => {
         calls.push('provider')
         providerMessageId = context.messageId ?? undefined
@@ -562,7 +583,7 @@ describe('chats route', () => {
     let sentTo: string | undefined
     let persistedClientMessageId: string | undefined
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       sendMessage: async (_context, message) => {
         sentTo = message.to
         return {
@@ -619,7 +640,10 @@ describe('chats route', () => {
     console.error = (...values: unknown[]) => logged.push(values)
     try {
       const route = createChatsRoute({
-        getAccess: async () => ({ organizationId: 'org-one' }),
+        getAccess: async () => ({
+          organizationId: 'org-one',
+          userId: 'user-1',
+        }),
         sendMessage: async () => {
           throw new WhatsAppMessagingApiError(400, {
             error: {
@@ -670,7 +694,7 @@ describe('chats route', () => {
   it('rejects composer sends while AI owns the conversation', async () => {
     let sent = false
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       sendMessage: async () => {
         sent = true
         throw new Error('should not send')
@@ -701,10 +725,47 @@ describe('chats route', () => {
     assert.equal(sent, false)
   })
 
+  it('rejects chat sends when the current user is not the assignee', async () => {
+    let sent = false
+    const route = createChatsRoute({
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
+      sendMessage: async () => {
+        sent = true
+        throw new Error('should not send')
+      },
+      repository: createRepository({
+        getSendContext: async () => ({
+          ...sendContext,
+          assignedUserId: 'user-2',
+        }),
+      }),
+    })
+
+    const response = await route.request('/31/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        clientMessageId: 'ec73ed89-ecb8-49c2-aefe-0a54f87e68c3',
+        message: {
+          messaging_product: 'whatsapp',
+          to: '',
+          type: 'text',
+          text: { body: 'Hello' },
+        },
+      }),
+    })
+
+    assert.equal(response.status, 403)
+    assert.deepEqual(await response.json(), {
+      message: 'Chat is not assigned to the current user',
+    })
+    assert.equal(sent, false)
+  })
+
   it('rejects voice messages that are not OGG audio', async () => {
     let sent = false
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       sendMessage: async () => {
         sent = true
         throw new Error('should not send')
@@ -738,7 +799,7 @@ describe('chats route', () => {
   it('addresses group conversations as group recipients', async () => {
     let recipientType: string | undefined
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       sendMessage: async (_context, message) => {
         recipientType = message.recipient_type
         return {
@@ -792,7 +853,7 @@ describe('chats route', () => {
         },
         signUrl: async (key) => `https://files.example.test/${key}`,
       },
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       uploadMedia: async (_context, input) => {
         uploadedKind = input.kind
         return { id: 'meta-media-id' }
@@ -841,10 +902,35 @@ describe('chats route', () => {
     })
   })
 
+  it('rejects chat media staging when the current user is not the assignee', async () => {
+    const route = createChatsRoute({
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
+      repository: createRepository({
+        getSendContext: async () => ({
+          ...sendContext,
+          assignedUserId: null,
+        }),
+      }),
+    })
+
+    const response = await route.request('/31/media-upload', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'image',
+        fileName: 'photo.png',
+        contentType: 'image/png',
+        size: 4,
+      }),
+    })
+
+    assert.equal(response.status, 403)
+  })
+
   it('does not move the local cursor when Meta rejects mark-as-read', async () => {
     let markedLocally = false
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       markProviderRead: async () => {
         throw new ChatMarkReadError('Meta rejected the mark-as-read request')
       },
@@ -868,7 +954,7 @@ describe('chats route', () => {
   it('skips Meta when a chat has no inbound provider message', async () => {
     let providerCalled = false
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       markProviderRead: async () => {
         providerCalled = true
       },
@@ -925,6 +1011,7 @@ describe('chats route', () => {
   })
 
   it('assigns a chat to the current organization user', async () => {
+    const published: Array<{ channel: string; value: string }> = []
     let assignment:
       | {
           organizationId: string
@@ -935,6 +1022,11 @@ describe('chats route', () => {
       | undefined
     const route = createChatsRoute({
       getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
+      realtime: createRealtime({
+        publish: async (channel, value) => {
+          published.push({ channel, value })
+        },
+      }),
       repository: createRepository({
         assignToUser: async (organizationId, chatId, userId, force) => {
           assignment = { organizationId, chatId, userId, force }
@@ -956,6 +1048,9 @@ describe('chats route', () => {
       userId: 'user-1',
       force: false,
     })
+    assert.equal(published[0]?.channel, 'chats.31')
+    assert.equal(published[1]?.channel, 'organizations.org-one.chats')
+    assert.match(published[0]?.value ?? '', /"type":"conversation.updated"/)
   })
 
   it('requires confirmation before replacing another user assignment', async () => {
@@ -1001,11 +1096,48 @@ describe('chats route', () => {
     assert.equal(releasedUserId, 'user-1')
   })
 
+  it('transfers a chat to an organization team', async () => {
+    const published: Array<{ channel: string; value: string }> = []
+    let transfer:
+      { organizationId: string; chatId: number; teamId: string } | undefined
+    const route = createChatsRoute({
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
+      realtime: createRealtime({
+        publish: async (channel, value) => {
+          published.push({ channel, value })
+        },
+      }),
+      repository: createRepository({
+        assignToTeam: async (organizationId, chatId, teamId) => {
+          transfer = { organizationId, chatId, teamId }
+          return 'ok'
+        },
+      }),
+    })
+
+    const response = await route.request('/31/team', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ teamId: 'team-two' }),
+    })
+
+    assert.equal(response.status, 200)
+    assert.deepEqual(transfer, {
+      organizationId: 'org-one',
+      chatId: 31,
+      teamId: 'team-two',
+    })
+    assert.deepEqual(await response.json(), { teamId: 'team-two' })
+    assert.equal(published[0]?.channel, 'chats.31')
+    assert.equal(published[1]?.channel, 'organizations.org-one.chats')
+    assert.match(published[0]?.value ?? '', /"type":"conversation.updated"/)
+  })
+
   it('treats an already-owned chat as an idempotent handoff', async () => {
     let serviceCalled = false
     let repositoryUpdated = false
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       handoff: async () => {
         serviceCalled = true
       },
@@ -1034,7 +1166,7 @@ describe('chats route', () => {
 
   it('rejects handoff without a recipient or valid target', async () => {
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       repository: createRepository({
         getHandoffContext: async () => ({
           ...handoffContext,
@@ -1060,7 +1192,7 @@ describe('chats route', () => {
 
   it('returns a stable error when Meta rejects the handoff', async () => {
     const route = createChatsRoute({
-      getAccess: async () => ({ organizationId: 'org-one' }),
+      getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       handoff: async () => {
         throw new ChatHandoffError(
           'Meta rejected the conversation handoff',
@@ -1140,6 +1272,7 @@ const readContext = {
 
 const sendContext = {
   accessToken: 'secret-token',
+  assignedUserId: 'user-1',
   contactId: 17,
   handledBy: 'application' as const,
   kind: 'direct' as const,
@@ -1157,6 +1290,7 @@ function createRepository(
   overrides: Partial<ChatsRepository> = {},
 ): ChatsRepository {
   return {
+    assignToTeam: async () => 'ok',
     assignToUser: async () => 'ok',
     get: async () => chat,
     getHandoffContext: async () => handoffContext,
@@ -1167,6 +1301,7 @@ function createRepository(
     setHandler: async () => true,
     timeline: async () => ({ items: [], nextCursor: null }),
     ...overrides,
+    listQueue: overrides.listQueue ?? (async () => ({ chats: [] })),
     getReadContext: overrides.getReadContext ?? (async () => readContext),
     getSendContext: overrides.getSendContext ?? (async () => sendContext),
     getTemplateContext:

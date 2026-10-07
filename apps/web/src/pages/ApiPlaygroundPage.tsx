@@ -14,7 +14,7 @@ import { authClient } from '../auth/auth-client'
 import {
   PlaygroundOperationCard as OperationCard,
   type PlaygroundOperationState as OperationState,
-} from '../components/api-playground/PlaygroundOperationCard'
+} from '../components/api-playground'
 import {
   PlaygroundPostmanRegistryProvider,
   postmanFoldersFromRegistry,
@@ -34,7 +34,7 @@ import { ModerationPlayground } from './ApiPlaygroundModeration'
 import { SubscriptionsPlayground } from './ApiPlaygroundSubscriptions'
 import { WabaPlayground } from './ApiPlaygroundWaba'
 import { WebhooksPlayground } from './ApiPlaygroundWebhooks'
-import { Button, Checkbox, cn, Input, Select, Tabs } from '../components/ui'
+import { Button, Checkbox, cn, Input, Select, Tabs } from '@mba-desk/ui'
 
 type ChannelsResponse = InferResponseType<
   typeof apiClient.api.channels.$get,

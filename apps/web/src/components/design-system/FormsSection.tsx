@@ -11,7 +11,7 @@ import {
   Switch,
   TagInput,
   Textarea,
-} from '../ui'
+} from '@mba-desk/ui'
 
 export function FormsSection() {
   const { t } = useTranslation()

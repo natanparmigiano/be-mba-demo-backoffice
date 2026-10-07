@@ -11,7 +11,6 @@ and should be updated when behavior changes.
 - `apps/api` owns the Hono HTTP server, process lifecycle, workers, and the
   exported RPC `AppType`.
 - `apps/web` owns the React/Vite browser application.
-- `apps/webhook-generator` owns the stateful webhook load-generator CLI.
 - `apps/sso-cli` owns the HTTP-based SSO provider administration CLI.
 - `lib/*` and `lib/whatsapp/*` contain shared packages. Applications may depend
   on libraries; libraries must not depend on applications.

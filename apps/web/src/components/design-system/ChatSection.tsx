@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { ChatComposer, ChatShowcase } from '../chat'
-import { SectionCard, SectionHeading } from '../ui'
+import { SectionCard, SectionHeading } from '@mba-desk/ui'
 
 export function ChatSection() {
   const { t } = useTranslation()

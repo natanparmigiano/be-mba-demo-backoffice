@@ -97,16 +97,18 @@ composition chained in `src/app.ts`.
 | `POST`                   | `/api/wa-cloud/webhook/:id`                                         | Verifies and publishes a typed webhook to `wa-cloud.webhook.v1`          |
 | `GET`                    | `/api/chats`                                                        | Lists active-organization chats with cursor pagination                   |
 | `GET`                    | `/api/chats/events`                                                 | Streams active-organization inbox invalidations over SSE                 |
+| `GET`                    | `/api/chats/queue`                                                  | Lists unassigned human-held chats ordered by oldest handoff              |
 | `GET`                    | `/api/chats/:id`                                                    | Returns one active-organization chat independently of pagination         |
 | `GET`                    | `/api/chats/:id/timeline`                                           | Lists interleaved messages and chat events with cursor pagination        |
 | `GET`                    | `/api/chats/:id/events`                                             | Streams organization-authorized chat invalidations over SSE              |
 | `GET`                    | `/api/chats/:id/templates`                                          | Lists approved chat-WABA templates with opaque cursor pagination         |
 | `POST`                   | `/api/chats/:id/media-upload`                                       | Creates a chat-scoped presigned media staging upload                     |
 | `POST`                   | `/api/chats/:id/media`                                              | Uploads staged composer media to WhatsApp                                |
-| `POST`                   | `/api/chats/:id/messages`                                           | Sends and persists a non-interactive human-owned chat message            |
+| `POST`                   | `/api/chats/:id/messages`                                           | Sends a chat message only for its assigned human operator                |
 | `PATCH`                  | `/api/chats/:id/read`                                               | Marks the latest inbound message at Meta, then advances the local cursor |
 | `PATCH`                  | `/api/chats/:id/handoff`                                            | Transfers thread control between a human operator and the Business AI    |
 | `PATCH`                  | `/api/chats/:id/assignment`                                         | Assigns the current member or releases their own chat assignment         |
+| `PATCH`                  | `/api/chats/:id/team`                                               | Transfers a chat to another active-organization team                     |
 | `GET`                    | `/api/contacts`                                                     | Lists active-organization contacts with search and cursor pagination     |
 | `POST`                   | `/api/contacts`                                                     | Creates a contact on an organization-owned channel                       |
 | `GET`                    | `/api/contacts/:id`                                                 | Returns contact details for the active organization                      |

@@ -9,7 +9,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { authClient } from '../../auth/auth-client'
 import { useAuth } from '../../auth/AuthProvider'
-import { Button, Dialog, Input } from '../ui'
+import { Button, Dialog, Input } from '@mba-desk/ui'
 import {
   applyOrganizationPrimaryColor,
   DEFAULT_PRIMARY_COLOR,

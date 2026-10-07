@@ -16,7 +16,7 @@ import {
 import { useMemo, useRef, useState, type ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 import emojiData from '../../assets/emoji-categories.json'
-import { cn } from '../ui'
+import { cn } from '@mba-desk/ui'
 
 interface EmojiEntry {
   code: string[]

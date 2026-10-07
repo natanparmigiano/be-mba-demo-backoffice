@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ColorSwatch, SectionCard, SectionHeading } from '../ui'
+import { ColorSwatch, SectionCard, SectionHeading } from '@mba-desk/ui'
 
 export function FoundationsSection() {
   const { t } = useTranslation()

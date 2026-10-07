@@ -28,6 +28,7 @@ services:
       NODE_ENV: production
       PORT: 8080
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_desk
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-bWJhLWRlc2stZGV2ZWxvcG1lbnQta2V5LTMyYnl0ZXM=}
       KV_ADAPTER: memory
       ENABLE_WORKER_IN_PROCESS: 'true'
       SUBSCRIBE_TO_TOPICS: ${SUBSCRIBE_TO_TOPICS:-all}

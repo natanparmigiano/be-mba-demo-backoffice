@@ -6,8 +6,12 @@ import {
   Hand,
   LoaderCircle,
   MessagesSquare,
+  MoreHorizontal,
   RefreshCw,
+  UserMinus,
+  UserPlus,
   UserRound,
+  UsersRound,
   WifiOff,
 } from 'lucide-react'
 import {
@@ -16,7 +20,10 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type RefObject,
+  type InputHTMLAttributes,
+  type SelectHTMLAttributes,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -41,14 +48,16 @@ import {
   cn,
   Dialog,
   Input,
-  Pill,
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuTrigger,
   SearchBox,
   Select,
-  Tabs,
-} from '../components/ui'
+} from '@mba-desk/ui'
 
 type ChatsResponse = InferResponseType<typeof apiClient.api.chats.$get, 200>
-type ChatSummary = ChatsResponse['chats'][number]
+export type ChatSummary = ChatsResponse['chats'][number]
 type ChatDetailResponse = InferResponseType<
   (typeof apiClient.api.chats)[':id']['$get'],
   200
@@ -61,7 +70,7 @@ type TimelineResponse = InferResponseType<
   (typeof apiClient.api.chats)[':id']['timeline']['$get'],
   200
 >
-type ApiTimelineItem = TimelineResponse['items'][number]
+export type ApiTimelineItem = TimelineResponse['items'][number]
 type ChatMessageRequest = Parameters<
   (typeof apiClient.api.chats)[':id']['messages']['$post']
 >[0]['json']
@@ -81,6 +90,7 @@ interface ChatFilters {
   channelId?: string
   teamId?: string
   handledBy?: Handler
+  assignment?: 'unassigned' | 'mine'
   startDate?: string
   endDate?: string
 }
@@ -107,6 +117,7 @@ export function ChatWorkspace() {
   const [channelId, setChannelId] = useState('')
   const [teamId, setTeamId] = useState('')
   const [handledBy, setHandledBy] = useState<Handler | ''>('')
+  const [assignment, setAssignment] = useState<'' | 'unassigned' | 'mine'>('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [nextChatCursor, setNextChatCursor] = useState<string | null>(null)
@@ -127,6 +138,9 @@ export function ChatWorkspace() {
   const [isLoadingSelectedChat, setIsLoadingSelectedChat] = useState(false)
   const [handoffChatId, setHandoffChatId] = useState<number | null>(null)
   const [assignmentChatId, setAssignmentChatId] = useState<number | null>(null)
+  const [teamAssignmentChatId, setTeamAssignmentChatId] = useState<
+    number | null
+  >(null)
   const [assignmentConfirmTarget, setAssignmentConfirmTarget] =
     useState<ChatSummary | null>(null)
   const [handoffError, setHandoffError] = useState<HandoffError | null>(null)
@@ -153,13 +167,28 @@ export function ChatWorkspace() {
       ...(channelId ? { channelId } : {}),
       ...(teamId ? { teamId } : {}),
       ...(handledBy ? { handledBy } : {}),
+      ...(assignment ? { assignment } : {}),
       ...(startDate ? { startDate: startOfLocalDay(startDate) } : {}),
       ...(endDate ? { endDate: endOfLocalDay(endDate) } : {}),
     }),
-    [channelId, debouncedSearch, endDate, handledBy, startDate, teamId],
+    [
+      assignment,
+      channelId,
+      debouncedSearch,
+      endDate,
+      handledBy,
+      startDate,
+      teamId,
+    ],
   )
   const hasChatFilters = Boolean(
-    search || channelId || teamId || handledBy || startDate || endDate,
+    search ||
+    channelId ||
+    teamId ||
+    handledBy ||
+    assignment ||
+    startDate ||
+    endDate,
   )
 
   useEffect(() => {
@@ -695,6 +724,36 @@ export function ChatWorkspace() {
     }
   }
 
+  const changeTeamAssignment = async (
+    chat: ChatSummary,
+    nextTeamId: string,
+  ) => {
+    if (teamAssignmentChatId !== null) return
+    setTeamAssignmentChatId(chat.id)
+    setHandoffError(null)
+    try {
+      const response = await apiClient.api.chats[':id'].team.$patch({
+        param: { id: String(chat.id) },
+        json: { teamId: nextTeamId },
+      })
+      if (!response.ok) {
+        throw new Error(
+          await readApiError(response, t('chatWorkspace.assignmentFailed')),
+        )
+      }
+      await refreshChatRegion(chat.id)
+    } catch (reason) {
+      setHandoffError({
+        chatId: chat.id,
+        message: getErrorMessage(reason, t('chatWorkspace.assignmentFailed')),
+      })
+    } finally {
+      setTeamAssignmentChatId((current) =>
+        current === chat.id ? null : current,
+      )
+    }
+  }
+
   const reconnectRealtime = async () => {
     if (realtimeState === 'connecting') return
     setRealtimeState('connecting')
@@ -741,11 +800,11 @@ export function ChatWorkspace() {
             aria-label={t('chatWorkspace.searchContactLabel')}
           />
           <div className="grid grid-cols-2 gap-2">
-            <Select
+            <ChatFilterSelect
+              id="chat-channel-filter"
+              label={t('chatWorkspace.channelFilterLabel')}
               value={channelId}
               onChange={(event) => setChannelId(event.target.value)}
-              aria-label={t('chatWorkspace.channelFilter')}
-              className="h-9"
             >
               <option value="">{t('chatWorkspace.allChannels')}</option>
               {channels.map((channel) => (
@@ -753,36 +812,80 @@ export function ChatWorkspace() {
                   {channel.name}
                 </option>
               ))}
-            </Select>
-            <Select
+            </ChatFilterSelect>
+            <ChatFilterSelect
+              id="chat-holder-filter"
+              label={t('chatWorkspace.holderFilterLabel')}
               value={handledBy}
               onChange={(event) =>
                 setHandledBy(event.target.value as Handler | '')
               }
-              aria-label={t('chatWorkspace.holderFilter')}
-              className="h-9"
             >
               <option value="">{t('chatWorkspace.allHolders')}</option>
               <option value="mba">{t('chatWorkspace.handlers.mba')}</option>
               <option value="application">
                 {t('chatWorkspace.handlers.application')}
               </option>
-            </Select>
-            <Input
+            </ChatFilterSelect>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <ChatFilterSelect
+              id="chat-assignment-filter"
+              label={t('chatWorkspace.assignmentFilterLabel')}
+              value={assignment}
+              onChange={(event) =>
+                setAssignment(event.target.value as typeof assignment)
+              }
+            >
+              <option value="">
+                {t('chatWorkspace.assignmentFilters.all')}
+              </option>
+              <option value="unassigned">
+                {t('chatWorkspace.assignmentFilters.unassigned')}
+              </option>
+              <option value="mine">
+                {t('chatWorkspace.assignmentFilters.mine')}
+              </option>
+            </ChatFilterSelect>
+            <ChatFilterSelect
+              id="chat-team-filter"
+              label={t('chatWorkspace.teamFilterLabel')}
+              value={teamId}
+              onChange={(event) => setTeamId(event.target.value)}
+              style={
+                teams.find((team) => team.id === teamId)
+                  ? { color: teams.find((team) => team.id === teamId)?.color }
+                  : undefined
+              }
+            >
+              <option value="">{t('chatWorkspace.allTeams')}</option>
+              {teams.map((team) => (
+                <option
+                  key={team.id}
+                  value={team.id}
+                  style={{ color: team.color }}
+                >
+                  {team.name}
+                </option>
+              ))}
+            </ChatFilterSelect>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <ChatFilterInput
+              id="chat-start-date-filter"
+              label={t('chatWorkspace.startDate')}
               type="date"
               value={startDate}
               max={endDate || undefined}
               onChange={(event) => setStartDate(event.target.value)}
-              aria-label={t('chatWorkspace.startDate')}
-              className="h-9 px-2 text-xs"
             />
-            <Input
+            <ChatFilterInput
+              id="chat-end-date-filter"
+              label={t('chatWorkspace.endDate')}
               type="date"
               value={endDate}
               min={startDate || undefined}
               onChange={(event) => setEndDate(event.target.value)}
-              aria-label={t('chatWorkspace.endDate')}
-              className="h-9 px-2 text-xs"
             />
           </div>
           {hasChatFilters && (
@@ -797,6 +900,7 @@ export function ChatWorkspace() {
                 setChannelId('')
                 setTeamId('')
                 setHandledBy('')
+                setAssignment('')
                 setStartDate('')
                 setEndDate('')
               }}
@@ -805,27 +909,6 @@ export function ChatWorkspace() {
               {t('chatWorkspace.clearFilters')}
             </Button>
           )}
-          <Tabs
-            items={[
-              { value: '', label: t('chatWorkspace.allTeams') },
-              ...teams.map((team) => ({
-                value: team.id,
-                label: team.name,
-                icon: (
-                  <span
-                    className="size-2 rounded-full"
-                    style={{ backgroundColor: team.color }}
-                    aria-hidden
-                  />
-                ),
-              })),
-            ]}
-            value={teamId}
-            onValueChange={setTeamId}
-            ariaLabel={t('chatWorkspace.teamFilter')}
-            variant="pills"
-            size="compact"
-          />
         </div>
 
         {chatError && (
@@ -903,10 +986,11 @@ export function ChatWorkspace() {
                         <span className="mt-0.5 block max-w-full truncate text-xs text-muted-foreground">
                           {messagePreview(chat, t)}
                         </span>
-                        <span className="mt-1.5 flex min-w-0 items-center gap-1.5">
-                          <HandlerPill handler={chat.handledBy} />
-                          <AssignmentPills chat={chat} t={t} />
-                        </span>
+                        <InboxMetadata
+                          chat={chat}
+                          currentUserId={currentUserId}
+                          t={t}
+                        />
                       </span>
                     </Link>
                   </li>
@@ -950,7 +1034,8 @@ export function ChatWorkspace() {
             showStatusLegend={false}
             showComposer={false}
             footer={
-              selectedChat.handledBy === 'application' ? (
+              selectedChat.handledBy === 'application' &&
+              selectedChat.assignedUser?.id === currentUserId ? (
                 <ChatComposer
                   outsideCustomerServiceWindow={isOutsideCustomerServiceWindow}
                   addSticker={addSticker}
@@ -965,7 +1050,8 @@ export function ChatWorkspace() {
               ) : undefined
             }
             onMessageReaction={
-              selectedChat.handledBy === 'application'
+              selectedChat.handledBy === 'application' &&
+              selectedChat.assignedUser?.id === currentUserId
                 ? async (providerMessageId, emoji) => {
                     await sendMessageReaction(
                       selectedChat.id,
@@ -989,55 +1075,97 @@ export function ChatWorkspace() {
               await saveStickerFile(source, t, true)
             }}
             headerActions={
-              <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
-                <AssignmentPills chat={selectedChat} t={t} />
-                <OwnerIndicator handler={selectedChat.handledBy} />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={
-                    selectedChat.handledBy === 'mba' ? 'primary' : 'outline'
+              <div className="ml-auto flex min-w-0 shrink items-center justify-end gap-2">
+                <HeaderMetadataBadge
+                  label={t('chatWorkspace.owner')}
+                  value={t(`chatWorkspace.handlers.${selectedChat.handledBy}`)}
+                  icon={
+                    selectedChat.handledBy === 'mba' ? (
+                      <Bot className="size-3.5" aria-hidden />
+                    ) : (
+                      <UserRound className="size-3.5" aria-hidden />
+                    )
                   }
-                  isLoading={handoffChatId === selectedChat.id}
-                  onClick={() => void changeHandler(selectedChat)}
-                >
-                  {selectedChat.handledBy === 'mba' ? (
-                    <Hand className="size-3.5" aria-hidden />
-                  ) : (
-                    <Bot className="size-3.5" aria-hidden />
-                  )}
-                  {t(
-                    selectedChat.handledBy === 'mba'
-                      ? 'chatWorkspace.takeControl'
-                      : 'chatWorkspace.passToAi',
-                  )}
-                </Button>
-                {selectedChat.handledBy === 'application' &&
-                  (selectedChat.assignedUser?.id === currentUserId ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      isLoading={assignmentChatId === selectedChat.id}
-                      onClick={() =>
-                        void changeAssignment(selectedChat, 'release')
+                  tone={
+                    selectedChat.handledBy === 'mba' ? 'primary' : 'success'
+                  }
+                  action={
+                    <BadgeActionMenu
+                      label={t(
+                        selectedChat.handledBy === 'mba'
+                          ? 'chatWorkspace.takeControl'
+                          : 'chatWorkspace.passToAi',
+                      )}
+                      isLoading={handoffChatId === selectedChat.id}
+                      onClick={() => void changeHandler(selectedChat)}
+                      icon={
+                        selectedChat.handledBy === 'mba' ? (
+                          <Hand className="size-3.5" aria-hidden />
+                        ) : (
+                          <Bot className="size-3.5" aria-hidden />
+                        )
                       }
-                    >
-                      {t('chatWorkspace.releaseAssignment')}
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      isLoading={assignmentChatId === selectedChat.id}
-                      onClick={() =>
-                        void changeAssignment(selectedChat, 'assign')
+                    />
+                  }
+                />
+                {selectedChat.handledBy === 'application' && (
+                  <>
+                    <HeaderMetadataBadge
+                      label={t('teams.team')}
+                      value={
+                        selectedChat.assignedTeam?.name ??
+                        t('chatWorkspace.noTeam')
                       }
-                    >
-                      {t('chatWorkspace.assignToMe')}
-                    </Button>
-                  ))}
+                      icon={<UsersRound className="size-3.5" aria-hidden />}
+                      tone={selectedChat.assignedTeam ? 'neutral' : 'danger'}
+                      color={selectedChat.assignedTeam?.color}
+                      action={
+                        <TeamTransferMenu
+                          currentTeamId={selectedChat.assignedTeam?.id}
+                          isLoading={teamAssignmentChatId === selectedChat.id}
+                          teams={teams}
+                          onSelect={(nextTeamId) =>
+                            void changeTeamAssignment(selectedChat, nextTeamId)
+                          }
+                        />
+                      }
+                    />
+                    <HeaderMetadataBadge
+                      label={t('admin.user')}
+                      value={
+                        selectedChat.assignedUser?.name ??
+                        t('chatWorkspace.unassigned')
+                      }
+                      icon={<UserRound className="size-3.5" aria-hidden />}
+                      tone={assignmentTone(selectedChat, currentUserId)}
+                      action={
+                        <BadgeActionMenu
+                          label={t(
+                            selectedChat.assignedUser?.id === currentUserId
+                              ? 'chatWorkspace.releaseAssignment'
+                              : 'chatWorkspace.assignToMe',
+                          )}
+                          isLoading={assignmentChatId === selectedChat.id}
+                          onClick={() =>
+                            void changeAssignment(
+                              selectedChat,
+                              selectedChat.assignedUser?.id === currentUserId
+                                ? 'release'
+                                : 'assign',
+                            )
+                          }
+                          icon={
+                            selectedChat.assignedUser?.id === currentUserId ? (
+                              <UserMinus className="size-3.5" aria-hidden />
+                            ) : (
+                              <UserPlus className="size-3.5" aria-hidden />
+                            )
+                          }
+                        />
+                      }
+                    />
+                  </>
+                )}
               </div>
             }
             notice={
@@ -1221,75 +1349,269 @@ function useCustomerServiceWindowExpired(
   return expired
 }
 
-function HandlerPill({ handler }: { handler: Handler }) {
-  const { t } = useTranslation()
+function InboxMetadata({
+  chat,
+  currentUserId,
+  t,
+}: {
+  chat: ChatSummary
+  currentUserId?: string
+  t: TFunction
+}) {
+  const owner = t(`chatWorkspace.handlers.${chat.handledBy}`)
+  const team = chat.assignedTeam?.name ?? t('chatWorkspace.noTeam')
+  const assignee = chat.assignedUser?.name ?? t('chatWorkspace.unassigned')
+  const assigneeTone = assignmentTone(chat, currentUserId)
+
+  if (chat.handledBy === 'mba') {
+    return (
+      <span
+        className="mt-1.5 flex min-w-0 items-center gap-1 text-[11px] leading-4 font-semibold text-primary"
+        aria-label={owner}
+      >
+        <span className="size-1.5 rounded-full bg-current" aria-hidden />
+        {owner}
+      </span>
+    )
+  }
+
   return (
-    <Pill tone={handler === 'mba' ? 'primary' : 'success'}>
-      {handler === 'mba' ? (
-        <Bot className="size-3" aria-hidden />
-      ) : (
-        <UserRound className="size-3" aria-hidden />
-      )}
-      {t(`chatWorkspace.handlers.${handler}`)}
-    </Pill>
+    <span
+      className="mt-1.5 flex min-w-0 items-center gap-1.5 overflow-hidden text-[11px] leading-4 text-muted-foreground"
+      aria-label={`${owner} · ${t('chatWorkspace.assignedTeam', { name: team })} · ${t('chatWorkspace.assignedUser', { name: assignee })}`}
+    >
+      <span className="flex shrink-0 items-center gap-1 font-semibold text-success">
+        <span className="size-1.5 rounded-full bg-current" aria-hidden />
+        {owner}
+      </span>
+      <span aria-hidden>·</span>
+      <span
+        className={cn(
+          'flex min-w-0 items-center gap-1 truncate font-semibold',
+          !chat.assignedTeam && 'text-destructive',
+        )}
+        style={
+          chat.assignedTeam ? { color: chat.assignedTeam.color } : undefined
+        }
+      >
+        <span
+          className="size-1.5 shrink-0 rounded-full bg-current"
+          aria-hidden
+        />
+        <span className="truncate">{team}</span>
+      </span>
+      <span className="shrink-0" aria-hidden>
+        ·
+      </span>
+      <span
+        className={cn(
+          'flex min-w-0 items-center gap-1 truncate font-semibold',
+          assigneeTone === 'danger' && 'text-destructive',
+          assigneeTone === 'success' && 'text-success',
+          assigneeTone === 'primary' && 'text-primary',
+        )}
+      >
+        <span
+          className="size-1.5 shrink-0 rounded-full bg-current"
+          aria-hidden
+        />
+        <span className="truncate">{assignee}</span>
+      </span>
+    </span>
   )
 }
 
-function OwnerIndicator({ handler }: { handler: Handler }) {
-  const { t } = useTranslation()
-  const owner = t(`chatWorkspace.handlers.${handler}`)
-
+function HeaderMetadataBadge({
+  label,
+  value,
+  icon,
+  tone = 'neutral',
+  color,
+  action,
+}: {
+  label: string
+  value: string
+  icon: ReactNode
+  tone?: 'neutral' | 'primary' | 'success' | 'danger'
+  color?: string
+  action?: ReactNode
+}) {
   return (
     <div
-      className="flex h-9 items-center gap-2 rounded-lg border bg-card px-2 sm:px-2.5"
-      aria-label={t('chatWorkspace.handledBy', { handler: owner })}
+      className="flex h-9 min-w-32 shrink-0 items-center gap-2 rounded-lg border bg-card px-2 shadow-sm sm:px-2.5"
+      title={`${label}: ${value}`}
     >
       <span
         className={cn(
           'grid size-6 place-items-center rounded-full',
-          handler === 'mba'
-            ? 'bg-primary/10 text-primary'
-            : 'bg-success/12 text-success',
+          tone === 'primary' && 'bg-primary/10 text-primary',
+          tone === 'success' && 'bg-success/12 text-success',
+          tone === 'danger' && 'bg-destructive/10 text-destructive',
+          tone === 'neutral' && 'bg-muted text-muted-foreground',
         )}
+        style={color ? { color } : undefined}
       >
-        {handler === 'mba' ? (
-          <Bot className="size-3.5" aria-hidden />
-        ) : (
-          <UserRound className="size-3.5" aria-hidden />
-        )}
+        {icon}
       </span>
-      <span className="leading-tight">
-        <span className="hidden text-[9px] font-semibold tracking-wide text-muted-foreground uppercase sm:block">
-          {t('chatWorkspace.owner')}
+      <span className="min-w-0 flex-1 leading-tight">
+        <span className="block whitespace-nowrap text-[9px] font-semibold tracking-wide text-muted-foreground uppercase">
+          {label}
         </span>
-        <span className="block text-xs font-bold">{owner}</span>
+        <span
+          className={cn(
+            'block truncate text-xs font-bold',
+            tone === 'primary' && 'text-primary',
+            tone === 'success' && 'text-success',
+            tone === 'danger' && 'text-destructive',
+          )}
+          style={color ? { color } : undefined}
+        >
+          {value}
+        </span>
       </span>
+      {action}
     </div>
   )
 }
 
-function AssignmentPills({ chat, t }: { chat: ChatSummary; t: TFunction }) {
+function ChatFilterSelect({
+  id,
+  label,
+  children,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & {
+  id: string
+  label: string
+}) {
   return (
-    <>
-      <Pill tone={chat.assignedTeam ? 'neutral' : 'danger'}>
-        {chat.assignedTeam && (
-          <span
-            className="size-1.5 shrink-0 rounded-full"
-            style={{ backgroundColor: chat.assignedTeam.color }}
-            aria-hidden
-          />
+    <label className="grid min-w-0 gap-1" htmlFor={id}>
+      <span className="truncate text-[9px] font-semibold tracking-wide text-muted-foreground uppercase">
+        {label}
+      </span>
+      <Select id={id} className="h-9 text-xs font-semibold" {...props}>
+        {children}
+      </Select>
+    </label>
+  )
+}
+
+function ChatFilterInput({
+  id,
+  label,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & {
+  id: string
+  label: string
+}) {
+  return (
+    <label className="grid min-w-0 gap-1" htmlFor={id}>
+      <span className="truncate text-[9px] font-semibold tracking-wide text-muted-foreground uppercase">
+        {label}
+      </span>
+      <Input id={id} className="h-9 px-2 text-xs font-semibold" {...props} />
+    </label>
+  )
+}
+
+function assignmentTone(
+  chat: ChatSummary,
+  currentUserId?: string,
+): 'primary' | 'success' | 'danger' {
+  if (!chat.assignedUser) return 'danger'
+  return chat.assignedUser.id === currentUserId ? 'success' : 'primary'
+}
+
+function BadgeActionMenu({
+  label,
+  icon,
+  isLoading,
+  onClick,
+}: {
+  label: string
+  icon: ReactNode
+  isLoading: boolean
+  onClick: () => void
+}) {
+  return (
+    <Menu className="-mr-1 shrink-0">
+      <MenuTrigger
+        className="grid size-6 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        aria-label={label}
+        title={label}
+      >
+        <MoreHorizontal className="size-3.5" aria-hidden />
+      </MenuTrigger>
+      <MenuContent className="min-w-44">
+        <MenuItem disabled={isLoading} onClick={onClick}>
+          {isLoading ? (
+            <LoaderCircle className="size-4 animate-spin" aria-hidden />
+          ) : (
+            icon
+          )}
+          {label}
+        </MenuItem>
+      </MenuContent>
+    </Menu>
+  )
+}
+
+function TeamTransferMenu({
+  currentTeamId,
+  isLoading,
+  teams,
+  onSelect,
+}: {
+  currentTeamId?: string
+  isLoading: boolean
+  teams: TeamOption[]
+  onSelect: (teamId: string) => void
+}) {
+  const { t } = useTranslation()
+  const availableTeams = teams.filter((team) => team.id !== currentTeamId)
+  const label = t('chatWorkspace.transferTeam')
+
+  return (
+    <Menu className="-mr-1 shrink-0">
+      <MenuTrigger
+        className="grid size-6 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        aria-label={label}
+        title={label}
+      >
+        {isLoading ? (
+          <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
+        ) : (
+          <MoreHorizontal className="size-3.5" aria-hidden />
         )}
-        {t('chatWorkspace.assignedTeam', {
-          name: chat.assignedTeam?.name ?? t('chatWorkspace.unassigned'),
-        })}
-      </Pill>
-      <Pill tone={chat.assignedUser ? 'neutral' : 'danger'}>
-        <UserRound className="size-3" aria-hidden />
-        {t('chatWorkspace.assignedUser', {
-          name: chat.assignedUser?.name ?? t('chatWorkspace.unassigned'),
-        })}
-      </Pill>
-    </>
+      </MenuTrigger>
+      <MenuContent className="min-w-44">
+        {availableTeams.length === 0 ? (
+          <MenuItem disabled>
+            <UsersRound className="size-4" aria-hidden />
+            {t('teams.noTeams')}
+          </MenuItem>
+        ) : (
+          availableTeams.map((team) => (
+            <MenuItem
+              key={team.id}
+              disabled={isLoading}
+              onClick={() => onSelect(team.id)}
+            >
+              <UsersRound
+                className="size-4"
+                style={{ color: team.color }}
+                aria-hidden
+              />
+              <span className="flex min-w-0 flex-col">
+                <span className="text-[0.625rem] font-medium uppercase leading-none tracking-wide text-muted-foreground">
+                  {t('chatWorkspace.transferTo')}
+                </span>
+                <span className="mt-1 truncate">{team.name}</span>
+              </span>
+            </MenuItem>
+          ))
+        )}
+      </MenuContent>
+    </Menu>
   )
 }
 
@@ -1792,7 +2114,9 @@ function canvasToBlob(
   })
 }
 
-function chatName(chat: ChatSummary, t: TFunction): string {
+// Shared with the queue route; this pure export does not affect component state.
+// eslint-disable-next-line react-refresh/only-export-components
+export function chatName(chat: ChatSummary, t: TFunction): string {
   if (chat.kind === 'group') {
     return (
       chat.group?.subject ??
@@ -1809,7 +2133,8 @@ function chatName(chat: ChatSummary, t: TFunction): string {
   )
 }
 
-function chatRemoteIdentity(chat: ChatSummary): string {
+// eslint-disable-next-line react-refresh/only-export-components
+export function chatRemoteIdentity(chat: ChatSummary): string {
   return chat.kind === 'group'
     ? (chat.group?.providerGroupId ?? String(chat.id))
     : (chat.contact?.waId ?? chat.contact?.userId ?? String(chat.id))
@@ -1883,7 +2208,8 @@ function realtimeEventChatId(event: Event): number | undefined {
   }
 }
 
-function toChatTimelineItem(
+// eslint-disable-next-line react-refresh/only-export-components
+export function toChatTimelineItem(
   item: ApiTimelineItem,
   t: TFunction,
   locale: string,
@@ -2181,7 +2507,8 @@ function addressLabel(value: string | undefined): 'HOME' | 'WORK' | 'OTHER' {
   return value === 'HOME' || value === 'WORK' ? value : 'OTHER'
 }
 
-function collectMessageReactions(
+// eslint-disable-next-line react-refresh/only-export-components
+export function collectMessageReactions(
   items: readonly ApiTimelineItem[],
 ): ReadonlyMap<string, MessageReaction[]> {
   const grouped = new Map<string, Map<string, number>>()

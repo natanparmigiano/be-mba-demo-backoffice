@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { apiClient } from '../api'
 import {
   PlaygroundOperationCard,
-  type PlaygroundOperationState,
-} from '../components/api-playground/PlaygroundOperationCard'
-import { Checkbox, Input, Select } from '../components/ui'
+  usePlaygroundOperation,
+} from '../components/api-playground'
+import { Checkbox, Input, Select } from '@mba-desk/ui'
 
 type MediaKind = keyof typeof MEDIA_OPTIONS
 
@@ -63,7 +63,7 @@ export function MediaPlayground({
 
 function UploadMediaCard(props: CardProps) {
   const { t } = useTranslation()
-  const operation = useOperation()
+  const operation = usePlaygroundOperation()
   const [kind, setKind] = useState<MediaKind>('image')
   const [file, setFile] = useState<File | null>(null)
   const option = MEDIA_OPTIONS[kind]
@@ -138,7 +138,7 @@ function UploadMediaCard(props: CardProps) {
 
 function MediaMetadataCard(props: CardProps) {
   const { t } = useTranslation()
-  const operation = useOperation()
+  const operation = usePlaygroundOperation()
   const [mediaId, setMediaId] = useState('')
 
   return (
@@ -170,7 +170,7 @@ function MediaMetadataCard(props: CardProps) {
 
 function DownloadMediaCard(props: CardProps) {
   const { t } = useTranslation()
-  const operation = useOperation()
+  const operation = usePlaygroundOperation()
   const [mediaId, setMediaId] = useState('')
 
   return (
@@ -225,7 +225,7 @@ function DownloadMediaCard(props: CardProps) {
 
 function DeleteMediaCard(props: CardProps) {
   const { t } = useTranslation()
-  const operation = useOperation()
+  const operation = usePlaygroundOperation()
   const [mediaId, setMediaId] = useState('')
   const [confirmed, setConfirmed] = useState(false)
 
@@ -293,29 +293,6 @@ function graphMediaPath(...segments: string[]) {
     .join('/')}`
 }
 
-function useOperation() {
-  const { t } = useTranslation()
-  const [state, setState] = useState<PlaygroundOperationState>({
-    status: 'idle',
-  })
-
-  const run = async (request: () => Promise<unknown>) => {
-    setState({ status: 'loading' })
-    try {
-      setState({ status: 'success', result: await request() })
-    } catch (error) {
-      setState({
-        status: 'error',
-        message:
-          error instanceof Error
-            ? error.message
-            : t('apiPlayground.operationFailed'),
-      })
-    }
-  }
-
-  return { state, run }
-}
 
 async function readApiResult(
   response: Response,

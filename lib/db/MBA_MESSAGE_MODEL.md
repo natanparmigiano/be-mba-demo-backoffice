@@ -1,9 +1,10 @@
 # MBA message persistence model
 
-The PostgreSQL `mba` schema turns inbound WhatsApp webhooks and outbound Cloud
-API operations into an organization-scoped chat model. The implemented schema
-lives in `src/schema/mba.ts`; this document defines its data contracts,
-ingestion transactions, indexing rationale, and remaining design decisions.
+The PostgreSQL `chats` schema turns inbound WhatsApp webhooks and outbound
+Cloud API operations into an organization-scoped chat model. Its tables live
+in `src/schema/chats.ts`; channel-adjacent archives remain in
+`src/schema/mba.ts`. This document defines the data contracts, ingestion
+transactions, indexing rationale, and remaining design decisions.
 
 ## Core guarantees
 
@@ -21,10 +22,10 @@ ingestion transactions, indexing rationale, and remaining design decisions.
 The primary ownership path is:
 
 ```text
-auth.organization -> mba.channels -> mba.contacts / mba.groups
-                                   -> mba.chats -> mba.messages
-                                                -> mba.message_status_events
-                                                -> mba.chat_events
+auth.organization -> chats.channels -> chats.contacts / chats.groups
+                                   -> chats.chats -> chats.messages
+                                                   -> chats.message_status_events
+                                                   -> chats.chat_events
 ```
 
 ## Scope
@@ -49,7 +50,7 @@ Payment statuses, template events, account events, and generic webhook fields wi
 
 ## Core entities
 
-### `mba.channels`
+### `chats.channels`
 
 Channels are provider accounts owned by an application agent. The discriminator is a Drizzle text enum containing only `whatsapp` today; Instagram and Messenger can be added when their provider-specific fields and ingestion paths are designed. Only contacts and groups reference channels. Chats derive their channel through that participant, and messages derive it through their chat.
 
@@ -72,7 +73,7 @@ Channels are provider accounts owned by an application agent. The discriminator 
 
 `(type, wa_phone_number_id)` is unique, and `organization_id` is indexed for tenant-scoped channel listings. The WhatsApp columns are required while WhatsApp is the only supported channel type; introducing another provider will require making them conditional or moving provider credentials into provider-specific tables.
 
-### `mba.groups`
+### `chats.groups`
 
 Groups are first-class WhatsApp entities, symmetrical with contacts. They can be discovered by a message or by a group webhook before any message exists. Each group is unique by `(channel_id, provider_group_id)` and owns the mutable metadata projected from Meta's group webhooks.
 
@@ -94,7 +95,7 @@ Groups are first-class WhatsApp entities, symmetrical with contacts. They can be
 
 No group lifecycle or status event deletes a group. A removal/closure event only updates its latest event fields and JSONB snapshot.
 
-### `mba.chats`
+### `chats.chats`
 
 This is the durable message-stream identity used by application code. A direct
 chat points to exactly one contact and a group chat points to exactly one group.
@@ -124,7 +125,7 @@ Both message pointers are nullable for an empty chat and use `ON DELETE SET NULL
 
 Composite foreign keys make the denormalization database-enforced rather than advisory: `(contact_id, channel_id)` must resolve to the same contact row, `(group_id, channel_id)` must resolve to the same group row, and `(channel_id, organization_id)` must resolve to the same channel owner. Supporting unique indexes on those referenced pairs allow PostgreSQL to reject any future insert or update that would drift from the normalized ownership chain.
 
-### `mba.chat_events`
+### `chats.chat_events`
 
 This append-only timeline stores activity that changes or describes a chat but is not itself a message or a message delivery status. It includes Meta billing windows announced inside status payloads, Business Agents handovers and agent events, group lifecycle/participant/settings/status changes, calls and call statuses, and user-preference changes.
 
@@ -147,7 +148,7 @@ Indexes cover the main timeline `(chat_id, occurred_at, id)`, filtered chat time
 
 `added_participants` and `removed_participants` identify contacts affected by a group event; `failed_participants` reports failed mutations and must not change membership. The complete arrays are retained in `groups.raw_group`. A normalized membership/history table should only be added when participant querying is required, rather than duplicating that data speculatively.
 
-### `mba.messages`
+### `chats.messages`
 
 This is the canonical message projection used by application queries. It contains stable identifiers, searchable fields, and UI-facing content as columns. Scalar text and media metadata avoid JSON traversal on hot timeline reads; dedicated typed JSONB columns expose structured message variants. A deeply typed `raw_message` JSONB value remains the lossless source payload.
 
@@ -169,7 +170,7 @@ loose-object fields.
 
 The outbound schemas cover the checked-in Cloud API collection, including contacts, templates and their parameters, media by ID or link, list and reply-button messages, single- and multi-product messages, catalog messages, and published or draft Flows.
 
-## `mba.contacts` column rationale
+## `chats.contacts` column rationale
 
 This table represents WhatsApp participants from webhook `value.contacts`, plus the normalized recipient returned by the outbound send API. Contact cards attached to a `contacts` message are message content and are projected into `messages.contact_data`; they do not create participant rows.
 
@@ -190,7 +191,7 @@ This table represents WhatsApp participants from webhook `value.contacts`, plus 
 
 Channel-scoped unique indexes on `wa_id` and `user_id` provide the two supported upsert paths. Both identifiers remain nullable because the webhook schema permits partial contact shapes. A contact without either identifier can be retained, but cannot be safely deduplicated until the upstream contract supplies one.
 
-## `mba.messages` column rationale
+## `chats.messages` column rationale
 
 | Column                            | Why it exists                                                                                                                                                                                                |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -242,7 +243,7 @@ Channel-scoped unique indexes on `wa_id` and `user_id` provide the two supported
 | `received_at`                     | First local observation time.                                                                                                                                                                                |
 | `updated_at`                      | Last projection mutation time, set explicitly by persistence code.                                                                                                                                           |
 
-## `mba.message_status_events` column rationale
+## `chats.message_status_events` column rationale
 
 | Column                            | Why it exists                                                       |
 | --------------------------------- | ------------------------------------------------------------------- |
@@ -269,9 +270,9 @@ Channel-scoped unique indexes on `wa_id` and `user_id` provide the two supported
 | `raw_status`                      | Complete typed source object for audit and future additive fields.  |
 | `received_at`                     | Local receipt time for retry and lag analysis.                      |
 
-### `mba.message_status_events`
+### `chats.message_status_events`
 
-This append-only table preserves every distinct status delivery. It protects the audit trail when the mutable status projection on `mba.messages` changes.
+This append-only table preserves every distinct status delivery. It protects the audit trail when the mutable status projection on `chats.messages` changes.
 
 `(message_id, status, provider_timestamp)` is unique so webhook retries are idempotent. Each event retains the complete raw status object along with normalized recipient, conversation, pricing, callback, and error fields.
 
@@ -282,9 +283,9 @@ Deleting a message cascades to its status history.
 Process a message status inside one database transaction:
 
 1. Parse the webhook with `whatsappWebhookSchema`.
-2. Find or create `mba.messages` using the globally unique `status.id`.
+2. Find or create `chats.messages` using the globally unique `status.id`.
 3. For a status-first row, resolve the channel and recipient chat, set `source = 'status'`, and set `direction = 'outbound'`.
-4. Insert `mba.message_status_events`, ignoring an exact retry conflict.
+4. Insert `chats.message_status_events`, ignoring an exact retry conflict.
 5. Update the current status projection only when the incoming parsed timestamp is newer than `status_occurred_at`.
 6. For equal timestamps, apply a deterministic precedence rule so retries cannot downgrade state.
 7. Commit the event and projection together.
@@ -339,12 +340,12 @@ For inbound messages, standby, history, message echoes, or outbound sends:
 
 | Webhook data                  | Message projection                                         |
 | ----------------------------- | ---------------------------------------------------------- |
-| Endpoint `:id`                | Resolve `mba.channels.id`                                  |
+| Endpoint `:id`                | Resolve `chats.channels.id`                                |
 | `entry.id`                    | Validate/update `channels.wa_waba_id`                      |
 | `entry.time`                  | `webhook_entry_time`                                       |
 | `value.metadata.*`            | Validate/update channel phone-number fields                |
-| `value.contacts`              | Upsert `mba.contacts`; link `contact_id`                   |
-| Contact or message `group_id` | Upsert `mba.groups` and its chat; link `chat_id`           |
+| `value.contacts`              | Upsert `chats.contacts`; link `contact_id`                 |
+| Contact or message `group_id` | Upsert `chats.groups` and its chat; link `chat_id`         |
 | `message.id` / `status.id`    | `provider_message_id`                                      |
 | `message.from*`               | Sender columns                                             |
 | Status `recipient_*`          | Recipient columns                                          |

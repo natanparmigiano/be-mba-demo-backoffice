@@ -1,7 +1,7 @@
 import { Settings, X } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pagination, Pill, SectionCard, SectionHeading, Tabs } from '../ui'
+import { Pagination, Pill, SectionCard, SectionHeading, Tabs } from '@mba-desk/ui'
 
 const tabValues = ['overview', 'activity', 'members', 'settings'] as const
 type TabValue = (typeof tabValues)[number]

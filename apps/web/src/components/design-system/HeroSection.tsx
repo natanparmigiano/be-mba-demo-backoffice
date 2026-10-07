@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Pill } from '../ui'
+import { Pill } from '@mba-desk/ui'
 
 export function HeroSection() {
   const { t } = useTranslation()

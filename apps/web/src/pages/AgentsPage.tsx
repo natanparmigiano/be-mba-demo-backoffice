@@ -11,7 +11,14 @@ import {
   type ChannelQrState,
 } from '../channel-qr'
 import { ChannelQrCode } from '../components/channel-qr-code'
-import { Button, cn, EmptyState, Pill } from '../components/ui'
+import {
+  Button,
+  cn,
+  EmptyState,
+  InlineFeedback,
+  PageHeader,
+  Pill,
+} from '@mba-desk/ui'
 
 type ChannelsResponse = InferResponseType<
   typeof apiClient.api.channels.$get,
@@ -124,42 +131,30 @@ export function AgentsPage() {
 
   return (
     <div className="grid gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
-            {t('agents.eyebrow')}
-          </p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight">
-            {t('agents.title')}
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t('agents.description', {
-              organization:
-                activeOrganization?.name ?? t('agents.activeOrganization'),
-            })}
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          disabled={isLoading}
-          onClick={() => void refreshChannels()}
-        >
-          <RefreshCw
-            className={cn('size-4', isLoading && 'animate-spin')}
-            aria-hidden
-          />
-          {t('agents.refresh')}
-        </Button>
-      </header>
+      <PageHeader
+        eyebrow={t('agents.eyebrow')}
+        title={t('agents.title')}
+        titleStyle="strong"
+        description={t('agents.description', {
+          organization:
+            activeOrganization?.name ?? t('agents.activeOrganization'),
+        })}
+        actions={
+          <Button
+            variant="outline"
+            disabled={isLoading}
+            onClick={() => void refreshChannels()}
+          >
+            <RefreshCw
+              className={cn('size-4', isLoading && 'animate-spin')}
+              aria-hidden
+            />
+            {t('agents.refresh')}
+          </Button>
+        }
+      />
 
-      {error && (
-        <p
-          className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
+      {error && <InlineFeedback tone="error">{error}</InlineFeedback>}
 
       <section className="rounded-2xl border bg-card p-5 sm:p-6">
         <div className="mb-5">

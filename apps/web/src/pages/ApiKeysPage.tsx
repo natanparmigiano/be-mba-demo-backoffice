@@ -4,7 +4,14 @@ import { useCallback, useEffect, useState, type SubmitEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
-import { Button, Checkbox, Input, Pill } from '../components/ui'
+import {
+  Button,
+  Checkbox,
+  InlineFeedback,
+  Input,
+  PageHeader,
+  Pill,
+} from '@mba-desk/ui'
 
 type ApiKeysResponse = InferResponseType<
   (typeof apiClient.api.runner)['api-keys']['$get'],
@@ -153,33 +160,26 @@ export function ApiKeysPage() {
 
   return (
     <div className="grid gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
-            {t('apiKeys.eyebrow')}
-          </p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight">
-            {t('apiKeys.title')}
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            {t('apiKeys.description')}
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          disabled={isLoading}
-          onClick={() => void refresh()}
-        >
-          <RefreshCw className="size-4" />
-          {t('apiKeys.refresh')}
-        </Button>
-      </header>
+      <PageHeader
+        eyebrow={t('apiKeys.eyebrow')}
+        title={t('apiKeys.title')}
+        titleStyle="strong"
+        description={t('apiKeys.description')}
+        descriptionWidth="3xl"
+        compactDescription
+        actions={
+          <Button
+            variant="outline"
+            disabled={isLoading}
+            onClick={() => void refresh()}
+          >
+            <RefreshCw className="size-4" />
+            {t('apiKeys.refresh')}
+          </Button>
+        }
+      />
 
-      {error && (
-        <div className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
-          {error}
-        </div>
-      )}
+      {error && <InlineFeedback tone="error">{error}</InlineFeedback>}
 
       {!canManage ? (
         <section className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">

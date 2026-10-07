@@ -4,9 +4,9 @@ import { apiClient } from '../api'
 import {
   PlaygroundOperationCard,
   type PlaygroundOperationState,
-} from '../components/api-playground/PlaygroundOperationCard'
+} from '../components/api-playground'
 import type { PlaygroundRequestExample } from '../components/api-playground/PlaygroundRequestActions'
-import { Input, Textarea } from '../components/ui'
+import { Input, Textarea } from '@mba-desk/ui'
 
 type Action =
   | 'create'

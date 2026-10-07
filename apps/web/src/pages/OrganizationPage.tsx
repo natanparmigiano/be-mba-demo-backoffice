@@ -18,6 +18,8 @@ import {
   Dialog,
   EmptyState,
   Input,
+  InlineFeedback,
+  PageHeader,
   Pill,
   Select,
   Table,
@@ -26,7 +28,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../components/ui'
+} from '@mba-desk/ui'
 import {
   applyOrganizationPrimaryColor,
   DEFAULT_PRIMARY_COLOR,
@@ -294,39 +296,22 @@ export function OrganizationPage() {
 
   return (
     <div className="grid gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
-            {t('organizations.eyebrow')}
-          </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
-            {t('organizations.title')}
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t('organizations.description')}
-          </p>
-        </div>
-        <Button
-          className="self-start sm:self-auto"
-          onClick={() => openDialog('create')}
-        >
-          <Plus className="size-4" aria-hidden />
-          {t('organizations.newOrganization')}
-        </Button>
-      </header>
+      <PageHeader
+        eyebrow={t('organizations.eyebrow')}
+        title={t('organizations.title')}
+        description={t('organizations.description')}
+        actions={
+          <Button onClick={() => openDialog('create')}>
+            <Plus className="size-4" aria-hidden />
+            {t('organizations.newOrganization')}
+          </Button>
+        }
+      />
 
       {(error || notice) && (
-        <p
-          className={cn(
-            'rounded-xl border p-3 text-sm',
-            error
-              ? 'border-destructive/30 bg-destructive/10 text-destructive'
-              : 'border-success/30 bg-success/10 text-success',
-          )}
-          role="status"
-        >
+        <InlineFeedback tone={error ? 'error' : 'success'}>
           {error ?? notice}
-        </p>
+        </InlineFeedback>
       )}
 
       <div className="grid items-start gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">

@@ -60,12 +60,13 @@ import {
   MenuItem,
   MenuSeparator,
   MenuTrigger,
+  Progress,
   Select,
   Switch,
   Tabs,
   TagInput,
   Textarea,
-} from '../components/ui'
+} from '@mba-desk/ui'
 import { useTheme } from '../components/theme/ThemeProvider'
 import {
   downloadAgtx,
@@ -119,6 +120,15 @@ const sectionIcons: Record<Section, typeof Settings2> = {
   qrCodes: QrCode,
   manifest: Braces,
   includedFiles: FolderOpen,
+}
+
+function scalarString(value: unknown): string {
+  return typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'bigint' ||
+    typeof value === 'boolean'
+    ? String(value)
+    : ''
 }
 
 export function StudioPage() {
@@ -183,7 +193,7 @@ export function StudioPage() {
         detail?.kind === 'skill' || detail?.kind === 'faq'
           ? JSON.stringify(value, null, 2)
           : detail
-            ? String(value ?? '')
+            ? scalarString(value ?? '')
             : section === 'manifest'
               ? stringifyAgentYaml(pkg.manifest)
               : JSON.stringify(value, null, 2),
@@ -677,7 +687,7 @@ export function StudioPage() {
                       active={
                         detail?.kind === 'skill' && detail.index === index
                       }
-                      label={String(entry.title ?? `${index + 1}`)}
+                      label={scalarString(entry.title ?? `${index + 1}`)}
                       onClick={() => {
                         setSection('skills')
                         setSkillEntryView('form')
@@ -691,7 +701,7 @@ export function StudioPage() {
                     <DetailButton
                       key={index}
                       active={detail?.kind === 'faq' && detail.index === index}
-                      label={String(entry.question ?? `${index + 1}`)}
+                      label={scalarString(entry.question ?? `${index + 1}`)}
                       onClick={() => {
                         setSection('faqs')
                         setFaqEntryView('form')
@@ -1175,17 +1185,14 @@ function DeployProjectDialog({
             try {
               const status = await apiClient.api.channels[':id'][
                 'agent-settings'
-              ].$get({ param: { id: String(channel.id) } })
+              ].$get({ param: { id: scalarString(channel.id) } })
               return status.ok && (await status.json()).status === 'enabled'
             } catch {
               return false
             }
           }),
         )
-        if (active)
-          setAgents(
-            channels.filter((_, index) => enabled[index]) as DeployAgent[],
-          )
+        if (active) setAgents(channels.filter((_, index) => enabled[index]))
       })
       .catch((reason: unknown) => {
         if (active)
@@ -1532,18 +1539,11 @@ function DeployProjectDialog({
                 <span>{t('studio.deploy.progress')}</span>
                 <span>{progress}%</span>
               </div>
-              <div
-                className="mt-2 h-2 overflow-hidden rounded-full bg-muted"
-                role="progressbar"
-                aria-valuenow={progress}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <div
-                  className="h-full rounded-full bg-primary transition-[width]"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
+              <Progress
+                className="mt-2"
+                label={t('studio.deploy.progress')}
+                value={progress}
+              />
             </div>
             <ol
               className="grid max-h-80 gap-2 overflow-y-auto sm:grid-cols-2"
@@ -1715,7 +1715,7 @@ function SourceChannelForm({
           <label key={field} className="grid gap-2 text-sm font-semibold">
             <span>{t(`studio.sourceFields.${field}`)}</span>
             <Input
-              value={String(channel?.[field] ?? '')}
+              value={scalarString(channel?.[field] ?? '')}
               readOnly
               aria-readonly="true"
               className="bg-muted/40 text-muted-foreground"
@@ -1748,8 +1748,8 @@ function SecurityForm({ manifest }: { manifest: Record<string, unknown> }) {
             <Input
               value={
                 typeof value === 'boolean'
-                  ? t(`studio.boolean.${String(value)}`)
-                  : String(value ?? '')
+                  ? t(`studio.boolean.${scalarString(value)}`)
+                  : scalarString(value ?? '')
               }
               readOnly
               aria-readonly="true"
@@ -1788,12 +1788,12 @@ function SettingsForm({
         <div className="grid gap-5 sm:grid-cols-2">
           <Input
             label={t('studio.settingsFields.agentId')}
-            value={String(settings.agentId ?? '')}
+            value={scalarString(settings.agentId ?? '')}
             onChange={(event) => update('agentId', event.target.value)}
           />
           <Select
             label={t('studio.settingsFields.audience')}
-            value={String(settings.audience ?? 'EVERYONE')}
+            value={scalarString(settings.audience ?? 'EVERYONE')}
             onChange={(event) => update('audience', event.target.value)}
           >
             <option value="EVERYONE">
@@ -1821,7 +1821,7 @@ function SettingsForm({
           />
           <Select
             label={t('studio.settingsFields.messageSelection')}
-            value={String(handoff.messageSelection ?? 'DEFAULT')}
+            value={scalarString(handoff.messageSelection ?? 'DEFAULT')}
             onChange={(event) =>
               updateHandoff('messageSelection', event.target.value)
             }
@@ -1841,7 +1841,7 @@ function SettingsForm({
               label={t('studio.settingsFields.handoffMessage')}
               rows={4}
               maxLength={10_000}
-              value={String(handoff.message ?? '')}
+              value={scalarString(handoff.message ?? '')}
               onChange={(event) => updateHandoff('message', event.target.value)}
             />
           )}
@@ -1883,42 +1883,42 @@ function BusinessInfoForm({
           label={t('agent.businessInfo.contactEmail')}
           type="email"
           maxLength={500}
-          value={String(businessInfo.contactEmail ?? '')}
+          value={scalarString(businessInfo.contactEmail ?? '')}
           onChange={(event) => update('contactEmail', event.target.value)}
         />
         <AutoGrowTextarea
           label={t('agent.businessInfo.address')}
-          value={String(businessInfo.address ?? '')}
+          value={scalarString(businessInfo.address ?? '')}
           onValueChange={(value) => update('address', value)}
         />
         <AutoGrowTextarea
           label={t('agent.businessInfo.businessDescription')}
-          value={String(businessInfo.businessDescription ?? '')}
+          value={scalarString(businessInfo.businessDescription ?? '')}
           onValueChange={(value) => update('businessDescription', value)}
         />
         <AutoGrowTextarea
           label={t('agent.businessInfo.purchaseInfo')}
-          value={String(businessInfo.purchaseInfo ?? '')}
+          value={scalarString(businessInfo.purchaseInfo ?? '')}
           onValueChange={(value) => update('purchaseInfo', value)}
         />
         <AutoGrowTextarea
           label={t('agent.businessInfo.deliveryAndShipping')}
-          value={String(businessInfo.deliveryAndShipping ?? '')}
+          value={scalarString(businessInfo.deliveryAndShipping ?? '')}
           onValueChange={(value) => update('deliveryAndShipping', value)}
         />
         <AutoGrowTextarea
           label={t('agent.businessInfo.returnPolicy')}
-          value={String(businessInfo.returnPolicy ?? '')}
+          value={scalarString(businessInfo.returnPolicy ?? '')}
           onValueChange={(value) => update('returnPolicy', value)}
         />
         <AutoGrowTextarea
           label={t('agent.businessInfo.paymentMethod')}
-          value={String(businessInfo.paymentMethod ?? '')}
+          value={scalarString(businessInfo.paymentMethod ?? '')}
           onValueChange={(value) => update('paymentMethod', value)}
         />
         <AutoGrowTextarea
           label={t('agent.businessInfo.hoursOfOperation')}
-          value={String(businessInfo.hoursOfOperation ?? '')}
+          value={scalarString(businessInfo.hoursOfOperation ?? '')}
           onValueChange={(value) => update('hoursOfOperation', value)}
         />
       </div>
@@ -2016,13 +2016,13 @@ function AllowlistForm({
             {allowlist.map((entry, index) => (
               <div
                 className="flex items-end gap-3 rounded-xl border bg-card p-4"
-                key={`${String(entry.id)}-${index}`}
+                key={`${scalarString(entry.id)}-${index}`}
               >
                 <div className="min-w-0 flex-1">
                   <Input
                     label={t('studio.allowlist.entry', { number: index + 1 })}
                     type="tel"
-                    value={String(entry.phoneNumber ?? '')}
+                    value={scalarString(entry.phoneNumber ?? '')}
                     onChange={(event) =>
                       onChange(
                         allowlist.map((item, itemIndex) =>
@@ -2042,7 +2042,7 @@ function AllowlistForm({
                   size="icon"
                   variant="ghost"
                   aria-label={t('studio.allowlist.remove', {
-                    phoneNumber: String(entry.phoneNumber ?? ''),
+                    phoneNumber: scalarString(entry.phoneNumber ?? ''),
                   })}
                   onClick={() =>
                     onChange(
@@ -2093,8 +2093,8 @@ function ComponentsForm({
       setPrompt(index === null ? '' : (prompts[index] ?? ''))
     else {
       const command = index === null ? undefined : commands[index]
-      setCommandName(String(command?.commandName ?? ''))
-      setCommandDescription(String(command?.commandDescription ?? ''))
+      setCommandName(scalarString(command?.commandName ?? ''))
+      setCommandDescription(scalarString(command?.commandDescription ?? ''))
     }
   }
   const save = () => {
@@ -2167,8 +2167,8 @@ function ComponentsForm({
             empty={t('channels.components.noCommands')}
             canAdd={commands.length < 30}
             items={commands.map((command) => ({
-              title: `/${String(command.commandName ?? '')}`,
-              description: String(command.commandDescription ?? ''),
+              title: `/${scalarString(command.commandName ?? '')}`,
+              description: scalarString(command.commandDescription ?? ''),
             }))}
             onAdd={() => openEditor('command', null)}
             onEdit={(index) => openEditor('command', index)}
@@ -2387,15 +2387,15 @@ function SkillsForm({
           <ul className="grid gap-3">
             {skills.map((skill, index) => (
               <li
-                key={`${String(skill.id)}-${index}`}
+                key={`${scalarString(skill.id)}-${index}`}
                 className="flex items-start justify-between gap-4 rounded-xl border bg-card p-4"
               >
                 <div className="min-w-0">
                   <p className="wrap-break-word text-sm font-bold">
-                    {String(skill.title ?? '')}
+                    {scalarString(skill.title ?? '')}
                   </p>
                   <p className="mt-1 wrap-break-word text-xs leading-5 text-muted-foreground">
-                    {String(skill.description ?? '') ||
+                    {scalarString(skill.description ?? '') ||
                       t('studio.skills.noDescription')}
                   </p>
                 </div>
@@ -2404,7 +2404,7 @@ function SkillsForm({
                     size="icon"
                     variant="ghost"
                     aria-label={t('studio.skills.edit', {
-                      title: String(skill.title ?? ''),
+                      title: scalarString(skill.title ?? ''),
                     })}
                     onClick={() => onEdit(index)}
                   >
@@ -2414,7 +2414,7 @@ function SkillsForm({
                     size="icon"
                     variant="ghost"
                     aria-label={t('studio.skills.remove', {
-                      title: String(skill.title ?? ''),
+                      title: scalarString(skill.title ?? ''),
                     })}
                     onClick={() =>
                       onChange(
@@ -2458,34 +2458,34 @@ function SkillEntryForm({
       <div className="mx-auto grid max-w-3xl gap-4">
         <Input
           label={t('studio.skillFields.id')}
-          value={String(skill.id ?? '')}
+          value={scalarString(skill.id ?? '')}
           onChange={(event) => update('id', event.target.value)}
         />
         <Input
           label={t('studio.skillFields.title')}
           maxLength={64}
-          value={String(skill.title ?? '')}
+          value={scalarString(skill.title ?? '')}
           onChange={(event) => update('title', event.target.value)}
         />
         <AutoGrowTextarea
           label={t('studio.skillFields.description')}
           maxLength={1024}
-          value={String(skill.description ?? '')}
+          value={scalarString(skill.description ?? '')}
           onValueChange={(value) => update('description', value)}
         />
         <Input
           label={t('studio.skillFields.channel')}
-          value={String(skill.channel ?? '')}
+          value={scalarString(skill.channel ?? '')}
           onChange={(event) => update('channel', event.target.value)}
         />
         <Input
           label={t('studio.skillFields.status')}
-          value={String(skill.status ?? '')}
+          value={scalarString(skill.status ?? '')}
           onChange={(event) => update('status', event.target.value || null)}
         />
         <SkillMarkdownEditor
           label={t('studio.skillFields.instructions')}
-          value={String(skill.skill ?? '')}
+          value={scalarString(skill.skill ?? '')}
           onChange={(value) => update('skill', value)}
           labels={{
             modes: t('studio.markdown.modes'),
@@ -2539,15 +2539,16 @@ function FaqsForm({
           <ul className="grid gap-3">
             {faqs.map((faq, index) => (
               <li
-                key={`${String(faq.id)}-${index}`}
+                key={`${scalarString(faq.id)}-${index}`}
                 className="flex items-start justify-between gap-4 rounded-xl border bg-card p-4"
               >
                 <div className="min-w-0">
                   <p className="wrap-break-word text-sm font-bold">
-                    {String(faq.question ?? '')}
+                    {scalarString(faq.question ?? '')}
                   </p>
                   <p className="mt-1 line-clamp-2 wrap-break-word text-xs leading-5 text-muted-foreground">
-                    {String(faq.answer ?? '') || t('studio.faqs.noAnswer')}
+                    {scalarString(faq.answer ?? '') ||
+                      t('studio.faqs.noAnswer')}
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-1">
@@ -2555,7 +2556,7 @@ function FaqsForm({
                     size="icon"
                     variant="ghost"
                     aria-label={t('studio.faqs.edit', {
-                      question: String(faq.question ?? ''),
+                      question: scalarString(faq.question ?? ''),
                     })}
                     onClick={() => onEdit(index)}
                   >
@@ -2565,7 +2566,7 @@ function FaqsForm({
                     size="icon"
                     variant="ghost"
                     aria-label={t('studio.faqs.remove', {
-                      question: String(faq.question ?? ''),
+                      question: scalarString(faq.question ?? ''),
                     })}
                     onClick={() =>
                       onChange(faqs.filter((_, faqIndex) => faqIndex !== index))
@@ -2611,18 +2612,18 @@ function FaqEntryForm({
       <div className="mx-auto grid max-w-3xl gap-4">
         <Input
           label={t('studio.faqFields.id')}
-          value={String(faq.id ?? '')}
+          value={scalarString(faq.id ?? '')}
           onChange={(event) => update('id', event.target.value)}
         />
         <AutoGrowTextarea
           label={t('studio.faqFields.question')}
           maxLength={10_000}
-          value={String(faq.question ?? '')}
+          value={scalarString(faq.question ?? '')}
           onValueChange={(value) => update('question', value)}
         />
         <SkillMarkdownEditor
           label={t('studio.faqFields.answer')}
-          value={String(faq.answer ?? '')}
+          value={scalarString(faq.answer ?? '')}
           maxLength={50_000}
           onChange={(value) => update('answer', value)}
           labels={{
@@ -2687,7 +2688,7 @@ function WebsitesForm({
       ? (draft?.[field] as unknown[]).map(String)
       : []
   const save = () => {
-    if (!draft || !String(draft.url ?? '').trim()) return
+    if (!draft || !scalarString(draft.url ?? '').trim()) return
     onChange(
       editorIndex === null
         ? [...websites, draft]
@@ -2710,16 +2711,16 @@ function WebsitesForm({
             <ul className="grid gap-3">
               {websites.map((website, index) => (
                 <li
-                  key={`${String(website.id)}-${index}`}
+                  key={`${scalarString(website.id)}-${index}`}
                   className="flex items-start justify-between gap-4 rounded-xl border bg-card p-4"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold">
-                      {String(website.url ?? '')}
+                      {scalarString(website.url ?? '')}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {website.crawlStatus
-                        ? String(website.crawlStatus)
+                        ? scalarString(website.crawlStatus)
                         : t('studio.websites.noStatus')}
                     </p>
                   </div>
@@ -2728,7 +2729,7 @@ function WebsitesForm({
                       size="icon"
                       variant="ghost"
                       aria-label={t('studio.websites.edit', {
-                        url: String(website.url ?? ''),
+                        url: scalarString(website.url ?? ''),
                       })}
                       onClick={() => open(index)}
                     >
@@ -2738,7 +2739,7 @@ function WebsitesForm({
                       size="icon"
                       variant="ghost"
                       aria-label={t('studio.websites.remove', {
-                        url: String(website.url ?? ''),
+                        url: scalarString(website.url ?? ''),
                       })}
                       onClick={() =>
                         onChange(
@@ -2786,13 +2787,13 @@ function WebsitesForm({
           <div className="grid w-full gap-4">
             <Input
               label={t('studio.websiteFields.id')}
-              value={String(draft.id ?? '')}
+              value={scalarString(draft.id ?? '')}
               onChange={(event) => update('id', event.target.value)}
             />
             <Input
               label={t('studio.websiteFields.url')}
               type="url"
-              value={String(draft.url ?? '')}
+              value={scalarString(draft.url ?? '')}
               onChange={(event) => update('url', event.target.value)}
             />
             {(
@@ -2817,14 +2818,14 @@ function WebsitesForm({
             ))}
             <Input
               label={t('studio.websiteFields.crawlStatus')}
-              value={String(draft.crawlStatus ?? '')}
+              value={scalarString(draft.crawlStatus ?? '')}
               onChange={(event) =>
                 update('crawlStatus', event.target.value || null)
               }
             />
             <AutoGrowTextarea
               label={t('studio.websiteFields.crawlError')}
-              value={String(draft.crawlError ?? '')}
+              value={scalarString(draft.crawlError ?? '')}
               onValueChange={(value) => update('crawlError', value || null)}
             />
             <Input
@@ -2834,7 +2835,7 @@ function WebsitesForm({
               value={
                 draft.pagesCrawled === null
                   ? ''
-                  : String(draft.pagesCrawled ?? '')
+                  : scalarString(draft.pagesCrawled ?? '')
               }
               onChange={(event) =>
                 update(
@@ -2849,7 +2850,7 @@ function WebsitesForm({
               value={
                 draft.lastCrawledAt === null
                   ? ''
-                  : String(draft.lastCrawledAt ?? '')
+                  : scalarString(draft.lastCrawledAt ?? '')
               }
               onChange={(event) =>
                 update(
@@ -2868,7 +2869,10 @@ function WebsitesForm({
               >
                 {t('channels.cancel')}
               </Button>
-              <Button disabled={!String(draft.url ?? '').trim()} onClick={save}>
+              <Button
+                disabled={!scalarString(draft.url ?? '').trim()}
+                onClick={save}
+              >
                 {t('channels.components.save')}
               </Button>
             </div>
@@ -3219,7 +3223,7 @@ function McpEntryEditor({
                 {t('studio.mcps.functionEditor')}
               </p>
               <h2 className="mt-1 text-2xl font-extrabold tracking-tight">
-                {String(functionDraft.name ?? '')}
+                {scalarString(functionDraft.name ?? '')}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 {t('studio.mcps.functionDescription')}
@@ -3248,7 +3252,7 @@ function McpEntryEditor({
           <Input
             label={t('studio.mcpFields.name')}
             maxLength={512}
-            value={String(mcp.name ?? '')}
+            value={scalarString(mcp.name ?? '')}
             onChange={(event) =>
               commitMcp({ ...mcp, name: event.target.value })
             }
@@ -3256,7 +3260,7 @@ function McpEntryEditor({
           <AutoGrowTextarea
             label={t('studio.mcpFields.description')}
             maxLength={2000}
-            value={String(mcp.description ?? '')}
+            value={scalarString(mcp.description ?? '')}
             onValueChange={(value) =>
               commitMcp({ ...mcp, description: value || null })
             }
@@ -3287,15 +3291,15 @@ function McpEntryEditor({
             <ul className="grid gap-3">
               {functions.map((item, index) => (
                 <li
-                  key={`${String(item.name)}-${index}`}
+                  key={`${scalarString(item.name)}-${index}`}
                   className="flex items-start justify-between gap-4 rounded-xl border bg-card p-4"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold">
-                      {String(item.name ?? '')}
+                      {scalarString(item.name ?? '')}
                     </p>
                     <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                      {String(item.description ?? '') ||
+                      {scalarString(item.description ?? '') ||
                         t('studio.mcps.noDescription')}
                     </p>
                   </div>
@@ -3304,7 +3308,7 @@ function McpEntryEditor({
                       size="icon"
                       variant="ghost"
                       aria-label={t('studio.mcps.editFunction', {
-                        name: String(item.name ?? ''),
+                        name: scalarString(item.name ?? ''),
                       })}
                       onClick={() => openFunction(index)}
                     >
@@ -3315,7 +3319,7 @@ function McpEntryEditor({
                       variant="ghost"
                       disabled={functions.length <= 1}
                       aria-label={t('studio.mcps.removeFunction', {
-                        name: String(item.name ?? ''),
+                        name: scalarString(item.name ?? ''),
                       })}
                       onClick={() =>
                         commitMcp({
@@ -3364,7 +3368,7 @@ function LocalMcpFunctionForm({
   const [showParameters, setShowParameters] = useState(false)
   const [maximized, setMaximized] = useState(false)
   const revision = revisions[selectedRevision] ?? revisions.at(-1)
-  const [code, setCode] = useState(String(revision?.code ?? ''))
+  const [code, setCode] = useState(scalarString(revision?.code ?? ''))
   const [parameters, setParameters] = useState<Array<Record<string, unknown>>>(
     Array.isArray(revision?.parameters)
       ? structuredClone(revision.parameters as Array<Record<string, unknown>>)
@@ -3376,7 +3380,7 @@ function LocalMcpFunctionForm({
     const selected = revisions[index]
     if (!selected) return
     setSelectedRevision(index)
-    setCode(String(selected.code ?? ''))
+    setCode(scalarString(selected.code ?? ''))
     setParameters(
       Array.isArray(selected.parameters)
         ? structuredClone(selected.parameters as Array<Record<string, unknown>>)
@@ -3446,7 +3450,7 @@ function LocalMcpFunctionForm({
                     </span>
                   )}
                   <span className="mt-1 block truncate text-xs text-muted-foreground">
-                    {String(item.createdAt ?? '')}
+                    {scalarString(item.createdAt ?? '')}
                   </span>
                 </button>
               ))}
@@ -3463,13 +3467,13 @@ function LocalMcpFunctionForm({
                 <Input
                   label={t('studio.mcpFunctionFields.name')}
                   maxLength={512}
-                  value={String(draft.name ?? '')}
+                  value={scalarString(draft.name ?? '')}
                   onChange={(event) => update('name', event.target.value)}
                 />
                 <Input
                   label={t('studio.mcpFunctionFields.description')}
                   maxLength={2000}
-                  value={String(draft.description ?? '')}
+                  value={scalarString(draft.description ?? '')}
                   onChange={(event) =>
                     update('description', event.target.value || null)
                   }
@@ -3500,7 +3504,7 @@ function LocalMcpFunctionForm({
                 </Button>
                 <StudioCodeEditor
                   language="javascript"
-                  path={`local-mcp-${String(draft.name)}-${selectedRevision}.js`}
+                  path={`local-mcp-${scalarString(draft.name)}-${selectedRevision}.js`}
                   theme={theme}
                   value={code}
                   onChange={setCode}
@@ -3577,14 +3581,14 @@ function LocalMcpFunctionForm({
                   <Input
                     label={t('studio.mcpFunctionFields.parameterName')}
                     maxLength={100}
-                    value={String(parameter.name ?? '')}
+                    value={scalarString(parameter.name ?? '')}
                     onChange={(event) =>
                       updateParameter(index, { name: event.target.value })
                     }
                   />
                   <Select
                     label={t('studio.mcpFunctionFields.parameterType')}
-                    value={String(parameter.type ?? 'string')}
+                    value={scalarString(parameter.type ?? 'string')}
                     onChange={(event) =>
                       updateParameter(index, { type: event.target.value })
                     }
@@ -3600,7 +3604,7 @@ function LocalMcpFunctionForm({
                   <Input
                     label={t('studio.mcpFunctionFields.parameterDescription')}
                     maxLength={500}
-                    value={String(parameter.description ?? '')}
+                    value={scalarString(parameter.description ?? '')}
                     onChange={(event) =>
                       updateParameter(index, {
                         description: event.target.value || null,
@@ -3622,7 +3626,7 @@ function LocalMcpFunctionForm({
                     size="icon"
                     variant="ghost"
                     aria-label={t('studio.mcpFunctionFields.removeParameter', {
-                      name: String(parameter.name ?? index + 1),
+                      name: scalarString(parameter.name ?? index + 1),
                     })}
                     onClick={() =>
                       setParameters(
@@ -3669,26 +3673,31 @@ function normalizeLocalMcpFunction(
   return { ...value, currentRevision: revisions.length, revisions }
 }
 function validLocalMcpFunction(value: Record<string, unknown>): boolean {
-  if (!/^[a-z0-9]+(?:_{1,2}[a-z0-9]+)*$/.test(String(value.name ?? '')))
+  if (!/^[a-z0-9]+(?:_{1,2}[a-z0-9]+)*$/.test(scalarString(value.name ?? '')))
     return false
   const revisions = Array.isArray(value.revisions)
     ? (value.revisions as Array<Record<string, unknown>>)
     : []
   if (!revisions.length) return false
   return revisions.every((revision) => {
-    if (!String(revision.code ?? '').trim()) return false
-    if (Number.isNaN(Date.parse(String(revision.createdAt ?? '')))) return false
+    if (!scalarString(revision.code ?? '').trim()) return false
+    if (Number.isNaN(Date.parse(scalarString(revision.createdAt ?? ''))))
+      return false
     const parameters = Array.isArray(revision.parameters)
       ? (revision.parameters as Array<Record<string, unknown>>)
       : []
-    const names = parameters.map((parameter) => String(parameter.name ?? ''))
+    const names = parameters.map((parameter) =>
+      scalarString(parameter.name ?? ''),
+    )
     return (
       new Set(names).size === names.length &&
       parameters.every(
         (parameter) =>
-          /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(String(parameter.name ?? '')) &&
+          /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(
+            scalarString(parameter.name ?? ''),
+          ) &&
           ['boolean', 'integer', 'json', 'number', 'string'].includes(
-            String(parameter.type ?? ''),
+            scalarString(parameter.type ?? ''),
           ),
       )
     )
@@ -3973,7 +3982,7 @@ function KnowledgeFilesForm({
                 typeof file.path === 'string' && entries.has(file.path)
               return (
                 <article
-                  key={`${String(file.providerFileId)}-${index}`}
+                  key={`${scalarString(file.providerFileId)}-${index}`}
                   className="grid gap-3 rounded-xl border bg-card p-4"
                 >
                   <div className="flex items-center gap-3">
@@ -3982,7 +3991,7 @@ function KnowledgeFilesForm({
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold">
-                        {String(file.fileName ?? '')}
+                        {scalarString(file.fileName ?? '')}
                       </p>
                       <p
                         className={cn(
@@ -4001,7 +4010,7 @@ function KnowledgeFilesForm({
                       size="icon"
                       variant="ghost"
                       aria-label={t('studio.knowledgeFiles.remove', {
-                        file: String(file.fileName ?? ''),
+                        file: scalarString(file.fileName ?? ''),
                       })}
                       onClick={() => remove(index)}
                     >
@@ -4011,7 +4020,7 @@ function KnowledgeFilesForm({
                   <Input
                     label={t('studio.knowledgeFiles.fileName')}
                     maxLength={500}
-                    value={String(file.fileName ?? '')}
+                    value={scalarString(file.fileName ?? '')}
                     onChange={(event) => update(index, event.target.value)}
                   />
                   {typeof file.path === 'string' && (
@@ -4060,7 +4069,9 @@ function QrCodesForm({
   const open = (index: number | null) => {
     setEditorIndex(index)
     setMessage(
-      index === null ? '' : String(qrCodes[index]?.prefilledMessage ?? ''),
+      index === null
+        ? ''
+        : scalarString(qrCodes[index]?.prefilledMessage ?? ''),
     )
   }
   const close = () => {
@@ -4092,7 +4103,9 @@ function QrCodesForm({
           ) : (
             <ul className="grid gap-3">
               {qrCodes.map((qrCode, index) => {
-                const prefilledMessage = String(qrCode.prefilledMessage ?? '')
+                const prefilledMessage = scalarString(
+                  qrCode.prefilledMessage ?? '',
+                )
                 return (
                   <li
                     key={`${prefilledMessage}-${index}`}
@@ -4231,9 +4244,9 @@ function ConnectorsForm({
   const save = () => {
     if (
       !draft ||
-      !String(draft.name ?? '').trim() ||
-      !String(draft.description ?? '').trim() ||
-      !String(draft.baseUrl ?? '').trim()
+      !scalarString(draft.name ?? '').trim() ||
+      !scalarString(draft.description ?? '').trim() ||
+      !scalarString(draft.baseUrl ?? '').trim()
     )
       return
     onChange(
@@ -4246,7 +4259,7 @@ function ConnectorsForm({
     setEditorIndex(undefined)
     setDraft(null)
   }
-  const protocol = String(draft?.connectorProtocol ?? 'HTTP')
+  const protocol = scalarString(draft?.connectorProtocol ?? 'HTTP')
   const tools = Array.isArray(draft?.tools)
     ? (draft.tools as Array<Record<string, unknown>>)
     : []
@@ -4276,18 +4289,18 @@ function ConnectorsForm({
             <ul className="grid gap-3">
               {connectors.map((connector, index) => (
                 <li
-                  key={`${String(connector.id)}-${index}`}
+                  key={`${scalarString(connector.id)}-${index}`}
                   className="flex items-start justify-between gap-4 rounded-xl border bg-card p-4"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold">
-                      {String(connector.name ?? '')}
+                      {scalarString(connector.name ?? '')}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {String(connector.connectorProtocol ?? '')}
+                      {scalarString(connector.connectorProtocol ?? '')}
                     </p>
                     <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                      {String(connector.description ?? '')}
+                      {scalarString(connector.description ?? '')}
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-1">
@@ -4295,7 +4308,7 @@ function ConnectorsForm({
                       size="icon"
                       variant="ghost"
                       aria-label={t('studio.connectors.edit', {
-                        name: String(connector.name ?? ''),
+                        name: scalarString(connector.name ?? ''),
                       })}
                       onClick={() => open(index)}
                     >
@@ -4305,7 +4318,7 @@ function ConnectorsForm({
                       size="icon"
                       variant="ghost"
                       aria-label={t('studio.connectors.remove', {
-                        name: String(connector.name ?? ''),
+                        name: scalarString(connector.name ?? ''),
                       })}
                       onClick={() =>
                         onChange(
@@ -4353,24 +4366,24 @@ function ConnectorsForm({
           <div className="grid w-full gap-5">
             <Input
               label={t('studio.connectorFields.id')}
-              value={String(draft.id ?? '')}
+              value={scalarString(draft.id ?? '')}
               onChange={(event) => update('id', event.target.value)}
             />
             <Input
               label={t('studio.connectorFields.name')}
               maxLength={64}
-              value={String(draft.name ?? '')}
+              value={scalarString(draft.name ?? '')}
               onChange={(event) => update('name', event.target.value)}
             />
             <AutoGrowTextarea
               label={t('studio.connectorFields.description')}
-              value={String(draft.description ?? '')}
+              value={scalarString(draft.description ?? '')}
               onValueChange={(fieldValue) => update('description', fieldValue)}
             />
             <Input
               label={t('studio.connectorFields.baseUrl')}
               type="url"
-              value={String(draft.baseUrl ?? '')}
+              value={scalarString(draft.baseUrl ?? '')}
               onChange={(event) => update('baseUrl', event.target.value)}
             />
             <div className="grid gap-4 sm:grid-cols-2">
@@ -4386,7 +4399,7 @@ function ConnectorsForm({
               </Select>
               <Select
                 label={t('studio.connectorFields.authType')}
-                value={String(draft.authType ?? 'NONE')}
+                value={scalarString(draft.authType ?? 'NONE')}
                 onChange={(event) => update('authType', event.target.value)}
               >
                 <option value="NONE">
@@ -4438,7 +4451,7 @@ function ConnectorsForm({
                 <>
                   <Select
                     label={t('studio.connectorFields.location')}
-                    value={String(injection.location ?? 'headers')}
+                    value={scalarString(injection.location ?? 'headers')}
                     onChange={(event) =>
                       update('userAuthInjectionConfig', {
                         ...injection,
@@ -4453,7 +4466,7 @@ function ConnectorsForm({
                   </Select>
                   <Input
                     label={t('studio.connectorFields.fieldName')}
-                    value={String(injection.fieldName ?? '')}
+                    value={scalarString(injection.fieldName ?? '')}
                     onChange={(event) =>
                       update('userAuthInjectionConfig', {
                         ...injection,
@@ -4463,7 +4476,7 @@ function ConnectorsForm({
                   />
                   <Input
                     label={t('studio.connectorFields.prefix')}
-                    value={String(injection.prefix ?? '')}
+                    value={scalarString(injection.prefix ?? '')}
                     onChange={(event) =>
                       update('userAuthInjectionConfig', {
                         ...injection,
@@ -4491,7 +4504,7 @@ function ConnectorsForm({
                                 .split('/')
                                 .at(-1)
                                 ?.replace(/\.mcpx$/i, '') ??
-                              String(draft.name ?? ''),
+                              scalarString(draft.name ?? ''),
                             path,
                           }
                         : null,
@@ -4502,7 +4515,7 @@ function ConnectorsForm({
                   <>
                     <Select
                       label={t('studio.connectorFields.mcpFile')}
-                      value={String(localMcp.path ?? '')}
+                      value={scalarString(localMcp.path ?? '')}
                       onChange={(event) =>
                         update('localMcp', {
                           ...localMcp,
@@ -4527,7 +4540,7 @@ function ConnectorsForm({
                     <Input
                       label={t('studio.connectorFields.localMcpName')}
                       maxLength={64}
-                      value={String(localMcp.name ?? '')}
+                      value={scalarString(localMcp.name ?? '')}
                       onChange={(event) =>
                         update('localMcp', {
                           ...localMcp,
@@ -4566,7 +4579,7 @@ function ConnectorsForm({
                 </div>
                 {tools.map((tool, index) => (
                   <ConnectorToolForm
-                    key={`${String(tool.id)}-${index}`}
+                    key={`${scalarString(tool.id)}-${index}`}
                     index={index}
                     tool={tool}
                     onChange={(next) => updateTool(index, next)}
@@ -4592,9 +4605,9 @@ function ConnectorsForm({
               </Button>
               <Button
                 disabled={
-                  !String(draft.name ?? '').trim() ||
-                  !String(draft.description ?? '').trim() ||
-                  !String(draft.baseUrl ?? '').trim() ||
+                  !scalarString(draft.name ?? '').trim() ||
+                  !scalarString(draft.description ?? '').trim() ||
+                  !scalarString(draft.baseUrl ?? '').trim() ||
                   Boolean(localMcp && !localMcp.path)
                 }
                 onClick={save}
@@ -4640,18 +4653,18 @@ function ConnectorToolForm({
       </div>
       <Input
         label={t('studio.connectorFields.toolId')}
-        value={String(tool.id ?? '')}
+        value={scalarString(tool.id ?? '')}
         onChange={(event) => update('id', event.target.value)}
       />
       <Input
         label={t('studio.connectorFields.toolName')}
         maxLength={64}
-        value={String(tool.name ?? '')}
+        value={scalarString(tool.name ?? '')}
         onChange={(event) => update('name', event.target.value)}
       />
       <AutoGrowTextarea
         label={t('studio.connectorFields.toolDescription')}
-        value={String(tool.description ?? '')}
+        value={scalarString(tool.description ?? '')}
         onValueChange={(value) => update('description', value)}
       />
       <Switch
@@ -4909,7 +4922,9 @@ function detailLabel(
     pkg.manifest,
     detail.kind === 'skill' ? 'skills' : 'faqs',
   )[detail.index]
-  return String(item?.[detail.kind === 'skill' ? 'title' : 'question'] ?? '')
+  return scalarString(
+    item?.[detail.kind === 'skill' ? 'title' : 'question'] ?? '',
+  )
 }
 function updateDetail(
   pkg: StudioDocument,

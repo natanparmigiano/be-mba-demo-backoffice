@@ -1,5 +1,5 @@
 import signifierUrl from '../../assets/signifier.png'
-import { cn } from '../ui'
+import { cn } from '@mba-desk/ui'
 
 function organizationLogoUrl(
   organization: { id: string; logo?: string | null } | null | undefined,

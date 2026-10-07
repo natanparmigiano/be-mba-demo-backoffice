@@ -4,8 +4,8 @@ import { apiClient } from '../api'
 import {
   PlaygroundOperationCard,
   type PlaygroundOperationState,
-} from '../components/api-playground/PlaygroundOperationCard'
-import { Checkbox, Input, Select, Textarea } from '../components/ui'
+} from '../components/api-playground'
+import { Checkbox, Input, Select, Textarea } from '@mba-desk/ui'
 
 type ImageFormat = '' | 'PNG' | 'SVG'
 type QrCodeField = (typeof QR_CODE_FIELDS)[number]['value']

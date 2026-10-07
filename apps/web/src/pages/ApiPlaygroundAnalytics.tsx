@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { apiClient } from '../api'
 import {
   PlaygroundOperationCard,
-  type PlaygroundOperationState,
-} from '../components/api-playground/PlaygroundOperationCard'
-import { Textarea } from '../components/ui'
+  usePlaygroundOperation,
+} from '../components/api-playground'
+import { Textarea } from '@mba-desk/ui'
 
 type Action =
   | 'messaging'
@@ -136,7 +136,7 @@ function AnalyticsOperation({
   defaultOpen: boolean
 }) {
   const { t } = useTranslation()
-  const request = useOperation()
+  const request = usePlaygroundOperation()
   const [payload, setPayload] = useState(
     JSON.stringify(initialPayload, null, 2),
   )
@@ -179,29 +179,6 @@ function AnalyticsOperation({
   )
 }
 
-function useOperation() {
-  const { t } = useTranslation()
-  const [state, setState] = useState<PlaygroundOperationState>({
-    status: 'idle',
-  })
-  return {
-    state,
-    run: async (request: () => Promise<unknown>) => {
-      setState({ status: 'loading' })
-      try {
-        setState({ status: 'success', result: await request() })
-      } catch (error) {
-        setState({
-          status: 'error',
-          message:
-            error instanceof Error
-              ? error.message
-              : t('apiPlayground.operationFailed'),
-        })
-      }
-    },
-  }
-}
 function parsePayload(value: string, t: T): Record<string, unknown> {
   try {
     const parsed: unknown = JSON.parse(value)

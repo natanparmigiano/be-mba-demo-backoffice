@@ -1,6 +1,6 @@
 import { Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '../ui'
+import { cn } from '@mba-desk/ui'
 import { designSystemSections, type DesignSystemSectionId } from './sections'
 
 export function DesignSystemSidebar({

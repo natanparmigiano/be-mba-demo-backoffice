@@ -17,7 +17,7 @@ import {
 } from '../components/api-playground/mba/MbaKnowledgeCards'
 import { MbaOperationsFolder } from '../components/api-playground/mba/MbaOperations'
 import { PlaygroundPostmanRegistryProvider } from '../components/api-playground/PlaygroundPostmanRegistry'
-import { Tabs } from '../components/ui'
+import { Tabs } from '@mba-desk/ui'
 
 type Folder =
   | 'agentConfiguration'

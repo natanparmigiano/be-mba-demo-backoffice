@@ -1,7 +1,7 @@
 import { Check, Clipboard, Download } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Select } from '../ui'
+import { Button, Select } from '@mba-desk/ui'
 
 export interface PlaygroundRequestExample {
   path: string

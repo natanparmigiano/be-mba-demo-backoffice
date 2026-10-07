@@ -26,7 +26,7 @@ import {
 } from '../../studio-agent-tools'
 import type { StudioDocument } from '../../studio-agtx'
 import { saveStudioConversation } from '../../studio-projects'
-import { Button, Dialog, Textarea } from '../ui'
+import { Button, Dialog, Textarea } from '@mba-desk/ui'
 import { buildStudioAgentSystemPrompt } from './studio-agent-prompt'
 
 interface StudioChatPanelProps {

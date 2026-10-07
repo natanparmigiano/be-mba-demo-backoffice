@@ -101,13 +101,14 @@ yarn auth:create-admin --email admin@example.com --name "Admin" --role admin
 yarn sso help     # inspect SSO provider setup and lifecycle commands
 ```
 
-The database defaults to `postgresql://postgres:postgres@localhost:5432/mba_desk` in development. In production, `NODE_ENV=production` requires an explicit `DATABASE_URL`. Set `PORT` to change the API port and `CORS_ORIGIN` to allow a different frontend origin.
+The database defaults to `postgresql://postgres:postgres@localhost:5432/mba_desk` in development. In production, `NODE_ENV=production` requires an explicit `DATABASE_URL` and a stable base64-encoded 256-bit `ENCRYPTION_KEY`. Set `PORT` to change the API port and `CORS_ORIGIN` to allow a different frontend origin.
 
 ## Configuration
 
 | Variable                      | Required               | Purpose                                                     |
 | ----------------------------- | ---------------------- | ----------------------------------------------------------- |
 | `DATABASE_URL`                | Production             | PostgreSQL connection URL                                   |
+| `ENCRYPTION_KEY`              | Production             | Base64 256-bit key for encrypted database credentials       |
 | `BETTER_AUTH_SECRET`          | Production             | Better Auth signing secret                                  |
 | `BETTER_AUTH_URL`             | Production             | Public Better Auth base URL                                 |
 | `BETTER_AUTH_TRUSTED_ORIGINS` | With OIDC              | Comma-separated exact IdP endpoint origins                  |
@@ -162,13 +163,12 @@ flowchart LR
 
 ### What lives where?
 
-| Area                     | Responsibility                                                            |
-| ------------------------ | ------------------------------------------------------------------------- |
-| `apps/api`               | Hono routes, lifecycle, workers, SPA delivery, and exported `AppType`     |
-| `apps/web`               | React/Vite browser application                                            |
-| `apps/sso-cli`           | OIDC and SAML provider administration                                     |
-| `apps/webhook-generator` | Stateful WhatsApp and MBA webhook load generation                         |
-| `lib/*`                  | Shared persistence, auth, messaging, storage, events, and runner packages |
+| Area           | Responsibility                                                            |
+| -------------- | ------------------------------------------------------------------------- |
+| `apps/api`     | Hono routes, lifecycle, workers, SPA delivery, and exported `AppType`     |
+| `apps/web`     | React/Vite browser application                                            |
+| `apps/sso-cli` | OIDC and SAML provider administration                                     |
+| `lib/*`        | Shared persistence, auth, messaging, storage, events, and runner packages |
 
 ### Which contracts matter most?
 
@@ -334,7 +334,6 @@ Start with the document closest to the change you are making.
 - [`apps/api/README.md`](apps/api/README.md) — routes, lifecycle, SPA serving, and workers
 - [`apps/web/README.md`](apps/web/README.md) — frontend architecture and conventions
 - [`apps/sso-cli/README.md`](apps/sso-cli/README.md) — SSO administration CLI
-- [`apps/webhook-generator/README.md`](apps/webhook-generator/README.md) — synthetic webhook generation
 
 ### Change shared infrastructure
 

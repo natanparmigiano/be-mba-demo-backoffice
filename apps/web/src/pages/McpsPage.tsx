@@ -22,8 +22,10 @@ import {
   Dialog,
   EmptyState,
   Input,
+  InlineFeedback,
+  PageHeader,
   Textarea,
-} from '../components/ui'
+} from '@mba-desk/ui'
 
 type McpsResponse = InferResponseType<
   typeof apiClient.api.runner.mcps.$get,
@@ -765,49 +767,39 @@ export function McpsPage() {
 
   return (
     <div className="grid gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
-            {t('mcps.eyebrow')}
-          </p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight">
-            {t('mcps.title')}
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            {t('mcps.description')}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => void refresh()}>
-            <RefreshCw className="size-4" />
-            {t('mcps.refresh')}
-          </Button>
-          {canManage && (
-            <>
-              <Button variant="outline" onClick={openImport}>
-                <Upload className="size-4" />
-                {t('mcps.import')}
-              </Button>
-              <Button disabled={functions.length === 0} onClick={openNewMcp}>
-                <Plus className="size-4" />
-                {t('mcps.new')}
-              </Button>
-            </>
-          )}
-        </div>
-      </header>
+      <PageHeader
+        eyebrow={t('mcps.eyebrow')}
+        title={t('mcps.title')}
+        titleStyle="strong"
+        description={t('mcps.description')}
+        descriptionWidth="3xl"
+        compactDescription
+        actions={
+          <>
+            <Button variant="outline" onClick={() => void refresh()}>
+              <RefreshCw className="size-4" />
+              {t('mcps.refresh')}
+            </Button>
+            {canManage && (
+              <>
+                <Button variant="outline" onClick={openImport}>
+                  <Upload className="size-4" />
+                  {t('mcps.import')}
+                </Button>
+                <Button disabled={functions.length === 0} onClick={openNewMcp}>
+                  <Plus className="size-4" />
+                  {t('mcps.new')}
+                </Button>
+              </>
+            )}
+          </>
+        }
+      />
 
       {(error || notice) && (
-        <p
-          className={
-            error
-              ? 'rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive'
-              : 'rounded-xl border border-success/30 bg-success/10 p-3 text-sm text-success'
-          }
-          role="status"
-        >
+        <InlineFeedback tone={error ? 'error' : 'success'}>
           {error ?? notice}
-        </p>
+        </InlineFeedback>
       )}
 
       <section className="overflow-hidden rounded-xl border bg-card shadow-xs">

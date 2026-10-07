@@ -32,7 +32,7 @@ import {
   MenuContent,
   MenuItem,
   MenuTrigger,
-} from '../ui'
+} from '@mba-desk/ui'
 import { EmojiPickerPanel, type StickerLibraryItem } from './EmojiPicker'
 import {
   TemplateMessageDialog,

@@ -274,6 +274,34 @@
       "when": 1791382284284,
       "tag": "0038_mean_wendigo",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791394388823,
+      "tag": "0039_famous_the_hunter",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791395396693,
+      "tag": "0040_eminent_blink",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791395720965,
+      "tag": "0041_uneven_roughhouse",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791395900110,
+      "tag": "0042_tricky_sleepwalker",
+      "breakpoints": true
     }
   ]
 }

@@ -20,6 +20,8 @@ import {
   Dialog,
   EmptyState,
   Input,
+  InlineFeedback,
+  PageHeader,
   SearchBox,
   Table,
   TableBody,
@@ -27,7 +29,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../components/ui'
+} from '@mba-desk/ui'
 
 type TeamsResponse = InferResponseType<typeof apiClient.api.teams.$get, 200>
 type TeamSummary = TeamsResponse['teams'][number]
@@ -276,55 +278,35 @@ export function TeamsPage() {
 
   return (
     <div className="grid gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
-            {t('teams.eyebrow')}
-          </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
-            {t('teams.title')}
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t('teams.description')}
-          </p>
-        </div>
-        <div className="flex gap-2 self-start sm:self-auto">
-          <Button
-            variant="outline"
-            disabled={isLoading}
-            onClick={() => setRefreshVersion((version) => version + 1)}
-          >
-            <RefreshCw
-              className={cn('size-4', isLoading && 'animate-spin')}
-              aria-hidden
-            />
-            {t('teams.refresh')}
-          </Button>
-          {canManage && (
-            <Button onClick={openCreateDialog}>
-              <Plus className="size-4" aria-hidden />
-              {t('teams.addTeam')}
+      <PageHeader
+        eyebrow={t('teams.eyebrow')}
+        title={t('teams.title')}
+        description={t('teams.description')}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              disabled={isLoading}
+              onClick={() => setRefreshVersion((version) => version + 1)}
+            >
+              <RefreshCw
+                className={cn('size-4', isLoading && 'animate-spin')}
+                aria-hidden
+              />
+              {t('teams.refresh')}
             </Button>
-          )}
-        </div>
-      </header>
+            {canManage && (
+              <Button onClick={openCreateDialog}>
+                <Plus className="size-4" aria-hidden />
+                {t('teams.addTeam')}
+              </Button>
+            )}
+          </>
+        }
+      />
 
-      {notice && (
-        <p
-          className="rounded-xl border border-success/30 bg-success/10 p-3 text-sm text-success"
-          role="status"
-        >
-          {notice}
-        </p>
-      )}
-      {error && (
-        <p
-          className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
+      {notice && <InlineFeedback tone="success">{notice}</InlineFeedback>}
+      {error && <InlineFeedback tone="error">{error}</InlineFeedback>}
 
       <section className="grid gap-4 rounded-2xl border bg-card p-5 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

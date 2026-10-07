@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { DEVELOPMENT_DATABASE_URL, getDatabaseUrl } from './env.js'
+import { DEVELOPMENT_ENCRYPTION_KEY, getEncryptionKey } from './encryption.js'
 
 describe('database environment', () => {
   it('uses a local Postgres URL outside production', () => {
@@ -41,6 +42,26 @@ describe('database environment', () => {
     assert.throws(
       () => getDatabaseUrl({ DATABASE_URL: 'https://example.com/database' }),
       /must use the postgres:\/\//,
+    )
+  })
+
+  it('uses the development encryption key outside production', () => {
+    assert.equal(
+      Buffer.from(getEncryptionKey({ NODE_ENV: 'development' })).toString(
+        'base64',
+      ),
+      DEVELOPMENT_ENCRYPTION_KEY,
+    )
+  })
+
+  it('requires a valid encryption key in production', () => {
+    assert.throws(
+      () => getEncryptionKey({ NODE_ENV: 'production' }),
+      /ENCRYPTION_KEY is required/,
+    )
+    assert.throws(
+      () => getEncryptionKey({ ENCRYPTION_KEY: 'not-a-key' }),
+      /256-bit key/,
     )
   })
 })

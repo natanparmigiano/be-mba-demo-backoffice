@@ -21,17 +21,19 @@ Auth, React Router, i18next, Tailwind CSS 4, and semantic theme tokens.
 
 ## UI conventions
 
-- Put all visible copy and metadata in `src/i18n.ts`. Add the English key first
-  and equivalent Brazilian Portuguese and Spanish values in the same change.
+- Put all visible copy and metadata in the matching `src/locales/*.ts` files.
+  Add the English key first and equivalent values in every supported locale in
+  the same change.
 - Use semantic utilities such as `bg-background`, `text-foreground`, and
   `border-border`; extend light and dark token definitions before repeating a
   literal color. Use `dark:` only for structural or asset differences.
-- Import public primitives through `components/ui/index.ts`. Preserve native
+- Import public primitives through `@mba-desk/ui`. Preserve native
   semantics, keyboard behavior, focus indicators, labels, and ARIA wiring.
 - `cn()` only joins classes; it does not resolve conflicting Tailwind classes.
   Add an explicit component prop/variant instead of relying on conflicting
   overrides.
-- Add reusable components and meaningful states to `/design-system`; keep its
+- Add reusable components to `lib/ui` and meaningful states to
+  `/design-system`; keep its
   section IDs synchronized with `components/design-system/sections.ts`.
 - Do not store passwords, session tokens, or raw auth responses in local
   storage. Better Auth owns session cookies and transport.
@@ -53,6 +55,6 @@ yarn workspace @mba-desk/web typecheck
 yarn workspace @mba-desk/web build
 ```
 
-Also exercise affected routes, guard states, both themes, all three locales,
+Also exercise affected routes, guard states, both themes, all supported locales,
 narrow layouts, keyboard navigation, and the public design-system examples.
 Do not edit generated `dist/` output.

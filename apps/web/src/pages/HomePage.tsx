@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
-import { Button, cn, Select } from '../components/ui'
+import { Button, cn, InlineFeedback, Select } from '@mba-desk/ui'
 
 type ChannelsResponse = InferResponseType<
   typeof apiClient.api.channels.$get,
@@ -261,14 +261,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {error && (
-        <p
-          className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
+      {error && <InlineFeedback tone="error">{error}</InlineFeedback>}
 
       <section aria-labelledby="overview-title">
         <div className="mb-4 flex items-end justify-between gap-4">
@@ -327,12 +320,7 @@ export function HomePage() {
           </span>
         </div>
         {evaluationError ? (
-          <p
-            className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-            role="alert"
-          >
-            {evaluationError}
-          </p>
+          <InlineFeedback tone="error">{evaluationError}</InlineFeedback>
         ) : isLoadingEvaluations ? (
           <div className="grid gap-3 md:grid-cols-3" aria-busy="true">
             {[0, 1, 2].map((item) => (

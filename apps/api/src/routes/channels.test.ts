@@ -2748,8 +2748,9 @@ describe('Meta webhook registration', () => {
       requests[0]?.url,
       'https://graph.facebook.com/v26.0/app-id/subscriptions',
     )
-    assert.equal(requests[0]?.init?.body instanceof URLSearchParams, true)
-    const body = requests[0].init?.body?.toString()
+    const requestBody = requests[0]?.init?.body
+    assert.ok(requestBody instanceof URLSearchParams)
+    const body = requestBody.toString()
     assert.equal(
       body,
       'object=whatsapp_business_account&callback_url=https%3A%2F%2Fexample.com%2Fapi%2Fwa-cloud%2Fwebhook%2F7&verify_token=verify-secret&fields=messages%2Ccalls%2Cmessaging_handovers%2Caccount_settings_update%2Cstandby%2Cbusiness_status_update%2Cflows%2Cmessage_template_components_update%2Cmessage_template_quality_update%2Cmessage_template_status_update%2Cphone_number_quality_update%2Cphone_number_name_update%2Ctemplate_category_update%2Ctemplate_correct_category_detection&access_token=app-id%7Capp-secret',

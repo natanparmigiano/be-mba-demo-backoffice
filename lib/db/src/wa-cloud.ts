@@ -43,7 +43,7 @@ import {
   type WhatsAppMessageSource,
   type WhatsAppMessageStatus as StoredMessageStatus,
   type WhatsAppMessageType,
-} from './schema/mba.js'
+} from './schema/chats.js'
 
 type DatabaseTransaction = Parameters<Parameters<Database['transaction']>[0]>[0]
 
@@ -1381,6 +1381,7 @@ class IngestionContext {
         channelId: this.channel.id,
         organizationId: this.channel.organizationId,
         contactId,
+        handoffAt: new Date(),
       })
       .onConflictDoUpdate({
         target: chats.contactId,
@@ -1404,6 +1405,7 @@ class IngestionContext {
         channelId: this.channel.id,
         organizationId: this.channel.organizationId,
         groupId,
+        handoffAt: new Date(),
       })
       .onConflictDoUpdate({
         target: chats.groupId,
@@ -1463,6 +1465,7 @@ class IngestionContext {
       .update(chats)
       .set({
         handledBy,
+        handoffAt: handledBy === 'application' ? new Date() : null,
         assignedTeamId:
           handledBy === 'application' ? (defaultTeam?.id ?? null) : null,
         assignedUserId:

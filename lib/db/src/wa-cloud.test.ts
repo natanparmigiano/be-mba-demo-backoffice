@@ -5,7 +5,7 @@ import {
   whatsappMessageSchema,
   type WhatsAppWebhook,
 } from '@mba-desk/wa-webhooks'
-import { whatsappMessageSources } from './schema/mba.js'
+import { whatsappMessageSources } from './schema/chats.js'
 import {
   assertWhatsAppWebhookMatchesChannel,
   getChatHandlerForHandoverRole,

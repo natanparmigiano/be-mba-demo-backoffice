@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Button, Dialog, Input } from '../ui'
+import { Button, Dialog, Input } from '@mba-desk/ui'
 
 export function RenameProjectDialog({
   project,

@@ -30,6 +30,8 @@ import {
   Dialog,
   EmptyState,
   Input,
+  InlineFeedback,
+  PageHeader,
   Pill,
   Select,
   Table,
@@ -38,7 +40,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../components/ui'
+} from '@mba-desk/ui'
 
 interface AdminUser {
   id: string
@@ -298,41 +300,29 @@ export function AdminPage() {
 
   return (
     <div className="grid gap-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold tracking-[0.12em] text-primary uppercase">
-            {t('admin.eyebrow')}
-          </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
-            {t('admin.title')}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {t('admin.description')}
-          </p>
-        </div>
-        <Button
-          className="self-start sm:self-auto"
-          onClick={() => {
-            setError(null)
-            setIsCreateUserOpen(true)
-          }}
-        >
-          <UserPlus className="size-4" aria-hidden />
-          {t('admin.addUser')}
-        </Button>
-      </header>
+      <PageHeader
+        eyebrow={t('admin.eyebrow')}
+        title={t('admin.title')}
+        description={t('admin.description')}
+        descriptionWidth="none"
+        compactDescription
+        actions={
+          <Button
+            onClick={() => {
+              setError(null)
+              setIsCreateUserOpen(true)
+            }}
+          >
+            <UserPlus className="size-4" aria-hidden />
+            {t('admin.addUser')}
+          </Button>
+        }
+      />
 
       {(error || notice) && (
-        <p
-          className={`rounded-xl border p-3 text-sm ${
-            error
-              ? 'border-destructive/30 bg-destructive/10 text-destructive'
-              : 'border-success/30 bg-success/10 text-success'
-          }`}
-          role="status"
-        >
+        <InlineFeedback tone={error ? 'error' : 'success'}>
           {error ?? notice}
-        </p>
+        </InlineFeedback>
       )}
 
       <section className="grid gap-4 rounded-2xl border bg-card p-5">

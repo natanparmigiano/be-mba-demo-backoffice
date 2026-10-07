@@ -32,16 +32,18 @@ Postgres.js connects lazily, so importing the package does not by itself open a 
 
 Each file under `src/schema` represents a PostgreSQL schema or schema group:
 
-| File        | PostgreSQL schema | Ownership                                                    |
-| ----------- | ----------------- | ------------------------------------------------------------ |
-| `auth.ts`   | `auth`            | Better Auth generated tables and relations                   |
-| `files.ts`  | `files`           | Non-production PostgreSQL file-storage fallback              |
-| `kv.ts`     | `kv`              | Shared string KV values and expiration timestamps            |
-| `llm.ts`    | `llm`             | Auditable Responses API request and usage history            |
-| `mba.ts`    | `mba`             | Application-owned WhatsApp chat data                         |
-| `runner.ts` | `runner`          | Versioned functions, MCP packs, API keys, and execution logs |
-| `studio.ts` | `studio`          | Organization-scoped AGTX Studio projects                     |
-| `index.ts`  | —                 | Re-exports the complete registry for Drizzle                 |
+| File          | PostgreSQL schema | Ownership                                                    |
+| ------------- | ----------------- | ------------------------------------------------------------ |
+| `auth.ts`     | `auth`            | Better Auth generated tables and relations                   |
+| `chats.ts`    | `chats`           | WhatsApp channels, chats, messages, events, and participants |
+| `files.ts`    | `files`           | Non-production PostgreSQL file-storage fallback              |
+| `kv.ts`       | `kv`              | Shared string KV values and expiration timestamps            |
+| `llm.ts`      | `llm`             | Auditable Responses API request and usage history            |
+| `mba.ts`      | `mba`             | Webhooks, archives, backups, and agent-owned data            |
+| `runner.ts`   | `runner`          | Versioned functions, MCP packs, API keys, and execution logs |
+| `studio.ts`   | `studio`          | Organization-scoped AGTX Studio projects                     |
+| `whatsapp.ts` | `whatsapp`        | Archived WhatsApp webhook envelopes and processing metadata  |
+| `index.ts`    | —                 | Re-exports the complete registry for Drizzle                 |
 
 ### Runner functions
 
@@ -94,11 +96,19 @@ production deployments should use the S3-compatible files adapter.
 durable `@mba-desk/files` key for each AGTX document. Its recent-project order
 uses `last_opened_at`; `last_edited_at` advances when AGTX bytes are saved.
 
-### MBA chats and messages
+### MBA channels and chats
 
-`mba.channels` owns a human-readable channel name, WhatsApp phone-number configuration, and sensitive credentials for an application agent. Every channel belongs to exactly one Better Auth `auth.organization`; the indexed foreign key is the tenant boundary. `mba.contacts` and `mba.groups` reference their channel and store provider identities plus current metadata. Both feed `mba.chats`, which gives every direct or group message stream a durable application identity. Chats also retain channel and organization foreign keys as deliberate denormalizations for indexed tenant inbox pagination, plus nullable assigned-team and assigned-user relationships whose references clear when the assignee is deleted. Neither group webhook state nor chat activity deletes these records.
+`chats.channels` owns a human-readable channel name, WhatsApp phone-number configuration, and sensitive credentials for an application agent. Every channel belongs to exactly one Better Auth `auth.organization`; the indexed foreign key is the tenant boundary. `chats.contacts` and `chats.groups` reference their channel and store provider identities plus current metadata. Both feed `chats.chats`, which gives every direct or group message stream a durable application identity. Chats also retain channel and organization foreign keys as deliberate denormalizations for indexed tenant inbox pagination, plus nullable assigned-team and assigned-user relationships whose references clear when the assignee is deleted. `handoff_at` records when a conversation most recently entered human handling so the indexed unassigned queue can order by wait time without scanning chat events. Neither group webhook state nor chat activity deletes these records.
 
-`mba.messages` stores the current WhatsApp message projection and belongs to a chat. Its optional `contact_id` identifies the remote direct-chat contact or the sender represented by a group message. Common identifiers, timestamps, forwarding markers, AI-generation provenance, display text, media metadata, outbound template names and their nullable Marketing Messages API flag, the durable file-store key for downloaded media, and typed UI-facing content objects are normalized during ingestion, while the complete deeply typed message remains in JSONB. Incoming messages receive the local `read` status when the chat is handled by the MBA agent and `delivered` otherwise; current outbound delivery status, recipient, Meta billing-conversation, pricing, callback, and error data are projected onto the message. AI-owned inbound traffic also advances the local read cursor without increasing the unread count.
+The channel application secret, webhook verification token, and system-user
+access token are stored as versioned AES-256-GCM envelopes. The database
+adapter injects `ENCRYPTION_KEY` into `@mba-desk/encryption` and transparently
+maps ciphertext to plaintext at the schema boundary. Empty optional values
+remain empty so SQL presence checks keep their existing behavior. The key must
+remain stable across app and worker processes; losing it makes encrypted
+credentials unrecoverable.
+
+`chats.messages` stores the current WhatsApp message projection and belongs to a chat. Its optional `contact_id` identifies the remote direct-chat contact or the sender represented by a group message. Common identifiers, timestamps, forwarding markers, AI-generation provenance, display text, media metadata, outbound template names and their nullable Marketing Messages API flag, the durable file-store key for downloaded media, and typed UI-facing content objects are normalized during ingestion, while the complete deeply typed message remains in JSONB. Incoming messages receive the local `read` status when the chat is handled by the MBA agent and `delivered` otherwise; current outbound delivery status, recipient, Meta billing-conversation, pricing, callback, and error data are projected onto the message. AI-owned inbound traffic also advances the local read cursor without increasing the unread count.
 
 `mba.agent_knowledge_file_archives` maps an organization-scoped Meta knowledge
 file ID to its durable `@mba-desk/files` storage path. Files configured outside
@@ -110,13 +120,13 @@ The archive bytes live in `@mba-desk/files`; PostgreSQL stores the safe file
 name, unique storage path, byte size, and creation time. The composite channel
 and organization foreign key prevents cross-tenant backup associations.
 
-`mba.sticker_library` stores organization-scoped, SHA-256-deduplicated WebP
+`chats.sticker_library` stores organization-scoped, SHA-256-deduplicated WebP
 sticker metadata. Sticker bytes remain in `@mba-desk/files`; the database keeps
 their unique storage paths, sizes, and creation order.
 
-`mba.message_status_events` preserves the append-only delivery-status history while the provider message ID makes message upserts idempotent. `mba.chat_events` stores non-message activity attached to a chat: billing-window observations, Business Agents ownership handovers and agent events, group changes, calls, call statuses, and user preferences. The model supports incoming `messages`, Business Agents `standby`, history, message echoes, and status-first rows.
+`chats.message_status_events` preserves the append-only delivery-status history while the provider message ID makes message upserts idempotent. `chats.chat_events` stores non-message activity attached to a chat: billing-window observations, Business Agents ownership handovers and agent events, group changes, calls, call statuses, and user preferences. The model supports incoming `messages`, Business Agents `standby`, history, message echoes, and status-first rows.
 
-`mba.webhooks` is the organization-scoped archival log for successfully
+`whatsapp.webhooks` is the organization-scoped archival log for successfully
 processed webhook envelopes. It preserves the complete JSON payload together
 with arrival, processing-start, and completion timestamps plus processing and
 end-to-end durations. Channel and arrival indexes support the log viewer's

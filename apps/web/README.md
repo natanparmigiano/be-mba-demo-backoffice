@@ -53,6 +53,7 @@ The build command runs TypeScript project validation before creating the product
 | `/design-system`                      | Public         | Available with or without a session.                                                |
 | `/login`                              | Guest          | Redirects authenticated users to `/`.                                               |
 | `/`                                   | Private        | Shows a channel-scoped WhatsApp and Business Agent overview with feature shortcuts. |
+| `/queue`                              | Private        | Groups unassigned human-held chats by team and handoff wait time.                   |
 | `/chat`                               | Private        | Displays cursor-paginated organization chats and message/event timelines.           |
 | `/chat/:chatId`                       | Private        | Opens a tenant-authorized chat directly while retaining the paginated inbox.        |
 | `/studio`                             | Private        | Lists recent organization-scoped Agent Studio projects.                             |
@@ -100,7 +101,8 @@ The main frontend areas are:
 - [`src/auth/`](src/auth/README.md): Better Auth client and session context.
 - [`src/router/`](src/router/README.md): public, guest, and private route boundaries.
 - [`src/pages/`](src/pages/README.md): route-level screens.
-- [`src/components/`](src/components/README.md): reusable UI, theme controls, design-system sections, and chat.
+- [`src/components/`](src/components/README.md): feature presentation, theme controls, design-system sections, and chat.
+- [`@mba-desk/ui`](../../lib/ui/README.md): reusable UI primitives and centralized semantic styles.
 - [`src/assets/`](src/assets/README.md): bundled brand artwork.
 
 ## Backend integration
@@ -115,29 +117,31 @@ the browser before the relative `/api/stickers` upload.
 
 ## Styling, theme, and brand
 
-Tailwind is configured by the Vite plugin; there is no separate Tailwind configuration file. `src/styles.css` declares semantic CSS variables and exposes them to Tailwind through `@theme inline`. Components should use classes such as `bg-background`, `bg-card`, `text-foreground`, and `text-primary` instead of literal theme colors.
+Tailwind is configured by the Vite plugin; there is no separate Tailwind configuration file. `@mba-desk/ui/styles.css` declares semantic CSS variables and exposes them to Tailwind through `@theme inline`. Components should use classes such as `bg-background`, `bg-card`, `text-foreground`, and `text-primary` instead of literal theme colors.
 
 Theme preference defaults to the operating system and is stored under `mba-theme` after selection. Both `data-theme` and the `.dark` class are synchronized on `<html>`. See [`src/components/theme/README.md`](src/components/theme/README.md).
 
 ## Internationalization
 
-All user-facing copy belongs in `src/i18n.ts`. English, Brazilian Portuguese,
-Spanish, French, and Simplified Chinese are supported. Browser preference is
-used until the user explicitly chooses a language; that selection is then
-stored under `mba-language-override` and takes precedence on future visits.
+All user-facing copy belongs in the language-specific files under
+`src/locales/`. English, Brazilian Portuguese, Spanish, French, Arabic, German,
+Hindi, Indonesian, Italian, Japanese, Korean, Russian, Thai, Vietnamese,
+Simplified Chinese, and Traditional Chinese are supported. Browser preference
+is used until the user explicitly chooses a language; that selection is then stored under
+`mba-language-override` and takes precedence on future visits.
 
 When adding copy:
 
 1. Add the key to the English resource first; it defines the inferred resource shape.
-2. Add equivalent Portuguese, Spanish, French, and Simplified Chinese entries.
+2. Add equivalent entries to every supported locale file.
 3. Render the key with `useTranslation()` rather than embedding visible text in a component.
 4. Use interpolation for dynamic content instead of concatenating translated fragments.
 
 ## Development conventions
 
-- Keep route-level orchestration in `pages/` and reusable presentation in `components/`.
+- Keep route-level orchestration in `pages/`, feature presentation in `components/`, and generic primitives in `@mba-desk/ui`.
 - Extend semantic tokens before introducing repeated literal colors.
-- Import primitives from `components/ui` through its barrel export.
+- Import primitives from `@mba-desk/ui` through its package export.
 - Keep server data types derived from the Hono contract.
 - Preserve accessible labels, focus states, semantic elements, and keyboard behavior.
 - Add new reusable components to the public design-system page.

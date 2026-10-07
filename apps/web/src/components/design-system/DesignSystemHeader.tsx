@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import signifierUrl from '../../assets/signifier.png'
 import { LanguageSwitcher } from '../LanguageSwitcher'
 import { ThemeSwitcher } from '../theme/ThemeSwitcher'
-import { Avatar, Button, SearchBox, Toast, useTimedToast } from '../ui'
+import { Avatar, Button, SearchBox, Toast, useTimedToast } from '@mba-desk/ui'
 import { designSystemSections } from './sections'
 
 export function DesignSystemHeader() {
@@ -93,7 +93,11 @@ export function DesignSystemHeader() {
               <span className="absolute -top-1 -right-1 size-2 rounded-full bg-destructive ring-2 ring-card" />
             </span>
           </Button>
-          <Avatar name={t('design.demoAccountName')} status="online" />
+          <Avatar
+            name={t('design.demoAccountName')}
+            status="online"
+            statusLabel={t('common.status.online')}
+          />
         </div>
       </header>
 

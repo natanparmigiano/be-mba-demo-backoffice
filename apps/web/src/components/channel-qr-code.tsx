@@ -10,7 +10,7 @@ import {
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChannelQrState } from '../channel-qr'
-import { Button, cn, Menu, MenuContent, MenuItem, MenuTrigger } from './ui'
+import { Button, cn, Menu, MenuContent, MenuItem, MenuTrigger } from '@mba-desk/ui'
 
 export function ChannelQrCode({
   phoneNumber,

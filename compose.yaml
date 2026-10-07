@@ -98,6 +98,7 @@ services:
       NODE_ENV: production
       PORT: 8080
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_desk
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-bWJhLWRlc2stZGV2ZWxvcG1lbnQta2V5LTMyYnl0ZXM=}
       REDIS_URL: redis://redis:6379
       KAFKA_CLIENT_ID: mba-desk-app
       KAFKA_BROKERS: kafka:9092
@@ -143,6 +144,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_desk
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-bWJhLWRlc2stZGV2ZWxvcG1lbnQta2V5LTMyYnl0ZXM=}
       KAFKA_CLIENT_ID: mba-desk-worker
       KAFKA_BROKERS: kafka:9092
       KAFKA_GROUP_ID: mba-desk-worker-consumer

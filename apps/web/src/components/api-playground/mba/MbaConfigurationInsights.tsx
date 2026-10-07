@@ -4,9 +4,9 @@ import { apiClient } from '../../../api'
 import {
   PlaygroundOperationCard,
   type PlaygroundOperationState,
-} from '../PlaygroundOperationCard'
+} from '..'
 import type { PlaygroundRequestExample } from '../PlaygroundRequestActions'
-import { Checkbox, Input, Textarea } from '../../ui'
+import { Checkbox, Input, Textarea } from '@mba-desk/ui'
 
 export type MbaFolderProps = {
   channelId: string

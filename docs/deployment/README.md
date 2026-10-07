@@ -123,6 +123,7 @@ yarn install --frozen-lockfile
 | `NODE_ENV`                    | Production             | App, auth, database | Enables production validation and behavior                                           |
 | `PORT`                        | No                     | App                 | HTTP listen port; defaults to `3000` outside supplied containers                     |
 | `DATABASE_URL`                | Production             | App and worker      | PostgreSQL connection string                                                         |
+| `ENCRYPTION_KEY`              | Production             | App and worker      | Stable canonical base64-encoded 256-bit database field-encryption key                |
 | `KV_ADAPTER`                  | No                     | App                 | `memory`, `postgres` (default), or `redis`; `REDIS_URL` selects Redis when unset     |
 | `REDIS_URL`                   | No                     | App                 | Selects Redis KV when present; supports `redis://` and `rediss://`                   |
 | `KAFKA_CLIENT_ID`             | With `KAFKA_BROKERS`   | App and worker      | Kafka client identity                                                                |
@@ -347,6 +348,7 @@ The managed Redis-compatible service means additional web instances can share KV
    | Variable                     | Value                                                                        |
    | ---------------------------- | ---------------------------------------------------------------------------- |
    | `BETTER_AUTH_URL`            | Final public service URL, such as `https://mba-desk.onrender.com`            |
+   | `ENCRYPTION_KEY`             | Stable base64-encoded 256-bit key generated with `openssl rand -base64 32`   |
    | `CORS_ORIGIN`                | Browser origin allowed to call the API; normally the same public URL         |
    | `FILES_PUBLIC_URL`           | Public base for application-served signed URLs; normally the same public URL |
    | `BETTER_AUTH_ADMIN_USER_IDS` | Optional comma-separated Better Auth user IDs                                |
@@ -360,6 +362,8 @@ applies migrations on every web deployment before starting Hono; a migration
 failure prevents the service from becoming healthy. The database boundary
 removes Render's `verifySSL` compatibility query parameter before passing the
 URL to Postgres.js while preserving supported `ssl` and `sslmode` settings.
+`ENCRYPTION_KEY` is a manually synchronized secret because rotating or losing
+it without re-encrypting stored values makes channel credentials unreadable.
 
 ### Render limitations
 
@@ -380,7 +384,7 @@ The same image can run on another container platform with externally managed ser
 docker build --target runtime -t mba-desk:latest .
 ```
 
-The image runs as the unprivileged `node` user, uses `SIGTERM`, and includes the compiled API, web application, libraries, and Drizzle migrations. The synthetic webhook generator is a development/load-testing workspace and is not copied into the runtime image.
+The image runs as the unprivileged `node` user, uses `SIGTERM`, and includes the compiled API, web application, libraries, and Drizzle migrations.
 
 ### Single-container application
 
@@ -476,8 +480,6 @@ Before Meta can deliver traffic, the referenced WhatsApp channel must exist in P
 - Webhook POST requests must carry a valid `X-Hub-Signature-256` generated with the channel's stored app secret.
 - The payload WABA and phone metadata must match that same channel.
 - Local Compose endpoints are plain HTTP and not publicly reachable. Use an HTTPS development tunnel or reverse proxy when testing callbacks from Meta; no tunnel is included in this repository.
-
-The synthetic generator can target any reachable deployment. See [`apps/webhook-generator/README.md`](../../apps/webhook-generator/README.md) for signing and load options.
 
 Migration `0001_short_iron_man` generates a unique verification token for every channel that predates this column. After applying it, retrieve or replace each generated token through a trusted administrative path and update the corresponding Meta webhook subscription. Treat verification tokens as secrets and never write them to application logs.
 

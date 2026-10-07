@@ -37,7 +37,7 @@ import {
   TableRow,
   TagInput,
   Textarea,
-} from '../components/ui'
+} from '@mba-desk/ui'
 
 type ChannelsResponse = InferResponseType<
   typeof apiClient.api.channels.$get,

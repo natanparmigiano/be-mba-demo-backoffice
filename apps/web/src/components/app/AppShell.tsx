@@ -11,6 +11,7 @@ import {
   FileText,
   Home,
   KeyRound,
+  ListTodo,
   LogOut,
   RadioTower,
   SendHorizontal,
@@ -36,7 +37,7 @@ import {
   MenuItem,
   MenuSeparator,
   MenuTrigger,
-} from '../ui'
+} from '@mba-desk/ui'
 import { OrganizationGuard } from './OrganizationGuard'
 import { OrganizationLogo } from './OrganizationLogo'
 import { OrganizationSwitcher } from './OrganizationSwitcher'
@@ -50,9 +51,10 @@ export function AppShell() {
   const [isSigningOut, setIsSigningOut] = useState(false)
   const isChatRoute =
     location.pathname === '/chat' || location.pathname.startsWith('/chat/')
+  const isQueueRoute = location.pathname === '/queue'
   const isStudioRoute =
     location.pathname === '/studio' || location.pathname.startsWith('/studio/')
-  const isWorkspaceRoute = isChatRoute || isStudioRoute
+  const isWorkspaceRoute = isChatRoute || isQueueRoute || isStudioRoute
 
   const signOut = async () => {
     setIsSigningOut(true)
@@ -67,6 +69,12 @@ export function AppShell() {
 
   const navigation = [
     { to: '/', label: t('shell.home'), icon: Home, end: true },
+    {
+      to: '/queue',
+      label: t('shell.queue'),
+      icon: ListTodo,
+      end: true,
+    },
     {
       to: '/chat',
       label: t('shell.chat'),

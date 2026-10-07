@@ -1,6 +1,6 @@
 import { Bold, Heading2, Italic, List, ListOrdered } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Button, Tabs, Textarea } from '../ui'
+import { Button, Tabs, Textarea } from '@mba-desk/ui'
 
 type Mode = 'visual' | 'source'
 

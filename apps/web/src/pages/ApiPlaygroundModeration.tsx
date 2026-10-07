@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { apiClient } from '../api'
 import {
   PlaygroundOperationCard,
-  type PlaygroundOperationState,
-} from '../components/api-playground/PlaygroundOperationCard'
-import { Input, Textarea } from '../components/ui'
+  usePlaygroundOperation,
+} from '../components/api-playground'
+import { Input, Textarea } from '@mba-desk/ui'
 
 type Props = { channelId: string; mutationDisabled: boolean }
 type T = ReturnType<typeof useTranslation>['t']
@@ -38,7 +38,7 @@ export function ModerationPlayground({ channelId, mutationDisabled }: Props) {
 
 function ListBlockedUsers({ channelId, disabled }: CardProps) {
   const { t } = useTranslation()
-  const request = useOperation()
+  const request = usePlaygroundOperation()
   const [limit, setLimit] = useState('100')
   const [before, setBefore] = useState('')
   const [after, setAfter] = useState('')
@@ -110,7 +110,7 @@ function ModerateUsers({
   operation: 'block' | 'unblock'
 }) {
   const { t } = useTranslation()
-  const request = useOperation()
+  const request = usePlaygroundOperation()
   const [users, setUsers] = useState('')
   const prefix = `apiPlayground.moderation.${operation}` as const
   const parsedUsers = users
@@ -175,29 +175,6 @@ function parseUsers(value: string, t: T) {
   return users
 }
 
-function useOperation() {
-  const { t } = useTranslation()
-  const [state, setState] = useState<PlaygroundOperationState>({
-    status: 'idle',
-  })
-  return {
-    state,
-    run: async (request: () => Promise<unknown>) => {
-      setState({ status: 'loading' })
-      try {
-        setState({ status: 'success', result: await request() })
-      } catch (error) {
-        setState({
-          status: 'error',
-          message:
-            error instanceof Error
-              ? error.message
-              : t('apiPlayground.operationFailed'),
-        })
-      }
-    },
-  }
-}
 
 async function readResult(response: Response, t: T) {
   const body: unknown = await response.json()

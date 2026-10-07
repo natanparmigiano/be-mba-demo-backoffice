@@ -1,9 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import '@mba-desk/i18n/browser'
+import '@mba-desk/ui/styles.css'
 import { App } from './App'
 import { ThemeProvider } from './components/theme/ThemeProvider'
-import './i18n'
-import './styles.css'
 
 const root = document.getElementById('root')
 

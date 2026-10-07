@@ -5,8 +5,8 @@ import { apiClient } from '../api'
 import {
   PlaygroundOperationCard,
   type PlaygroundOperationState,
-} from '../components/api-playground/PlaygroundOperationCard'
-import { Input, Select, Textarea } from '../components/ui'
+} from '../components/api-playground'
+import { Input, Select, Textarea } from '@mba-desk/ui'
 
 type MarketingMessageRequest = InferRequestType<
   (typeof apiClient.api.playground.marketing)[':channelId']['send']['$post']

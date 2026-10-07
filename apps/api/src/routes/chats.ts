@@ -48,11 +48,13 @@ import { pubsub } from '@mba-desk/pubsub'
 import { zValidator } from '@hono/zod-validator'
 import {
   and,
+  asc,
   desc,
   eq,
   gte,
   ilike,
   isNotNull,
+  isNull,
   lt,
   lte,
   or,
@@ -80,6 +82,7 @@ const listChatsQuerySchema = z.object({
   channelId: z.coerce.number().int().positive().optional(),
   teamId: z.string().trim().min(1).max(128).optional(),
   handledBy: z.enum(['mba', 'application']).optional(),
+  assignment: z.enum(['unassigned', 'mine']).optional(),
   startDate: z.iso.datetime().optional(),
   endDate: z.iso.datetime().optional(),
   limit: z.coerce
@@ -113,6 +116,10 @@ const assignmentBodySchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('assign'), force: z.boolean().default(false) }),
   z.object({ action: z.literal('release') }),
 ])
+
+const teamAssignmentBodySchema = z.object({
+  teamId: z.string().trim().min(1).max(128),
+})
 
 const chatMessageSchema = z.object({
   clientMessageId: z.string().uuid(),
@@ -194,6 +201,7 @@ export interface ChatSummary {
   id: number
   kind: 'direct' | 'group'
   handledBy: 'mba' | 'application'
+  handoffAt: string | null
   updatedAt: string
   unreadMessageCount: number
   latestInboundMessageAt: string | null
@@ -296,6 +304,7 @@ interface ChatListQuery {
   channelId?: number
   teamId?: string
   handledBy?: ChatHandler
+  assignedUserId?: string | null
   startDate?: string
   endDate?: string
 }
@@ -308,6 +317,10 @@ interface TimelineQuery {
 interface ChatListResult {
   chats: ChatSummary[]
   nextCursor: string | null
+}
+
+interface ChatQueueResult {
+  chats: ChatSummary[]
 }
 
 interface TimelineResult {
@@ -330,6 +343,7 @@ export interface ChatReadContext {
 
 export interface ChatSendContext {
   accessToken: string
+  assignedUserId: string | null
   contactId: number | null
   handledBy: 'mba' | 'application'
   kind: 'direct' | 'group'
@@ -382,6 +396,7 @@ export interface ChatsRepository {
     organizationId: string,
     query: ChatListQuery,
   ) => Promise<ChatListResult>
+  listQueue: (organizationId: string) => Promise<ChatQueueResult>
   timeline: (
     organizationId: string,
     chatId: number,
@@ -421,6 +436,11 @@ export interface ChatsRepository {
     chatId: number,
     userId: string,
   ) => Promise<'ok' | 'not_assigned' | 'not_found'>
+  assignToTeam: (
+    organizationId: string,
+    chatId: number,
+    teamId: string,
+  ) => Promise<'ok' | 'chat_not_found' | 'team_not_found'>
   owns: (organizationId: string, chatId: number) => Promise<boolean>
 }
 
@@ -456,10 +476,12 @@ export const createChatsRoute = ({
     getSendContext: getChatSendContext,
     getTemplateContext: getChatTemplateContext,
     list: listChats,
+    listQueue: listQueuedChats,
     markRead: markChatRead,
     owns: ownsChat,
     assignToUser: assignChatToUser,
     releaseAssignment: releaseChatAssignment,
+    assignToTeam: assignChatToTeam,
     setHandler: setChatHandler,
     timeline: (organizationId, chatId, query) =>
       getChatTimeline(organizationId, chatId, query, fileStore),
@@ -475,7 +497,7 @@ export const createChatsRoute = ({
       }),
       async (c) => {
         const access = await getAccess(c.req.raw.headers)
-        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        if (!access?.userId) return c.json({ message: 'Unauthorized' }, 401)
 
         const query = c.req.valid('query')
         const cursor = query.cursor ? decodeChatCursor(query.cursor) : undefined
@@ -491,6 +513,12 @@ export const createChatsRoute = ({
             ...(query.channelId ? { channelId: query.channelId } : {}),
             ...(query.teamId ? { teamId: query.teamId } : {}),
             ...(query.handledBy ? { handledBy: query.handledBy } : {}),
+            ...(query.assignment
+              ? {
+                  assignedUserId:
+                    query.assignment === 'mine' ? access.userId : null,
+                }
+              : {}),
             ...(query.startDate ? { startDate: query.startDate } : {}),
             ...(query.endDate ? { endDate: query.endDate } : {}),
           }),
@@ -548,6 +576,11 @@ export const createChatsRoute = ({
         }
       })
     })
+    .get('/queue', async (c) => {
+      const access = await getAccess(c.req.raw.headers)
+      if (!access?.userId) return c.json({ message: 'Unauthorized' }, 401)
+      return c.json(await resolvedRepository.listQueue(access.organizationId))
+    })
     .get('/:id', async (c) => {
       const chatId = parsePositiveSafeInteger(c.req.param('id'))
       if (!chatId) return c.json({ message: 'Invalid chat ID' }, 400)
@@ -571,7 +604,7 @@ export const createChatsRoute = ({
         if (!chatId) return c.json({ message: 'Invalid chat ID' }, 400)
 
         const access = await getAccess(c.req.raw.headers)
-        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        if (!access?.userId) return c.json({ message: 'Unauthorized' }, 401)
         const context = await resolvedRepository.getTemplateContext(
           access.organizationId,
           chatId,
@@ -731,6 +764,12 @@ export const createChatsRoute = ({
             409,
           )
         }
+        if (context.assignedUserId !== access.userId) {
+          return c.json(
+            { message: 'Chat is not assigned to the current user' },
+            403,
+          )
+        }
 
         const input = c.req.valid('json')
         if (
@@ -771,7 +810,7 @@ export const createChatsRoute = ({
         const chatId = parsePositiveSafeInteger(c.req.param('id'))
         if (!chatId) return c.json({ message: 'Invalid chat ID' }, 400)
         const access = await getAccess(c.req.raw.headers)
-        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        if (!access?.userId) return c.json({ message: 'Unauthorized' }, 401)
         const context = await resolvedRepository.getSendContext(
           access.organizationId,
           chatId,
@@ -781,6 +820,12 @@ export const createChatsRoute = ({
           return c.json(
             { message: 'Conversation is currently handled by AI' },
             409,
+          )
+        }
+        if (context.assignedUserId !== access.userId) {
+          return c.json(
+            { message: 'Chat is not assigned to the current user' },
+            403,
           )
         }
 
@@ -857,7 +902,7 @@ export const createChatsRoute = ({
         const chatId = parsePositiveSafeInteger(c.req.param('id'))
         if (!chatId) return c.json({ message: 'Invalid chat ID' }, 400)
         const access = await getAccess(c.req.raw.headers)
-        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        if (!access?.userId) return c.json({ message: 'Unauthorized' }, 401)
         const context = await resolvedRepository.getSendContext(
           access.organizationId,
           chatId,
@@ -867,6 +912,12 @@ export const createChatsRoute = ({
           return c.json(
             { message: 'Conversation is currently handled by AI' },
             409,
+          )
+        }
+        if (context.assignedUserId !== access.userId) {
+          return c.json(
+            { message: 'Chat is not assigned to the current user' },
+            403,
           )
         }
         if (!context.recipient) {
@@ -1129,6 +1180,41 @@ export const createChatsRoute = ({
         return c.json({ assigned: input.action === 'assign' })
       },
     )
+    .patch(
+      '/:id/team',
+      zValidator('json', teamAssignmentBodySchema, (result, c) => {
+        if (!result.success) {
+          return c.json({ message: 'Invalid team assignment request' }, 400)
+        }
+      }),
+      async (c) => {
+        const chatId = parsePositiveSafeInteger(c.req.param('id'))
+        if (!chatId) return c.json({ message: 'Invalid chat ID' }, 400)
+        const access = await getAccess(c.req.raw.headers)
+        if (!access?.userId) return c.json({ message: 'Unauthorized' }, 401)
+
+        const { teamId } = c.req.valid('json')
+        const result = await resolvedRepository.assignToTeam(
+          access.organizationId,
+          chatId,
+          teamId,
+        )
+        if (result === 'chat_not_found') {
+          return c.json({ message: 'Chat not found' }, 404)
+        }
+        if (result === 'team_not_found') {
+          return c.json({ message: 'Team not found' }, 404)
+        }
+
+        await publishChatRealtimeEventSafely(
+          realtime,
+          access.organizationId,
+          chatId,
+          'conversation.updated',
+        )
+        return c.json({ teamId })
+      },
+    )
 }
 
 async function ownsChat(
@@ -1161,6 +1247,11 @@ async function listChats(
   if (query.channelId) conditions.push(eq(chats.channelId, query.channelId))
   if (query.teamId) conditions.push(eq(chats.assignedTeamId, query.teamId))
   if (query.handledBy) conditions.push(eq(chats.handledBy, query.handledBy))
+  if (query.assignedUserId === null) {
+    conditions.push(isNull(chats.assignedUserId))
+  } else if (query.assignedUserId) {
+    conditions.push(eq(chats.assignedUserId, query.assignedUserId))
+  }
   if (query.startDate) {
     conditions.push(gte(chats.updatedAt, new Date(query.startDate)))
   }
@@ -1194,6 +1285,23 @@ async function listChats(
   }
 }
 
+async function listQueuedChats(
+  organizationId: string,
+): Promise<ChatQueueResult> {
+  const rows = await queryChatSummaryRows(
+    [
+      eq(chats.organizationId, organizationId),
+      eq(chats.handledBy, 'application'),
+      isNull(chats.assignedUserId),
+      isNotNull(chats.handoffAt),
+    ],
+    500,
+    'queue',
+    false,
+  )
+  return { chats: rows.map(toChatSummary) }
+}
+
 function escapeLikePattern(value: string): string {
   return value
     .replaceAll('\\', '\\\\')
@@ -1212,7 +1320,12 @@ async function getChat(
   return row ? toChatSummary(row) : undefined
 }
 
-async function queryChatSummaryRows(conditions: SQL[], limit: number) {
+async function queryChatSummaryRows(
+  conditions: SQL[],
+  limit: number,
+  order: 'inbox' | 'queue' = 'inbox',
+  includeLatestInbound = true,
+) {
   const assignedTeam = alias(team, 'assigned_team')
   const assignedUser = alias(user, 'assigned_user')
 
@@ -1221,6 +1334,7 @@ async function queryChatSummaryRows(conditions: SQL[], limit: number) {
       id: chats.id,
       kind: chats.kind,
       handledBy: chats.handledBy,
+      handoffAt: chats.handoffAt,
       updatedAt: chats.updatedAt,
       latestMessageId: chats.latestMessageId,
       unreadMessageCount: chats.unreadMessageCount,
@@ -1245,12 +1359,14 @@ async function queryChatSummaryRows(conditions: SQL[], limit: number) {
       latestMessageType: messageTypeExpression(),
       latestMessageOccurredAt: messages.occurredAt,
       latestMessagePreview: messageTextExpression(240),
-      latestInboundMessageAt: sql<Date | null>`(
-          select max(inbound_message.occurred_at)
-          from mba.messages as inbound_message
-          where inbound_message.chat_id = ${chats.id}
-            and inbound_message.direction = 'inbound'
-        )`.mapWith(messages.occurredAt),
+      latestInboundMessageAt: includeLatestInbound
+        ? sql<Date | null>`(
+            select max(inbound_message.occurred_at)
+            from chats.messages as inbound_message
+            where inbound_message.chat_id = ${chats.id}
+              and inbound_message.direction = 'inbound'
+          )`.mapWith(messages.occurredAt)
+        : sql<Date | null>`null`.mapWith(messages.occurredAt),
     })
     .from(chats)
     .innerJoin(channels, eq(chats.channelId, channels.id))
@@ -1260,7 +1376,11 @@ async function queryChatSummaryRows(conditions: SQL[], limit: number) {
     .leftJoin(assignedUser, eq(chats.assignedUserId, assignedUser.id))
     .leftJoin(messages, eq(chats.latestMessageId, messages.id))
     .where(and(...conditions))
-    .orderBy(desc(chats.updatedAt), desc(chats.id))
+    .orderBy(
+      ...(order === 'queue'
+        ? [asc(chats.handoffAt), asc(chats.id)]
+        : [desc(chats.updatedAt), desc(chats.id)]),
+    )
     .limit(limit)
 }
 
@@ -1271,6 +1391,7 @@ function toChatSummary(row: ChatSummaryRow): ChatSummary {
     id: row.id,
     kind: row.kind,
     handledBy: row.handledBy,
+    handoffAt: row.handoffAt?.toISOString() ?? null,
     updatedAt: row.updatedAt.toISOString(),
     unreadMessageCount: row.unreadMessageCount,
     latestInboundMessageAt: row.latestInboundMessageAt?.toISOString() ?? null,
@@ -1400,6 +1521,7 @@ async function getChatSendContext(
   const [row] = await db
     .select({
       accessToken: channels.waSystemUserAccessToken,
+      assignedUserId: chats.assignedUserId,
       contactId: chats.contactId,
       contactWaId: contacts.waId,
       contactUserId: contacts.userId,
@@ -1418,6 +1540,7 @@ async function getChatSendContext(
   return row
     ? {
         accessToken: row.accessToken,
+        assignedUserId: row.assignedUserId,
         contactId: row.contactId,
         handledBy: row.handledBy,
         kind: row.kind,
@@ -1500,6 +1623,7 @@ async function setChatHandler(
       .update(chats)
       .set({
         handledBy,
+        handoffAt: handledBy === 'application' ? new Date() : null,
         assignedTeamId:
           handledBy === 'application' ? (defaultTeam?.id ?? null) : null,
         assignedUserId: handledBy === 'application' ? userId : null,
@@ -1522,7 +1646,10 @@ async function assignChatToUser(
 ): Promise<'ok' | 'conflict' | 'not_found'> {
   return db.transaction(async (transaction) => {
     const [chat] = await transaction
-      .select({ assignedUserId: chats.assignedUserId })
+      .select({
+        assignedUserId: chats.assignedUserId,
+        handledBy: chats.handledBy,
+      })
       .from(chats)
       .where(
         and(eq(chats.id, chatId), eq(chats.organizationId, organizationId)),
@@ -1530,6 +1657,7 @@ async function assignChatToUser(
       .limit(1)
       .for('update')
     if (!chat) return 'not_found'
+    if (chat.handledBy !== 'application') return 'conflict'
     if (chat.assignedUserId && chat.assignedUserId !== userId && !force) {
       return 'conflict'
     }
@@ -1576,6 +1704,34 @@ async function releaseChatAssignment(
       .set({ assignedUserId: null, updatedAt: new Date() })
       .where(eq(chats.id, chatId))
     return 'ok'
+  })
+}
+
+async function assignChatToTeam(
+  organizationId: string,
+  chatId: number,
+  teamId: string,
+): Promise<'ok' | 'chat_not_found' | 'team_not_found'> {
+  return db.transaction(async (transaction) => {
+    const [ownedTeam] = await transaction
+      .select({ id: team.id })
+      .from(team)
+      .where(and(eq(team.id, teamId), eq(team.organizationId, organizationId)))
+      .limit(1)
+    if (!ownedTeam) return 'team_not_found'
+
+    const [updated] = await transaction
+      .update(chats)
+      .set({
+        assignedTeamId: teamId,
+        assignedUserId: null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(chats.id, chatId), eq(chats.organizationId, organizationId)),
+      )
+      .returning({ id: chats.id })
+    return updated ? 'ok' : 'chat_not_found'
   })
 }
 

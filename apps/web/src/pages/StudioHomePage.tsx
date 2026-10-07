@@ -25,7 +25,8 @@ import {
   MenuContent,
   MenuItem,
   MenuTrigger,
-} from '../components/ui'
+  Progress,
+} from '@mba-desk/ui'
 import { apiClient } from '../api'
 import { RenameProjectDialog } from '../components/studio/RenameProjectDialog'
 import { newAgtx, openAgtx } from '../studio-agtx'
@@ -663,19 +664,11 @@ function RunningAgentExportProgress({
           <span>{t('studio.runningAgent.progress')}</span>
           <span>{progress}%</span>
         </div>
-        <div
-          className="mt-2 h-2 overflow-hidden rounded-full bg-muted"
-          role="progressbar"
-          aria-label={t('studio.runningAgent.progress')}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={progress}
-        >
-          <div
-            className="h-full rounded-full bg-primary transition-[width] duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
+        <Progress
+          className="mt-2"
+          label={t('studio.runningAgent.progress')}
+          value={progress}
+        />
       </div>
       <ol className="grid gap-2 sm:grid-cols-2" aria-live="polite">
         {exportSteps.map((step, index) => {
