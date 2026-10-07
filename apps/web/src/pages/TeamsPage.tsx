@@ -184,6 +184,7 @@ export function TeamsPage() {
     event.preventDefault()
     setIsBusy(true)
     setDialogError(null)
+    setError(null)
     setNotice(null)
     try {
       const payload = {
@@ -240,6 +241,7 @@ export function TeamsPage() {
   const makeDefaultTeam = async (selectedTeam: TeamSummary) => {
     setIsBusy(true)
     setDialogError(null)
+    setError(null)
     setNotice(null)
     try {
       const response = await apiClient.api.teams[':id'].default.$post({
@@ -262,6 +264,7 @@ export function TeamsPage() {
         current?.id === result.team.id ? result.team : current,
       )
       setNotice(t('teams.defaultUpdated'))
+      setRefreshVersion((version) => version + 1)
     } catch (reason) {
       const message = getErrorMessage(reason, t('teams.operationFailed'))
       if (editTarget?.id === selectedTeam.id) setDialogError(message)
@@ -458,6 +461,13 @@ export function TeamsPage() {
                             variant="ghost"
                             disabled={team.isDefault || isBusy}
                             aria-label={
+                              team.isDefault
+                                ? t('teams.defaultNamed', { name: team.name })
+                                : t('teams.makeDefaultNamed', {
+                                    name: team.name,
+                                  })
+                            }
+                            title={
                               team.isDefault
                                 ? t('teams.defaultNamed', { name: team.name })
                                 : t('teams.makeDefaultNamed', {
