@@ -38,9 +38,9 @@ export const resources = {
   'zh-TW': { translation: zhTW },
 } as const
 
-export const supportedLanguages = Object.keys(
-  resources,
-) as Array<keyof typeof resources>
+export const supportedLanguages = Object.keys(resources) as Array<
+  keyof typeof resources
+>
 
 export const languageDefinitions = [
   { code: 'en', badge: 'EN', flag: '🇺🇸', labelKey: 'common.english' },

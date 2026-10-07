@@ -21,7 +21,8 @@ Auth, React Router, i18next, Tailwind CSS 4, and semantic theme tokens.
 
 ## UI conventions
 
-- Put all visible copy and metadata in the matching `src/locales/*.ts` files.
+- Put all visible copy and metadata in the matching
+  `lib/i18n/src/locales/*.ts` files.
   Add the English key first and equivalent values in every supported locale in
   the same change.
 - Use semantic utilities such as `bg-background`, `text-foreground`, and

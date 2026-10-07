@@ -13,6 +13,7 @@ exports rather than sibling source paths.
 | [`@mba-desk/pubsub`](pubsub/README.md)                           | Transient message fan-out      | Redis Pub/Sub            | Process-local EventEmitter                        |
 | [`@mba-desk/events`](events/README.md)                           | Event publishing/subscription  | Kafka                    | Process-local EventEmitter                        |
 | [`@mba-desk/files`](files/README.md)                             | File/object storage            | S3-compatible storage    | Local filesystem; PostgreSQL for quick tests only |
+| [`@mba-desk/i18n`](i18n/README.md)                               | Translation resources/helpers  | i18next + React          | Browser locale detection                          |
 | [`@mba-desk/auth`](auth/README.md)                               | Authentication                 | Better Auth + Drizzle    | KV secondary storage follows the selected KV mode |
 | [`@mba-desk/runner`](runner/README.md)                           | Versioned JavaScript execution | isolated-vm + PostgreSQL | Injected repository/executor for tests            |
 | [`@mba-desk/ui`](ui/README.md)                                   | React UI primitives and theme  | React + Tailwind CSS     | N/A                                               |

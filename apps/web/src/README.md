@@ -11,6 +11,7 @@ with the component that owns it.
 | --------------------------- | --------------------------------------------------- |
 | `assets/`                   | Vite-managed brand images and SVG variants          |
 | `auth/`                     | Better Auth client, session provider, and `useAuth` |
+| `@mba-desk/i18n`            | Translation resources, metadata, and initialization |
 | `@mba-desk/ui`              | Reusable primitives and centralized semantic styles |
 | `components/theme/`         | Theme state and selector                            |
 | `components/chat/`          | Typed WhatsApp-style message model and renderer     |
@@ -22,7 +23,7 @@ with the component that owns it.
 
 `main.tsx` performs the application-wide setup:
 
-1. Imports `i18n.ts`, which initializes i18next before components render.
+1. Imports `@mba-desk/i18n/browser`, which initializes i18next before components render.
 2. Imports `@mba-desk/ui/styles.css`, which loads Tailwind and defines semantic tokens.
 3. Mounts React in strict mode.
 4. Wraps the application in `ThemeProvider`.
@@ -35,9 +36,7 @@ Top-level source files:
 - `App.tsx`: intentionally small application boundary around `AppRouter`.
 - `DesignSystemPage.tsx`: composition root for the public design-system route.
 - `api.ts`: typed Hono RPC client.
-- `i18n.ts`: resource registration, language detection, and document language synchronization.
-- `i18next.d.ts`: TypeScript augmentation for typed translation keys.
-- `locales/`: one complete translation resource per supported language.
+- `@mba-desk/i18n`: resource registration, typed keys, language detection, and document language synchronization.
 - `@mba-desk/ui/styles.css`: Tailwind import, theme variables, and shared CSS utilities.
 
 ## State boundaries
@@ -73,7 +72,7 @@ The language detector checks, in order:
 
 Automatic browser detection is not cached. `LanguageSwitcher` writes the override key only after a user selection, which prevents later initialization from replacing an explicit choice. `languageChanged` also keeps the document's `lang` attribute synchronized.
 
-The English resource in `locales/en.ts` is the canonical type source. All
+The English resource in `lib/i18n/src/locales/en.ts` is the canonical type source. All
 locale resources must retain the same key structure so `useTranslation()`
 remains type-safe.
 

@@ -45,7 +45,7 @@ The page observes section intersections and passes the current ID to the sidebar
 ## Adding a component example
 
 1. Build the reusable component in `@mba-desk/ui` or its feature folder.
-2. Add translated labels and descriptions to all locales in `i18n.ts`.
+2. Add translated labels and descriptions to every locale in `@mba-desk/i18n`.
 3. Place the example in the most relevant existing section.
 4. If a new section is genuinely necessary, create `<Name>Section.tsx`, export it from `index.ts`, add it to `DesignSystemPage`, and register it in `sections.ts`.
 5. Include useful states rather than a single happy-path render.

@@ -102,6 +102,7 @@ The main frontend areas are:
 - [`src/router/`](src/router/README.md): public, guest, and private route boundaries.
 - [`src/pages/`](src/pages/README.md): route-level screens.
 - [`src/components/`](src/components/README.md): feature presentation, theme controls, design-system sections, and chat.
+- [`@mba-desk/i18n`](../../lib/i18n/README.md): translations, language metadata, helpers, and browser initialization.
 - [`@mba-desk/ui`](../../lib/ui/README.md): reusable UI primitives and centralized semantic styles.
 - [`src/assets/`](src/assets/README.md): bundled brand artwork.
 
@@ -124,7 +125,7 @@ Theme preference defaults to the operating system and is stored under `mba-theme
 ## Internationalization
 
 All user-facing copy belongs in the language-specific files under
-`src/locales/`. English, Brazilian Portuguese, Spanish, French, Arabic, German,
+`lib/i18n/src/locales/`. English, Brazilian Portuguese, Spanish, French, Arabic, German,
 Hindi, Indonesian, Italian, Japanese, Korean, Russian, Thai, Vietnamese,
 Simplified Chinese, and Traditional Chinese are supported. Browser preference
 is used until the user explicitly chooses a language; that selection is then stored under
