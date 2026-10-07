@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, it } from 'node:test'
-import { FileSystemFileStore } from '@mba-demo/files'
+import { FileSystemFileStore } from '@mba-desk/files'
 import { createApp } from '../app.js'
 
 const directories: string[] = []
@@ -84,7 +84,7 @@ describe('signed filesystem routes', () => {
 })
 
 async function createStore(): Promise<FileSystemFileStore> {
-  const directory = await mkdtemp(join(tmpdir(), 'mba-demo-files-route-'))
+  const directory = await mkdtemp(join(tmpdir(), 'mba-desk-files-route-'))
   directories.push(directory)
   return new FileSystemFileStore({
     adapter: 'fs',

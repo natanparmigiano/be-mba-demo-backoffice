@@ -6,7 +6,7 @@ applications.
 ## Package contracts
 
 - Do not import from `apps/*`. Import peer libraries only through their
-  `@mba-demo/*` workspace names.
+  `@mba-desk/*` workspace names.
 - Re-export intended public APIs from the package entry point and keep package
   export maps compatible with source under the `development` condition and
   compiled JavaScript by default.
@@ -45,5 +45,5 @@ applications.
 ## Verification
 
 For a changed package, run its `typecheck`, `test` when defined, and `build`
-scripts through `yarn workspace @mba-demo/<name> ...`. Changes to a shared
+scripts through `yarn workspace @mba-desk/<name> ...`. Changes to a shared
 interface also require checks in every affected consumer workspace.

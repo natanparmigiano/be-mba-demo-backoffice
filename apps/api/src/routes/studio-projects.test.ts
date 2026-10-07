@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { FileStore, StoredFile } from '@mba-demo/files'
+import type { FileStore, StoredFile } from '@mba-desk/files'
 import {
   createStudioProjectsRoute,
   type StudioProject,

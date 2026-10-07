@@ -1,4 +1,4 @@
-import type { EventBus } from '@mba-demo/events'
+import type { EventBus } from '@mba-desk/events'
 import { z } from 'zod'
 
 export const RUNNER_EXECUTION_REQUESTED_TOPIC = 'runner.execution.requested.v1'

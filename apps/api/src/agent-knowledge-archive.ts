@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { agentKnowledgeFileArchives, db } from '@mba-demo/db'
-import { files, type FileStore } from '@mba-demo/files'
-import type { KnowledgeFile } from '@mba-demo/wa-mba'
+import { agentKnowledgeFileArchives, db } from '@mba-desk/db'
+import { files, type FileStore } from '@mba-desk/files'
+import type { KnowledgeFile } from '@mba-desk/wa-mba'
 import { and, eq, inArray } from 'drizzle-orm'
 
 export interface ArchivedAgentKnowledgeFile {

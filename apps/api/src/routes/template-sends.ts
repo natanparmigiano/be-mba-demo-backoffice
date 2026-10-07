@@ -1,4 +1,4 @@
-import { auth } from '@mba-demo/auth'
+import { auth } from '@mba-desk/auth'
 import {
   channels,
   chats,
@@ -7,12 +7,12 @@ import {
   member,
   messages,
   persistWhatsAppOutboundMessage,
-} from '@mba-demo/db'
+} from '@mba-desk/db'
 import {
   createWhatsAppMarketingClient,
   WhatsAppMarketingApiError,
   WhatsAppMarketingResponseError,
-} from '@mba-demo/wa-marketing'
+} from '@mba-desk/wa-marketing'
 import {
   createWhatsAppMessagingClient,
   whatsappOutboundMessageSchema,
@@ -20,7 +20,7 @@ import {
   WhatsAppMessagingApiError,
   WhatsAppMessagingResponseError,
   type SendMessageInput,
-} from '@mba-demo/wa-messaging'
+} from '@mba-desk/wa-messaging'
 import { zValidator } from '@hono/zod-validator'
 import { and, desc, eq, ilike, isNotNull, lt, or } from 'drizzle-orm'
 import { Hono } from 'hono'

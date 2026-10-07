@@ -1,7 +1,7 @@
 import type {
   WhatsAppOutboundMessage,
   WhatsAppSendMessageResponse,
-} from '@mba-demo/wa-messaging'
+} from '@mba-desk/wa-messaging'
 import type {
   Call,
   CallStatus,
@@ -15,7 +15,7 @@ import type {
   WhatsAppContact,
   WhatsAppMessage as WhatsAppInboundMessage,
   WhatsAppMessageStatus as WhatsAppWebhookMessageStatus,
-} from '@mba-demo/wa-webhooks'
+} from '@mba-desk/wa-webhooks'
 import { sql } from 'drizzle-orm'
 import { organization } from './auth.js'
 import {

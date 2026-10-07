@@ -9,7 +9,7 @@
       name="description"
       content="React frontend powered by a typed Hono API"
     />
-    <title>MBA Demo Backoffice</title>
+    <title>MBA Desk</title>
     <script>
       ;(() => {
         let preference = 'system'
@@ -27,6 +27,18 @@
         document.documentElement.dataset.theme = theme
         document.documentElement.classList.toggle('dark', theme === 'dark')
         document.documentElement.style.colorScheme = theme
+
+        try {
+          const primaryColor = localStorage.getItem('mba-desk-primary-color')
+          if (/^#[0-9a-f]{6}$/i.test(primaryColor ?? '')) {
+            document.documentElement.style.setProperty(
+              '--primary',
+              primaryColor,
+            )
+          }
+        } catch {
+          // Use the default primary color when storage is unavailable.
+        }
       })()
     </script>
   </head>

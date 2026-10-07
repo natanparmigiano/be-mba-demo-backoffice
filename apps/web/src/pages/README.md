@@ -47,9 +47,12 @@ switcher. Each page then owns one route-level workflow:
 - `ChannelsPage`: named WhatsApp connections, with display phone numbers shown
   as secondary identity. `/channels/new` and `/channels/:id`
   provide route-backed, tabbed channel configuration for identity,
-  provider-backed phone registration, message QR codes, conversational
+  the public WhatsApp business profile and profile picture, provider-backed
+  phone registration, message QR codes, conversational
   icebreakers and commands, webhook forwarding, and credentials. The directory
   retains impact-previewed, typed-confirmation deletion of local channel data.
+- `TeamsPage`: organization team CRUD with slug, color, default-team, and
+  membership editing.
 - `ContactsPage` and `GroupsPage`: searchable, cursor-paginated browsing and
   read-only detail.
 - `FunctionsPage`: organization-scoped function editing, revision restore,
@@ -72,9 +75,10 @@ switcher. Each page then owns one route-level workflow:
   template sends.
 - `AdminPage`: global user administration for Better Auth `admin` users.
 
-- `/organization` is available to authenticated users; Better Auth enforces owner/admin permissions for mutations.
+- `/organization` is available to authenticated users; Better Auth enforces owner/admin permissions for mutations. Owners and administrators can set the organization's primary color and choose an optional logo. Logo selection opens a square crop workflow, produces a 512×512 PNG, and stores it through the shared file library; organization records retain only the relative file key. The selected logo appears in the application shell and organization surfaces, with the bundled signifier as the fallback.
 - `/chat` lists contact and group chats for the active organization and opens with no conversation selected. Selecting an inbox row navigates to `/chat/:chatId`, so refresh, back/forward navigation, and copied links preserve the selected conversation. The selected chat is fetched through its tenant-scoped detail endpoint and merged ahead of the current inbox page when it falls outside that page; list cursor semantics remain unchanged. If later pagination reaches that chat's canonical page, the incoming page replaces the supplemental copy and moves the same keyed row into its natural sort position without duplication or changing the route. Invalid, missing, and cross-organization IDs render the same unavailable state without exposing another tenant's data. The inbox and merged message/event timeline use opaque cursor pagination behind prefetching infinite scroll. Once a selected conversation has rendered, the page asks the server to mark its latest inbound message at Meta before transactionally updating the local message statuses, read cursor, and unread count. The render callback changes only when that latest inbound provider message changes, avoiding duplicate acknowledgements during unrelated rerenders. The page subscribes to the active organization's inbox SSE stream so every conversation preview and unread count refreshes; events for the selected chat also refresh its timeline. A lost stream displays a persistent warning with a reconnect action that reloads the snapshot before opening a new connection. Timeline projections are adapted to the typed text, media, contact, location, and interactive renderers. The header identifies whether a human or AI owns the conversation and can transfer Meta thread control in either direction. Human ownership reveals the outbound composer for every non-interactive WhatsApp message variant, including presigned media uploads and compatible in-browser voice recording with a live waveform; AI ownership removes it. Human-owned messages with provider IDs expose reactions from their right-click context menu and send the selected emoji without asking for an ID.
 - `/contacts` is available to authenticated organization members and only displays contacts owned through channels in the active organization. Owners and admins can create and edit contacts by WhatsApp ID and profile fields without supplying a provider user ID. Creation immediately provisions the direct chat. The impact-previewed, identifier-confirmed deletion flow removes that direct conversation data.
+- `/teams` is available to authenticated organization members and only displays teams from the active organization. Owners and admins can create, edit, and delete teams, select any current organization users as members, and switch the organization's sole default team from either the table star or the read-only form field.
 - `/agents` displays active-organization channels as the entry point for agent
   configuration.
 - `/agents/:id` lets organization managers onboard the selected channel, toggle
@@ -140,14 +144,14 @@ switcher. Each page then owns one route-level workflow:
   template mutations using server-side channel credentials. Messaging
   attachments use short-lived file-store URLs; the media package tab uploads
   directly through the API. The QR tab covers create, get, image URL, list,
-  update, and delete operations from `@mba-demo/wa-qr`. The Components tab
+  update, and delete operations from `@mba-desk/wa-qr`. The Components tab
   covers get-configuration and set-configuration operations from
-  `@mba-demo/wa-components`. The Flows tab covers the complete management
-  surface from `@mba-demo/wa-flows`, including assets, lifecycle transitions,
+  `@mba-desk/wa-components`. The Flows tab covers the complete management
+  surface from `@mba-desk/wa-flows`, including assets, lifecycle transitions,
   metrics, migration, previews, and encryption keys.
   The Templates tab covers create, list, get, namespace, update, and delete
-  operations from `@mba-demo/wa-templates`.
-  The Marketing tab sends approved templates through `@mba-demo/wa-marketing`
+  operations from `@mba-desk/wa-templates`.
+  The Marketing tab sends approved templates through `@mba-desk/wa-marketing`
   with product policy, activity-sharing, and per-message bid controls.
 - `/admin` is guarded in the client and every admin endpoint independently enforces permissions on the server.
 - Application admin roles and organization member roles are separate concepts.

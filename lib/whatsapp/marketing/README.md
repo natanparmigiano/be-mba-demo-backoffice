@@ -1,4 +1,4 @@
-# `@mba-demo/wa-marketing`
+# `@mba-desk/wa-marketing`
 
 Typed client for Meta's Marketing Messages API for WhatsApp. It sends approved
 marketing templates through the phone number's `marketing_messages` edge so
@@ -7,7 +7,7 @@ eligible messages receive Marketing Messages delivery optimization.
 ## Usage
 
 ```ts
-import { createWhatsAppMarketingClient } from '@mba-demo/wa-marketing'
+import { createWhatsAppMarketingClient } from '@mba-desk/wa-marketing'
 
 const marketing = createWhatsAppMarketingClient({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,

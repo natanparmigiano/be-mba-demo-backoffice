@@ -3,27 +3,27 @@
 The `lib/whatsapp` workspaces are the typed integration boundary for WhatsApp
 Cloud API, WhatsApp Business Management API, webhook payloads, and the Meta
 Business Agent (MBA) API. Applications should import these packages by their
-`@mba-demo/*` workspace names; they should not import package source files
+`@mba-desk/*` workspace names; they should not import package source files
 directly.
 
 ## Package map
 
 | Package                                                 | Scope                                                            | Primary resource ID                      |
 | ------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------- |
-| [`@mba-demo/wa-waba`](waba/README.md)                   | Discover and read WhatsApp Business Accounts                     | Business or WABA ID per call             |
-| [`@mba-demo/wa-registration`](registration/README.md)   | Verify, register, and deregister a business phone number         | Phone number ID                          |
-| [`@mba-demo/wa-subscriptions`](subscriptions/README.md) | Register app webhooks and manage WABA app subscriptions          | App credentials and WABA ID              |
-| [`@mba-demo/wa-templates`](templates/README.md)         | Create and manage message templates and template groups          | WABA ID                                  |
-| [`@mba-demo/wa-flows`](flows/README.md)                 | Manage Flows, assets, previews, metrics, and endpoint encryption | WABA ID; phone number ID for encryption  |
-| [`@mba-demo/wa-media`](media/README.md)                 | Upload, retrieve, download, and delete media                     | Phone number ID                          |
-| [`@mba-demo/wa-messaging`](messaging/README.md)         | Send messages and update read/typing state                       | Phone number ID                          |
-| [`@mba-demo/wa-marketing`](marketing/README.md)         | Send optimized marketing template messages                       | Phone number ID                          |
-| [`@mba-demo/wa-moderation`](moderation/README.md)       | List, block, and unblock WhatsApp users                          | Phone number ID                          |
-| [`@mba-demo/wa-qr`](qr/README.md)                       | Create and manage message QR codes and generated images          | Phone number ID                          |
-| [`@mba-demo/wa-components`](components/README.md)       | Manage icebreakers, commands, and conversational automation      | Phone number ID                          |
-| [`@mba-demo/wa-analytics`](analytics/README.md)         | Query messaging, pricing, template, call, and group analytics    | WABA ID                                  |
-| [`@mba-demo/wa-webhooks`](webhooks/README.md)           | Validate and type inbound webhook payloads                       | No client                                |
-| [`@mba-demo/wa-mba`](mba/README.md)                     | Configure and operate the Meta Business Agent platform           | Phone number ID; Business ID for budgets |
+| [`@mba-desk/wa-waba`](waba/README.md)                   | Discover and read WhatsApp Business Accounts                     | Business or WABA ID per call             |
+| [`@mba-desk/wa-registration`](registration/README.md)   | Verify, register, and deregister a business phone number         | Phone number ID                          |
+| [`@mba-desk/wa-subscriptions`](subscriptions/README.md) | Register app webhooks and manage WABA app subscriptions          | App credentials and WABA ID              |
+| [`@mba-desk/wa-templates`](templates/README.md)         | Create and manage message templates and template groups          | WABA ID                                  |
+| [`@mba-desk/wa-flows`](flows/README.md)                 | Manage Flows, assets, previews, metrics, and endpoint encryption | WABA ID; phone number ID for encryption  |
+| [`@mba-desk/wa-media`](media/README.md)                 | Upload, retrieve, download, and delete media                     | Phone number ID                          |
+| [`@mba-desk/wa-messaging`](messaging/README.md)         | Send messages and update read/typing state                       | Phone number ID                          |
+| [`@mba-desk/wa-marketing`](marketing/README.md)         | Send optimized marketing template messages                       | Phone number ID                          |
+| [`@mba-desk/wa-moderation`](moderation/README.md)       | List, block, and unblock WhatsApp users                          | Phone number ID                          |
+| [`@mba-desk/wa-qr`](qr/README.md)                       | Create and manage message QR codes and generated images          | Phone number ID                          |
+| [`@mba-desk/wa-components`](components/README.md)       | Manage icebreakers, commands, and conversational automation      | Phone number ID                          |
+| [`@mba-desk/wa-analytics`](analytics/README.md)         | Query messaging, pricing, template, call, and group analytics    | WABA ID                                  |
+| [`@mba-desk/wa-webhooks`](webhooks/README.md)           | Validate and type inbound webhook payloads                       | No client                                |
+| [`@mba-desk/wa-mba`](mba/README.md)                     | Configure and operate the Meta Business Agent platform           | Phone number ID; Business ID for budgets |
 
 The packages intentionally separate resource management from message delivery.
 For example, `wa-flows` creates and publishes a Flow, while `wa-messaging`
@@ -51,7 +51,7 @@ tests. Construction performs no network I/O. Request methods accept an
 `AbortSignal` through their final options argument.
 
 ```ts
-import { createWhatsAppMessagingClient } from '@mba-demo/wa-messaging'
+import { createWhatsAppMessagingClient } from '@mba-desk/wa-messaging'
 
 const messaging = createWhatsAppMessagingClient({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
@@ -76,7 +76,7 @@ before reducing token permissions.
 
 ## WABA discovery
 
-Create `@mba-demo/wa-waba` with an access token. Resource IDs are supplied per
+Create `@mba-desk/wa-waba` with an access token. Resource IDs are supplied per
 operation because one client can inspect multiple businesses and accounts.
 
 | Method                             | Operation                                                                            |
@@ -90,7 +90,7 @@ strings, including safe numeric IDs returned by upstream APIs.
 
 ## Phone-number registration
 
-Create `@mba-demo/wa-registration` with `accessToken` and `phoneNumberId`.
+Create `@mba-desk/wa-registration` with `accessToken` and `phoneNumberId`.
 
 | Method                                         | Operation                                                                                                                                    |
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -111,7 +111,7 @@ registering again. Two-step verification cannot be disabled through the API.
 
 Use `createWhatsAppWebhookRegistrationClient` with the app ID and secret to
 register the callback and parsed event fields. Then create
-`@mba-demo/wa-subscriptions` with `accessToken` and `wabaId`; a WABA
+`@mba-desk/wa-subscriptions` with `accessToken` and `wabaId`; a WABA
 subscription covers every phone number attached to that WABA.
 
 | Method                              | Operation                                                       |
@@ -126,7 +126,7 @@ as a secret and compare it during Meta's webhook verification handshake.
 
 ## Template management
 
-Create `@mba-demo/wa-templates` with `accessToken` and `wabaId`.
+Create `@mba-desk/wa-templates` with `accessToken` and `wabaId`.
 
 ### Template lifecycle
 
@@ -165,7 +165,7 @@ not guess one.
 
 ## Flow management
 
-Create `@mba-demo/wa-flows` with `accessToken` and `wabaId`.
+Create `@mba-desk/wa-flows` with `accessToken` and `wabaId`.
 
 | Method                                                   | Operation                                                                             |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------- |
@@ -191,7 +191,7 @@ all `validation_errors` returned by `uploadJson()` before publishing.
 
 ## Media lifecycle
 
-Create `@mba-demo/wa-media` with `accessToken` and `phoneNumberId`.
+Create `@mba-desk/wa-media` with `accessToken` and `phoneNumberId`.
 
 | Method                                                                         | Operation                                                                 |
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
@@ -209,7 +209,7 @@ caller's responsibility.
 
 ## Message sending
 
-Create `@mba-demo/wa-messaging` with `accessToken` and `phoneNumberId`.
+Create `@mba-desk/wa-messaging` with `accessToken` and `phoneNumberId`.
 
 | Method                                                                           | Operation                                                                                                 |
 | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -236,7 +236,7 @@ The package exports both TypeScript types and Zod schemas, including
 
 ## User moderation
 
-Create `@mba-demo/wa-moderation` with `accessToken` and `phoneNumberId`.
+Create `@mba-desk/wa-moderation` with `accessToken` and `phoneNumberId`.
 
 | Method                     | Operation                                                       |
 | -------------------------- | --------------------------------------------------------------- |
@@ -252,7 +252,7 @@ users.
 
 ## Message QR codes
 
-Create `@mba-demo/wa-qr` with `accessToken` and `phoneNumberId`.
+Create `@mba-desk/wa-qr` with `accessToken` and `phoneNumberId`.
 
 | Method                                | Operation                                                                              |
 | ------------------------------------- | -------------------------------------------------------------------------------------- |
@@ -269,7 +269,7 @@ image format are requested.
 
 ## Analytics
 
-Create `@mba-demo/wa-analytics` with `accessToken` and `wabaId`.
+Create `@mba-desk/wa-analytics` with `accessToken` and `wabaId`.
 
 | Method                               | Scope and important filters                                                                                           |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
@@ -289,11 +289,11 @@ does not enable template analytics implicitly.
 
 ## Webhook validation
 
-`@mba-demo/wa-webhooks` has no network client. Its root
+`@mba-desk/wa-webhooks` has no network client. Its root
 `whatsappWebhookSchema` validates a complete callback:
 
 ```ts
-import { whatsappWebhookSchema } from '@mba-demo/wa-webhooks'
+import { whatsappWebhookSchema } from '@mba-desk/wa-webhooks'
 
 const parsed = whatsappWebhookSchema.safeParse(await request.json())
 if (!parsed.success) {
@@ -326,7 +326,7 @@ The schema validates payload structure; it does not authenticate the callback.
 
 ## Meta Business Agent API
 
-Create `@mba-demo/wa-mba` with `accessToken` and `phoneNumberId`. Supply
+Create `@mba-desk/wa-mba` with `accessToken` and `phoneNumberId`. Supply
 `businessId` when using budget APIs. Unlike the Graph clients, MBA defaults to
 `https://api.facebook.com`, sends `X-API-Version: 2.0.0`, and uses version
 `1.0.0` for thread-control calls.
@@ -404,9 +404,9 @@ webhook schema package defines `typecheck` and `build` because it currently has
 no test script.
 
 ```bash
-yarn workspace @mba-demo/wa-messaging typecheck
-yarn workspace @mba-demo/wa-messaging test
-yarn workspace @mba-demo/wa-messaging build
+yarn workspace @mba-desk/wa-messaging typecheck
+yarn workspace @mba-desk/wa-messaging test
+yarn workspace @mba-desk/wa-messaging build
 
 # Full repository gate
 yarn quality

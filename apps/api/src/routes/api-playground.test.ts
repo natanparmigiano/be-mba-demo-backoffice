@@ -3,7 +3,7 @@ import { describe, it } from 'node:test'
 import {
   WhatsAppRegistrationApiError,
   type WhatsAppRegistrationClientContract,
-} from '@mba-demo/wa-registration'
+} from '@mba-desk/wa-registration'
 import {
   createApiPlaygroundRoute,
   type ApiPlaygroundRepository,

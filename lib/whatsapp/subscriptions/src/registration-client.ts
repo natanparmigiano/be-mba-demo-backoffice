@@ -8,7 +8,7 @@ const DEFAULT_GRAPH_API_VERSION = 'v26.0'
 const WEBHOOK_OBJECT = 'whatsapp_business_account'
 
 // This is the complete set of subscription fields currently accepted by the
-// shared @mba-demo/wa-webhooks discriminated union. `messages` carries both
+// shared @mba-desk/wa-webhooks discriminated union. `messages` carries both
 // messages and message status updates. Standby and echo traffic use their own
 // fields and must be registered separately.
 export const WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS = [

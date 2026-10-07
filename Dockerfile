@@ -80,10 +80,10 @@ COPY --from=build --chown=node:node /app/lib/whatsapp/subscriptions/dist/ ./lib/
 COPY --from=build --chown=node:node /app/lib/whatsapp/templates/dist/ ./lib/whatsapp/templates/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/waba/dist/ ./lib/whatsapp/waba/dist/
 COPY --from=build --chown=node:node /app/lib/whatsapp/webhooks/dist/ ./lib/whatsapp/webhooks/dist/
-COPY --chmod=755 docker/mba-demo-backend-entrypoint.sh /usr/local/bin/mba-demo-backend-entrypoint
+COPY --chmod=755 docker/mba-desk-backend-entrypoint.sh /usr/local/bin/mba-desk-backend-entrypoint
 
-RUN mkdir -p /var/lib/mba-demo/files /var/data \
-  && chown node:node /var/lib/mba-demo/files /var/data
+RUN mkdir -p /var/lib/mba-desk/files /var/data \
+  && chown node:node /var/lib/mba-desk/files /var/data
 
 USER node
 
@@ -91,5 +91,5 @@ EXPOSE 8080
 
 STOPSIGNAL SIGTERM
 
-ENTRYPOINT ["mba-demo-backend-entrypoint"]
+ENTRYPOINT ["mba-desk-backend-entrypoint"]
 CMD ["app"]

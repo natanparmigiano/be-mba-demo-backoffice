@@ -1,5 +1,5 @@
 {
-  "name": "@mba-demo/webhook-generator",
+  "name": "@mba-desk/webhook-generator",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
     "test": "tsx --conditions=development --test src/**/*.test.ts"
   },
   "dependencies": {
-    "@mba-demo/wa-webhooks": "0.0.0"
+    "@mba-desk/wa-webhooks": "0.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",

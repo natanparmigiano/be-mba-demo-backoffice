@@ -40,7 +40,7 @@ startup on migration errors.
 - Callers own `closeDatabase()` during graceful shutdown.
 
 ```bash
-yarn workspace @mba-demo/db typecheck
-yarn workspace @mba-demo/db test
-yarn workspace @mba-demo/db build
+yarn workspace @mba-desk/db typecheck
+yarn workspace @mba-desk/db test
+yarn workspace @mba-desk/db build
 ```

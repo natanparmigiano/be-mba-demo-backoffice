@@ -1,5 +1,5 @@
 $schema: 'https://json-schema.org/draft/2020-12/schema'
-$id: 'https://mba-demo.example/schemas/mcpx/v1/mcp.schema.json'
+$id: 'https://mba-desk.example/schemas/mcpx/v1/mcp.schema.json'
 title: 'MCPX package'
 description: 'Schema for an MCPX version 1 YAML document.'
 type: object

@@ -113,7 +113,7 @@ export type {
   RunnerUpdateResult,
 } from './types.js'
 
-import { events } from '@mba-demo/events'
+import { events } from '@mba-desk/events'
 import { createRunnerExecutionPublisher } from './events.js'
 import { Runner } from './runner.js'
 

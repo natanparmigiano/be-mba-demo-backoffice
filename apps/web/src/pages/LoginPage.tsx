@@ -14,6 +14,7 @@ import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
 import { useAuth } from '../auth/AuthProvider'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
+import { resetOrganizationPrimaryColor } from '../components/theme/organization-color'
 import { ThemeSwitcher } from '../components/theme/ThemeSwitcher'
 import { Button, Checkbox, Input } from '../components/ui'
 import type { AuthRedirectState } from '../router/RouteGuards'
@@ -30,6 +31,10 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [hasSsoProviders, setHasSsoProviders] = useState(false)
+
+  useEffect(() => {
+    resetOrganizationPrimaryColor()
+  }, [])
 
   useEffect(() => {
     document.title = `${t('auth.loginTitle')} · ${t('design.brand')}`

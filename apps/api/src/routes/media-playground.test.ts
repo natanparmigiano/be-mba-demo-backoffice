@@ -4,7 +4,7 @@ import {
   WhatsAppMediaApiError,
   type UploadMediaInput,
   type WhatsAppMediaClientContract,
-} from '@mba-demo/wa-media'
+} from '@mba-desk/wa-media'
 import {
   createMediaPlaygroundRoute,
   type MediaPlaygroundRepository,

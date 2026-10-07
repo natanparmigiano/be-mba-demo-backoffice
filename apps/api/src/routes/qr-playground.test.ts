@@ -3,7 +3,7 @@ import { describe, it } from 'node:test'
 import {
   WhatsAppQrApiError,
   type WhatsAppQrClientContract,
-} from '@mba-demo/wa-qr'
+} from '@mba-desk/wa-qr'
 import {
   createQrPlaygroundRoute,
   type QrPlaygroundRepository,

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import type { WhatsAppAnalyticsClientContract } from '@mba-demo/wa-analytics'
+import type { WhatsAppAnalyticsClientContract } from '@mba-desk/wa-analytics'
 import {
   createAnalyticsPlaygroundRoute,
   type AnalyticsPlaygroundRepository,

@@ -2,14 +2,14 @@ import { createHash } from 'node:crypto'
 import {
   findWhatsAppChannelById,
   type WhatsAppChannelConfiguration,
-} from '@mba-demo/db'
-import { files, type FileStore } from '@mba-demo/files'
-import type { WhatsAppWebhook } from '@mba-demo/wa-webhooks'
+} from '@mba-desk/db'
+import { files, type FileStore } from '@mba-desk/files'
+import type { WhatsAppWebhook } from '@mba-desk/wa-webhooks'
 import {
   createWhatsAppMediaClient,
   type WhatsAppMediaClientContract,
   type WhatsAppMediaClientOptions,
-} from '@mba-demo/wa-media'
+} from '@mba-desk/wa-media'
 
 const MEDIA_UUID_NAMESPACE = Buffer.from(
   '75baebc4c7d94d04a4648feac68e6f17',

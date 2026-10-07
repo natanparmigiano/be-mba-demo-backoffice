@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import type { EventMessage, PublishOptions } from '@mba-demo/events'
-import type { WhatsAppWebhook } from '@mba-demo/wa-webhooks'
+import type { EventMessage, PublishOptions } from '@mba-desk/events'
+import type { WhatsAppWebhook } from '@mba-desk/wa-webhooks'
 import {
   createRunnerExecutionHandler,
   createWhatsAppWebhookRetryHandler,

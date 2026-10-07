@@ -4,7 +4,7 @@ import {
   whatsappWebhookSchema,
   whatsappMessageSchema,
   type WhatsAppWebhook,
-} from '@mba-demo/wa-webhooks'
+} from '@mba-desk/wa-webhooks'
 import { whatsappMessageSources } from './schema/mba.js'
 import {
   assertWhatsAppWebhookMatchesChannel,

@@ -1,5 +1,5 @@
 export const DEVELOPMENT_DATABASE_URL =
-  'postgresql://postgres:postgres@localhost:5432/mba_demo_backoffice'
+  'postgresql://postgres:postgres@localhost:5432/mba_desk'
 
 export type RuntimeEnvironment = Readonly<Record<string, string | undefined>>
 

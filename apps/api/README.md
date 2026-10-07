@@ -1,4 +1,4 @@
-# `@mba-demo/api`
+# `@mba-desk/api`
 
 The Hono application is the system's HTTP and process-lifecycle boundary. It
 enforces authentication and organization scope, publishes verified webhooks,
@@ -17,6 +17,7 @@ composition chained in `src/app.ts`.
 | `GET`, `POST`            | `/api/auth/*`                                                       | Delegates requests to Better Auth                                        |
 | `GET`                    | `/api/auth/sso-availability`                                        | Reports whether any verified SSO provider is ready                       |
 | `GET`, `PUT`             | `/api/files/signed`                                                 | Filesystem download/upload authorized by an expiring HMAC URL            |
+| `GET`, `PUT`, `DELETE`   | `/api/organization-logos/:organizationId`                           | Serves or manages a member-visible 512×512 organization logo             |
 | `GET`                    | `/api/admin/organizations`                                          | Lists organizations for an application administrator                     |
 | `GET`                    | `/api/admin/organizations/:id`                                      | Returns administrator-visible organization detail                        |
 | `POST`                   | `/api/admin/organizations/:id/members/self`                         | Adds the application administrator as an organization admin              |
@@ -116,6 +117,9 @@ composition chained in `src/app.ts`.
 | `GET`                    | `/api/stickers/:id/content`                                         | Serves organization-authorized sticker bytes                             |
 | `GET`                    | `/api/groups`                                                       | Lists active-organization groups with search and cursor pagination       |
 | `GET`                    | `/api/groups/:id`                                                   | Returns read-only group details for the active organization              |
+| `GET`, `POST`            | `/api/teams`                                                        | Lists or creates teams and organization-scoped membership                |
+| `GET`, `PATCH`, `DELETE` | `/api/teams/:id`                                                    | Reads, updates, or deletes an active-organization team                   |
+| `POST`                   | `/api/teams/:id/default`                                            | Makes an active-organization team the sole default                       |
 | `POST`                   | `/api/runner/functions`                                             | Creates an organization-scoped versioned JavaScript function             |
 | `GET`                    | `/api/runner/functions`                                             | Lists active functions in the active organization                        |
 | `GET`                    | `/api/runner/functions/:id`                                         | Returns function detail and immutable revision history                   |
@@ -165,7 +169,7 @@ functions covered by the key's effective direct-function and MCP scopes, and
 rechecks key validity, membership, and scope before every tool call. It is
 stateless, supports the current protocol and the SDK's stateless legacy
 fallback, and delegates authorization and worker dispatch to
-`@mba-demo/runner`.
+`@mba-desk/runner`.
 The transport accepts any request host; deployments must enforce their network
 boundary, while the route continues to require a valid scoped runner API key
 on every request.
@@ -200,12 +204,12 @@ then sent to Meta using a 15-minute presigned download URL. In filesystem mode,
 allow browser PUT requests through bucket CORS.
 
 The media-package playground accepts only the MIME types and per-kind limits
-defined by `@mba-demo/wa-media`. Active organization members can retrieve media
+defined by `@mba-desk/wa-media`. Active organization members can retrieve media
 metadata or download bytes; uploads and deletes require an owner or
 administrator. Downloads are authenticated server-side and are returned with
 private, no-store caching.
 
-The QR-code playground exposes every `@mba-demo/wa-qr` operation. Active
+The QR-code playground exposes every `@mba-desk/wa-qr` operation. Active
 organization members can retrieve and list QR codes and their SVG or PNG image
 URLs; create, update, and delete operations require an organization owner or
 administrator. Channel credentials remain server-side and provider calls time
@@ -218,7 +222,7 @@ URLs, so those transfers do not pass through Hono.
 
 The WA Cloud route accepts a positive numeric channel ID that must resolve to a WhatsApp channel. GET subscription challenges are checked against that channel's `wa_webhook_verify_token`. POST requests are limited to JSON payloads of 1 MiB, verified against the channel's `wa_app_secret` using `X-Hub-Signature-256`, validated with the complete webhook Zod schema, and checked against the channel's WABA and phone-number metadata before publication. Phone-number IDs remain exact; display phone numbers are compared after removing formatting characters. The original body is retained as the event value so signature fidelity and lossless processing are preserved.
 
-The subscriber validates the event again and persists contacts, groups, chats, messages, and message status history in one transaction. For media messages it first uses `@mba-demo/wa-media` to retrieve and authenticate the temporary provider download, then stores the bytes through `@mba-demo/files`. The resulting deterministic, UUID-sharded object key is persisted in `messages.media_file_path`. Failed webhook handling is republished to the established `wa-cloud.webhook.v1` topic with a durable retry count. After `WA_WEBHOOK_MAX_RETRIES` retries (default `5`), the complete original event and final error are published to `wa-cloud.webhook.dead-letter.v1`; successful retry or dead-letter publication lets the failed source offset commit, preventing poison messages from looping forever. Reusing the established source topic also prevents first deliveries from being skipped by a new topic's latest-offset initialization. Retry writes remain idempotent through unique indexes, and out-of-order message statuses cannot regress the current projection.
+The subscriber validates the event again and persists contacts, groups, chats, messages, and message status history in one transaction. For media messages it first uses `@mba-desk/wa-media` to retrieve and authenticate the temporary provider download, then stores the bytes through `@mba-desk/files`. The resulting deterministic, UUID-sharded object key is persisted in `messages.media_file_path`. Failed webhook handling is republished to the established `wa-cloud.webhook.v1` topic with a durable retry count. After `WA_WEBHOOK_MAX_RETRIES` retries (default `5`), the complete original event and final error are published to `wa-cloud.webhook.dead-letter.v1`; successful retry or dead-letter publication lets the failed source offset commit, preventing poison messages from looping forever. Reusing the established source topic also prevents first deliveries from being skipped by a new topic's latest-offset initialization. Retry writes remain idempotent through unique indexes, and out-of-order message statuses cannot regress the current projection.
 
 Successfully processed payloads are also written to the archival webhook log
 when `WEBHOOK_ARCHIVE_ENABLED=true` (the default). Set it to `false` on the
@@ -228,14 +232,14 @@ webhook ingestion.
 Contact reads are scoped through each contact's channel to the active organization membership. The list endpoint accepts `search`, `channelId`, `limit`, and an opaque `cursor`, ordered by most recently seen contacts. Full raw provider data is returned only by the detail endpoint. Organization owners and admins create contacts from the WhatsApp ID and optional profile fields; creation also creates the direct chat in the same transaction. Managed contacts can be updated without knowing Meta's optional user ID. Webhook ingestion resolves WhatsApp ID first, so later provider traffic enriches the existing managed row and reuses its chat. Deletion requires reviewing the direct-chat impact and typing the WhatsApp ID, then transactionally removes the direct chat, events, messages, and status history; group-message sender references are cleared before the contact is removed.
 
 Agent status and eligibility reads resolve the owned channel's phone-number ID
-and system-user access token on the server and query `@mba-demo/wa-mba`. An
+and system-user access token on the server and query `@mba-desk/wa-mba`. An
 empty settings array is `not_configured`; otherwise the rollout flag produces
 `enabled` or `disabled`. Eligibility checks require an organization owner or
 admin. Agent settings, eligibility, onboarding, and allowlist requests do not
 set an application-level response deadline, allowing long-running Meta calls
 to complete. Provider settings and credentials are not returned to the
-browser. Knowledge-file multipart uploads are sent to `@mba-demo/wa-mba` and
-also archived through `@mba-demo/files` so their original bytes can be reused
+browser. Knowledge-file multipart uploads are sent to `@mba-desk/wa-mba` and
+also archived through `@mba-desk/files` so their original bytes can be reused
 by agent exports.
 Connector reads omit credential values. Connector updates preserve existing
 Meta-side credentials unless replacements are explicitly submitted.
@@ -264,7 +268,7 @@ requirements.
 
 Agent backups reuse the complete AGTX export builder. Archive bytes are stored
 under unique `agent-backups/<organization-hash>/<channel-id>/...` keys through
-`@mba-demo/files`, while `mba.agent_backups` retains tenant ownership, channel
+`@mba-desk/files`, while `mba.agent_backups` retains tenant ownership, channel
 ownership, file name, byte size, and creation time. Backup creation requires an
 organization owner or admin; active organization members can list backups.
 Deleting a channel transactionally removes its backup rows and then removes
@@ -292,7 +296,7 @@ establish the resource state, import stops instead of risking a duplicate.
 The manifest's exported rollout value is provenance only. Import snapshots and
 preserves the destination rollout state: an enabled destination stays enabled,
 while a disabled destination cannot be enabled by the package.
-Knowledge files are re-archived through `@mba-demo/files`. Evaluation cases are
+Knowledge files are re-archived through `@mba-desk/files`. Evaluation cases are
 deliberately outside AGTX because Meta does not expose a creation operation for
 them. Meta operations are not transactional; a provider failure can leave an
 explicitly reported partial import. Runtime failures are emitted as
@@ -316,21 +320,28 @@ without reporting partial provider changes.
 
 Group reads use the same organization boundary and cursor contract, ordered by most recently updated groups. Search covers group subjects, descriptions, provider IDs, invitation links, and event types; full raw group events are returned only by the detail endpoint.
 
-Chat inbox reads use the denormalized `chats.organization_id` tenant key and the `(organization_id, updated_at, id)` index. The detail endpoint applies the same tenant boundary but resolves one chat independently of the current cursor page, allowing browser deep links without changing list semantics. Inbox summaries recover a missing or historically unknown message discriminator from the preserved provider payload before returning the localized-preview input. Timeline reads perform separate bounded index scans over messages and chat events, merge at most two page-sized result sets, and return them chronologically with one opaque cursor. Message results include their type-specific projections and forwarding markers, and archived media paths are converted to short-lived download URLs without exposing storage keys. This avoids offset scans and an unbounded union sort as chat history grows. The chat read mutation resolves the latest inbound provider message and channel credentials server-side, marks it read through `@mba-demo/wa-messaging`, and only then transactionally advances the local cursor, resets the unread count, and promotes delivered inbound message projections to `read`. Handoff mutations similarly resolve the organization-owned chat and channel credentials server-side, transfer Meta thread control, then update the local owner projection after the provider accepts the request.
+Team reads include each team's slug, color, default status, and users plus the
+active organization's member choices. Owners and admins can create, edit,
+delete, and make a team default. The default switch is transactional and
+serialized per organization. Membership replacement is transactional, and
+every submitted user is revalidated against the active organization before the
+relation changes.
+
+Chat inbox reads use the denormalized `chats.organization_id` tenant key and the `(organization_id, updated_at, id)` index. The detail endpoint applies the same tenant boundary but resolves one chat independently of the current cursor page, allowing browser deep links without changing list semantics. Inbox summaries recover a missing or historically unknown message discriminator from the preserved provider payload before returning the localized-preview input. Timeline reads perform separate bounded index scans over messages and chat events, merge at most two page-sized result sets, and return them chronologically with one opaque cursor. Message results include their type-specific projections and forwarding markers, and archived media paths are converted to short-lived download URLs without exposing storage keys. This avoids offset scans and an unbounded union sort as chat history grows. The chat read mutation resolves the latest inbound provider message and channel credentials server-side, marks it read through `@mba-desk/wa-messaging`, and only then transactionally advances the local cursor, resets the unread count, and promotes delivered inbound message projections to `read`. Handoff mutations similarly resolve the organization-owned chat and channel credentials server-side, transfer Meta thread control, then update the local owner projection after the provider accepts the request.
 
 Composer sends are accepted only while the conversation is owned by the human
 application. The server resolves and overwrites the provider recipient, marks
 group destinations explicitly, rejects interactive payloads, sends through
-`@mba-demo/wa-messaging`, and persists the accepted outbound projection before
+`@mba-desk/wa-messaging`, and persists the accepted outbound projection before
 publishing its real-time invalidation. Media is first staged through a
 chat-scoped presigned PUT URL and then uploaded to Meta through
-`@mba-demo/wa-media`; the staged file key remains the authorized timeline media
+`@mba-desk/wa-media`; the staged file key remains the authorized timeline media
 source while Meta delivery statuses reconcile by provider message ID. Composer
 voice notes are accepted only as `audio/ogg`; prerecorded audio retains the
 other media-library formats.
 
 Template discovery resolves the chat's organization-owned channel and queries
-its WABA through `@mba-demo/wa-templates`; access tokens never reach the
+its WABA through `@mba-desk/wa-templates`; access tokens never reach the
 browser. Only approved definitions are returned, including their language,
 components, examples, and parameter format so the composer can build a preview
 and typed parameter form. Meta cursors remain opaque and are passed through for
@@ -362,6 +373,7 @@ API and worker processes; memory mode only serves in-process development.
 | `src/runner-mcp-package.ts`          | Parses and serializes safe versioned MCPX packages        |
 | `src/whatsapp-media.ts`              | Archives webhook media and returns message-to-file keys   |
 | `src/routes/admin-organizations.ts`  | Application-admin organization operations                 |
+| `src/routes/organization-logos.ts`   | Organization logo storage, validation, and delivery       |
 | `src/routes/api-playground.ts`       | Organization-scoped WhatsApp API playground               |
 | `src/routes/messaging-playground.ts` | Messaging playground and signed media upload URLs         |
 | `src/routes/marketing-playground.ts` | Marketing Messages API playground route                   |
@@ -373,6 +385,7 @@ API and worker processes; memory mode only serves in-process development.
 | `src/routes/chats.ts`                | Chat reads, handoff, composer sends, media, and SSE       |
 | `src/routes/contacts.ts`             | Organization-scoped contact listing and detail queries    |
 | `src/routes/groups.ts`               | Organization-scoped group listing and detail queries      |
+| `src/routes/teams.ts`                | Organization-scoped team and membership CRUD              |
 | `src/routes/mcp.ts`                  | Bearer-authenticated stateless MCP Streamable HTTP        |
 | `src/routes/runner.ts`               | Versioned function lifecycle and isolated execution       |
 | `src/routes/wa-cloud.ts`             | Verified WA Cloud webhook receiver and publisher          |
@@ -383,7 +396,7 @@ API and worker processes; memory mode only serves in-process development.
 
 `createApp()` accepts optional `corsOrigin`, `eventBus`, `fileStore`,
 `waCloudWebhook`, `apiPlayground`, `messagingPlayground`, `mediaPlayground`,
-`qrPlayground`, `chats`, `contacts`, `groups`, `mcp`, `runner`,
+`qrPlayground`, `chats`, `contacts`, `groups`, `teams`, `mcp`, `runner`,
 `hasSsoProviders`, and `webRoot` values. This keeps route
 tests independent from external infrastructure and allows production to supply
 its static build directory.
@@ -458,7 +471,7 @@ kafka-console-consumer.sh \
   --bootstrap-server localhost:9092 \
   --topic wa-cloud.webhook.dead-letter.v1 \
   --from-beginning \
-  --group mba-demo-webhook-dlq-inspector
+  --group mba-desk-webhook-dlq-inspector
 ```
 
 ## Adding an event handler
@@ -476,10 +489,10 @@ All subscriptions must be registered before `events.start()` because Kafka subsc
 From the repository root:
 
 ```bash
-yarn workspace @mba-demo/api dev
-yarn workspace @mba-demo/api typecheck
-yarn workspace @mba-demo/api test
-yarn workspace @mba-demo/api build
+yarn workspace @mba-desk/api dev
+yarn workspace @mba-desk/api typecheck
+yarn workspace @mba-desk/api test
+yarn workspace @mba-desk/api build
 ```
 
-`dev` loads the root `.env` when present and watches `src/index.ts`. A built app can be started with `yarn workspace @mba-demo/api start`.
+`dev` loads the root `.env` when present and watches `src/index.ts`. A built app can be started with `yarn workspace @mba-desk/api start`.

@@ -9,7 +9,7 @@ import {
   runnerMcpFunctions,
   runnerMcps,
   runnerRevisionParameters,
-} from '@mba-demo/db'
+} from '@mba-desk/db'
 import { and, asc, desc, eq, gt, inArray, isNull, ne, sql } from 'drizzle-orm'
 import {
   getRunnerMcpImportTargetName,

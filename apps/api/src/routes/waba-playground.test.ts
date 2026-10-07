@@ -4,7 +4,7 @@ import {
   WhatsAppWabaApiError,
   type ListWabasOptions,
   type WhatsAppWabaClientContract,
-} from '@mba-demo/wa-waba'
+} from '@mba-desk/wa-waba'
 import {
   createWabaPlaygroundRoute,
   type WabaPlaygroundRepository,

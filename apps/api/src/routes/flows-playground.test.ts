@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import type { WhatsAppFlowsClientContract } from '@mba-demo/wa-flows'
+import type { WhatsAppFlowsClientContract } from '@mba-desk/wa-flows'
 import { createFlowsPlaygroundRoute } from './flows-playground.js'
 
 const configuration = {

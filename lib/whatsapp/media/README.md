@@ -1,6 +1,6 @@
 # WhatsApp media
 
-`@mba-demo/wa-media` is the typed WhatsApp Cloud API client for media lifecycle
+`@mba-desk/wa-media` is the typed WhatsApp Cloud API client for media lifecycle
 operations. It covers the media endpoints represented in the checked-in Cloud
 API collection:
 
@@ -18,7 +18,7 @@ WhatsApp.
 ## Usage
 
 ```ts
-import { createWhatsAppMediaClient } from '@mba-demo/wa-media'
+import { createWhatsAppMediaClient } from '@mba-desk/wa-media'
 
 const media = createWhatsAppMediaClient({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,

@@ -1,5 +1,5 @@
 {
-  "name": "@mba-demo/sso-cli",
+  "name": "@mba-desk/sso-cli",
   "version": "0.0.0",
   "private": true,
   "type": "module",

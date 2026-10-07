@@ -43,7 +43,7 @@ For local host-based development, the public auth URL is normally
 
 ## Authenticate the setup CLI
 
-The `@mba-demo/sso-cli` workspace is the supported setup path. It handles
+The `@mba-desk/sso-cli` workspace is the supported setup path. It handles
 authentication, provider payloads, SAML metadata files, and secret redaction:
 
 ```bash
@@ -99,7 +99,7 @@ changing it also changes the callback URL. Configure this redirect URI:
 For example:
 
 ```text
-https://backoffice.example.com/api/auth/sso/callback/acme-oidc
+https://desk.example.com/api/auth/sso/callback/acme-oidc
 ```
 
 The registration response also returns `redirectURI`; treat that returned value
@@ -177,7 +177,7 @@ application-owned audience:
     "entryPoint": "https://idp.example.com/saml/sso",
     "idpMetadataFile": "./idp-metadata.local",
     "spMetadata": {
-      "entityID": "https://backoffice.example.com/api/auth/sso/saml2/sp/metadata?providerId=acme-saml"
+      "entityID": "https://desk.example.com/api/auth/sso/saml2/sp/metadata?providerId=acme-saml"
     },
     "wantAssertionsSigned": true
   }

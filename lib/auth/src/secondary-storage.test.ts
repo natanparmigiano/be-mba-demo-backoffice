@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { MemoryKeyValueStore } from '@mba-demo/kv'
+import { MemoryKeyValueStore } from '@mba-desk/kv'
 import { createSecondaryStorage } from './secondary-storage.js'
 
 describe('Better Auth secondary storage', () => {

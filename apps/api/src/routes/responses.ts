@@ -1,4 +1,4 @@
-import { auth } from '@mba-demo/auth'
+import { auth } from '@mba-desk/auth'
 import { Hono } from 'hono'
 import {
   extractTokenUsage,

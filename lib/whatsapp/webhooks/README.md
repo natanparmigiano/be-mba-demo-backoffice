@@ -1,13 +1,13 @@
-# `@mba-demo/wa-webhooks`
+# `@mba-desk/wa-webhooks`
 
 This package is the shared validation and type boundary for WhatsApp Cloud API
 webhooks. It preserves additive provider fields while using discriminated
 unions wherever Meta publishes stable tags, allowing ingestion to remain both
 typed and lossless.
 
-Import all webhook schemas and inferred types from `@mba-demo/wa-webhooks`.
+Import all webhook schemas and inferred types from `@mba-desk/wa-webhooks`.
 Outbound request and response contracts belong to
-[`@mba-demo/wa-messaging`](../messaging/README.md).
+[`@mba-desk/wa-messaging`](../messaging/README.md).
 
 The root export is `whatsappWebhookSchema`. Its `entry[].changes` value is
 discriminated by `field`, and incoming messages are discriminated by message
@@ -36,6 +36,6 @@ package root.
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/wa-webhooks typecheck
-yarn workspace @mba-demo/wa-webhooks build
+yarn workspace @mba-desk/wa-webhooks typecheck
+yarn workspace @mba-desk/wa-webhooks build
 ```

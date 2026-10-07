@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { createHmac } from 'node:crypto'
 import { describe, it } from 'node:test'
-import type { WhatsAppChannelConfiguration } from '@mba-demo/db'
-import { MemoryEventBus } from '@mba-demo/events'
+import type { WhatsAppChannelConfiguration } from '@mba-desk/db'
+import { MemoryEventBus } from '@mba-desk/events'
 import { app, createApp } from './app.js'
 import {
   WA_CLOUD_WEBHOOK_FORWARD_TOPIC,
@@ -247,14 +247,10 @@ describe('API', () => {
     const apiResponse = await staticApp.request('/api/missing')
 
     assert.equal(pageResponse.status, 200)
-    assert.match(
-      await pageResponse.text(),
-      /<title>MBA Demo Backoffice<\/title>/,
-    )
+    assert.match(await pageResponse.text(), /<title>MBA Desk<\/title>/)
     assert.equal(apiResponse.status, 404)
     assert.deepEqual(await apiResponse.json(), { message: 'Not found' })
   })
-
 })
 
 function createTestChannel(

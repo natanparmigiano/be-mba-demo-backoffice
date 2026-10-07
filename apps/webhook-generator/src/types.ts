@@ -1,4 +1,4 @@
-import type { WhatsAppWebhook } from '@mba-demo/wa-webhooks'
+import type { WhatsAppWebhook } from '@mba-desk/wa-webhooks'
 
 export type ConversationOwner = 'agent' | 'human_app'
 

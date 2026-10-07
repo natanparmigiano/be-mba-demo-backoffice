@@ -1,6 +1,6 @@
 # WhatsApp webhook subscriptions
 
-`@mba-demo/wa-subscriptions` is the typed WhatsApp Business Management API
+`@mba-desk/wa-subscriptions` is the typed WhatsApp Business Management API
 client for managing an application's webhook subscription to a WhatsApp
 Business Account (WABA).
 
@@ -24,7 +24,7 @@ import {
   createWhatsAppSubscriptionsClient,
   createWhatsAppWebhookRegistrationClient,
   WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS,
-} from '@mba-demo/wa-subscriptions'
+} from '@mba-desk/wa-subscriptions'
 
 const registration = createWhatsAppWebhookRegistrationClient({
   appId: process.env.WHATSAPP_APP_ID!,
@@ -78,14 +78,14 @@ app access token is sent only in the form body, preventing the app secret from
 appearing in URLs and intermediary request logs. The request body uses the
 platform `URLSearchParams` serializer for standard form encoding.
 `WHATSAPP_WEBHOOK_SUBSCRIPTION_FIELDS` covers every field currently parsed by
-`@mba-demo/wa-webhooks`, including `messages` (which also carries message
+`@mba-desk/wa-webhooks`, including `messages` (which also carries message
 status updates), business/account updates, `standby`, `message_echoes`, and
 `smb_message_echoes`.
 
 `register()` accepts any non-empty subset of those fields. `list()` reads the
 app-level subscriptions and returns each registered callback plus its field
 names and Graph API versions. `MBA_WEBHOOK_SUBSCRIPTION_FIELDS` is the exact
-field set used when the backoffice registers its app-level callback. It covers
+field set used when MBA Desk registers its app-level callback. It covers
 messages, calls, handovers, account and business status, Flows, template
 components/quality/status/category events, phone-number quality/name events,
 standby traffic, and template correct-category detection.
@@ -93,7 +93,7 @@ standby traffic, and template correct-category detection.
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/wa-subscriptions typecheck
-yarn workspace @mba-demo/wa-subscriptions test
-yarn workspace @mba-demo/wa-subscriptions build
+yarn workspace @mba-desk/wa-subscriptions typecheck
+yarn workspace @mba-desk/wa-subscriptions test
+yarn workspace @mba-desk/wa-subscriptions build
 ```

@@ -29,8 +29,7 @@ export function Tabs<Value extends string>({
     <div
       className={cn(
         variant === 'underline' && 'border-b pb-1',
-        variant === 'pills' &&
-          'overflow-hidden border bg-card shadow-xs',
+        variant === 'pills' && 'overflow-hidden border bg-card shadow-xs',
         variant === 'pills' && size === 'default' && 'rounded-2xl p-2',
         variant === 'pills' && size === 'compact' && 'rounded-xl p-1',
         className,

@@ -1,7 +1,7 @@
-import { closeDatabase } from '@mba-demo/db'
-import { events } from '@mba-demo/events'
-import { files } from '@mba-demo/files'
-import { pubsub } from '@mba-demo/pubsub'
+import { closeDatabase } from '@mba-desk/db'
+import { events } from '@mba-desk/events'
+import { files } from '@mba-desk/files'
+import { pubsub } from '@mba-desk/pubsub'
 import {
   includeWhatsAppReliabilityTopics,
   registerSubscribers,

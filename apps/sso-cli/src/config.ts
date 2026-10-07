@@ -13,7 +13,7 @@ export type SsoCliCommand =
 
 type RuntimeEnvironment = Readonly<Record<string, string | undefined>>
 
-export const helpText = `MBA Demo Backoffice SSO setup CLI
+export const helpText = `MBA Desk SSO setup CLI
 
 Usage:
   yarn sso status [--base-url URL]

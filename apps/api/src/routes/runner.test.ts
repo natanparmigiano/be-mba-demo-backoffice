@@ -4,14 +4,14 @@ import {
   RunnerFunctionExecutionInProgressError,
   RunnerFunctionNameConflictError,
   RunnerMcpInUseError,
-} from '@mba-demo/runner'
+} from '@mba-desk/runner'
 import type {
   CreatedRunnerApiKey,
   RunnerExecutionResult,
   RunnerFunctionDefinition,
   RunnerMcpImportPreview,
   RunnerMcpPackage,
-} from '@mba-demo/runner'
+} from '@mba-desk/runner'
 import { createRunnerRoute, type RunnerManagementApi } from './runner.js'
 import {
   parseRunnerMcpPackageYaml,

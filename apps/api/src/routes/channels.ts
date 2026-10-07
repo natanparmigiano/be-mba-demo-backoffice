@@ -1,10 +1,10 @@
-import { auth } from '@mba-demo/auth'
-import { createWhatsAppAnalyticsClient } from '@mba-demo/wa-analytics'
+import { auth } from '@mba-desk/auth'
+import { createWhatsAppAnalyticsClient } from '@mba-desk/wa-analytics'
 import {
   createWhatsAppComponentsClient,
   type ConversationalComponents,
   type WriteConversationalComponentsInput,
-} from '@mba-demo/wa-components'
+} from '@mba-desk/wa-components'
 import {
   agentBackups,
   channels,
@@ -20,14 +20,14 @@ import {
   runnerFunctionApiKeys,
   runnerMcps,
   webhooks,
-} from '@mba-demo/db'
+} from '@mba-desk/db'
 import {
   hashApiKey,
   runner,
   type RunnerMcpImportBlocker,
   type RunnerMcpDefinition,
   type RunnerMcpPackage,
-} from '@mba-demo/runner'
+} from '@mba-desk/runner'
 import {
   createWhatsAppMbaClient,
   WhatsAppMbaApiError,
@@ -60,26 +60,26 @@ import {
   type KnowledgeWebsite,
   type KnowledgeWebsiteInput,
   type OnboardAgentResponse,
-} from '@mba-demo/wa-mba'
+} from '@mba-desk/wa-mba'
 import {
   createWhatsAppWebhookRegistrationClient,
   MBA_WEBHOOK_SUBSCRIPTION_FIELDS,
   WhatsAppWebhookRegistrationApiError,
   WhatsAppWebhookRegistrationResponseError,
-} from '@mba-demo/wa-subscriptions'
+} from '@mba-desk/wa-subscriptions'
 import {
   createWhatsAppRegistrationClient,
   WhatsAppRegistrationApiError,
   WhatsAppRegistrationResponseError,
   type PhoneNumberInfo,
   type SuccessResponse as RegistrationSuccessResponse,
-} from '@mba-demo/wa-registration'
+} from '@mba-desk/wa-registration'
 import {
   createWhatsAppQrClient,
   WhatsAppQrApiError,
   WhatsAppQrResponseError,
   type MessageQrCode,
-} from '@mba-demo/wa-qr'
+} from '@mba-desk/wa-qr'
 import { zValidator } from '@hono/zod-validator'
 import { and, count, eq, inArray, sql } from 'drizzle-orm'
 import { Hono } from 'hono'
@@ -117,6 +117,36 @@ const webhookForwardUrls = z
   })
 const registerPhoneNumberSchema = z.object({
   pin: z.string().regex(/^\d{6}$/),
+})
+
+const businessProfileSchema = z.object({
+  displayName: z.string().trim().min(1).max(512),
+  about: z.string().trim().max(139),
+  address: z.string().trim().max(256),
+  description: z.string().trim().max(512),
+  email: z.union([z.literal(''), z.string().trim().email().max(128)]),
+  vertical: z.enum([
+    'UNDEFINED',
+    'OTHER',
+    'AUTO',
+    'BEAUTY',
+    'APPAREL',
+    'EDU',
+    'ENTERTAIN',
+    'EVENT_PLAN',
+    'FINANCE',
+    'GROCERY',
+    'GOVT',
+    'HOTEL',
+    'HEALTH',
+    'NONPROFIT',
+    'PROF_SERVICES',
+    'RETAIL',
+    'TRAVEL',
+    'RESTAURANT',
+  ]),
+  websites: z.array(z.string().trim().url().max(256)).max(2),
+  profilePictureHandle: z.string().trim().min(1).max(1_024).optional(),
 })
 
 const createChannelSchema = z.object({
@@ -737,6 +767,11 @@ export interface ChannelAgentConfiguration {
   waPhoneNumberId: string
   waSystemUserAccessToken: string
   waWabaId?: string
+  waAppId?: string
+}
+
+export type BusinessProfile = z.infer<typeof businessProfileSchema> & {
+  profilePictureUrl: string | null
 }
 
 export interface ChannelDashboardAnalytics {
@@ -843,6 +878,17 @@ export interface ChannelManagementRouteOptions {
   getPhoneNumberRegistration?: (
     configuration: ChannelAgentConfiguration,
   ) => Promise<PhoneNumberInfo>
+  getBusinessProfile?: (
+    configuration: ChannelAgentConfiguration,
+  ) => Promise<BusinessProfile>
+  updateBusinessProfile?: (
+    configuration: ChannelAgentConfiguration,
+    input: z.infer<typeof businessProfileSchema>,
+  ) => Promise<void>
+  uploadBusinessProfilePicture?: (
+    configuration: ChannelAgentConfiguration,
+    file: File,
+  ) => Promise<string>
   getQrCode?: (
     configuration: ChannelAgentConfiguration,
   ) => Promise<MessageQrCode | undefined>
@@ -1133,6 +1179,7 @@ const databaseRepository: ChannelManagementRepository = {
         waPhoneNumberId: channels.waPhoneNumberId,
         waSystemUserAccessToken: channels.waSystemUserAccessToken,
         waWabaId: channels.waWabaId,
+        waAppId: channels.waAppId,
       })
       .from(channels)
       .where(
@@ -1458,6 +1505,9 @@ export const createChannelManagementRoute = ({
   getAgentSettings = getMetaAgentSettings,
   getAgentEligibility = getMetaAgentEligibility,
   getPhoneNumberRegistration = getMetaPhoneNumberRegistration,
+  getBusinessProfile = getMetaBusinessProfile,
+  updateBusinessProfile = updateMetaBusinessProfile,
+  uploadBusinessProfilePicture = uploadMetaBusinessProfilePicture,
   getQrCode = getMetaChannelQrCode,
   downloadQrImage = downloadMetaChannelQrImage,
   registerPhoneNumber = registerMetaPhoneNumber,
@@ -1597,6 +1647,93 @@ export const createChannelManagementRoute = ({
         })
       } catch (error) {
         if (error instanceof MetaPhoneNumberRegistrationError) {
+          return c.json({ message: error.message }, error.status)
+        }
+        throw error
+      }
+    })
+    .get('/:id/business-profile', async (c) => {
+      const channelId = parseChannelId(c.req.param('id'))
+      if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      const configuration = await repository.getAgentConfiguration(
+        access.organizationId,
+        channelId,
+      )
+      if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+      try {
+        return c.json({ profile: await getBusinessProfile(configuration) })
+      } catch (error) {
+        if (error instanceof MetaBusinessProfileError) {
+          return c.json({ message: error.message }, error.status)
+        }
+        throw error
+      }
+    })
+    .put(
+      '/:id/business-profile',
+      zValidator('json', businessProfileSchema),
+      async (c) => {
+        const channelId = parseChannelId(c.req.param('id'))
+        if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+        const access = await getAccess(c.req.raw.headers)
+        if (!access) return c.json({ message: 'Unauthorized' }, 401)
+        if (!canManageChannels(access.role)) {
+          return c.json(
+            { message: 'Organization owner or admin required' },
+            403,
+          )
+        }
+        const configuration = await repository.getAgentConfiguration(
+          access.organizationId,
+          channelId,
+        )
+        if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+        try {
+          await updateBusinessProfile(configuration, c.req.valid('json'))
+          return c.json({ profile: await getBusinessProfile(configuration) })
+        } catch (error) {
+          if (error instanceof MetaBusinessProfileError) {
+            return c.json({ message: error.message }, error.status)
+          }
+          throw error
+        }
+      },
+    )
+    .post('/:id/business-profile/picture', async (c) => {
+      const channelId = parseChannelId(c.req.param('id'))
+      if (!channelId) return c.json({ message: 'Invalid channel ID' }, 400)
+      const access = await getAccess(c.req.raw.headers)
+      if (!access) return c.json({ message: 'Unauthorized' }, 401)
+      if (!canManageChannels(access.role)) {
+        return c.json({ message: 'Organization owner or admin required' }, 403)
+      }
+      const configuration = await repository.getAgentConfiguration(
+        access.organizationId,
+        channelId,
+      )
+      if (!configuration) return c.json({ message: 'Channel not found' }, 404)
+      const form = await c.req.formData().catch(() => undefined)
+      const file = form?.get('picture')
+      if (!(file instanceof File)) {
+        return c.json({ message: 'A profile picture is required' }, 400)
+      }
+      if (!['image/jpeg', 'image/png'].includes(file.type)) {
+        return c.json({ message: 'Profile picture must be JPEG or PNG' }, 400)
+      }
+      if (file.size === 0 || file.size > MAX_PROFILE_PICTURE_BYTES) {
+        return c.json(
+          { message: 'Profile picture must be 5 MB or smaller' },
+          400,
+        )
+      }
+      try {
+        return c.json({
+          handle: await uploadBusinessProfilePicture(configuration, file),
+        })
+      } catch (error) {
+        if (error instanceof MetaBusinessProfileError) {
           return c.json({ message: error.message }, error.status)
         }
         throw error
@@ -4578,6 +4715,212 @@ export async function downloadMetaChannelQrImage(
 }
 
 class MetaChannelQrCodeError extends Error {
+  constructor(
+    message: string,
+    options?: ErrorOptions,
+    readonly status = 502 as const,
+  ) {
+    super(message, options)
+  }
+}
+
+const PROFILE_FIELDS =
+  'about,address,description,email,profile_picture_url,vertical,websites'
+const MAX_PROFILE_PICTURE_BYTES = 5 * 1_024 * 1_024
+const GRAPH_API_ROOT = 'https://graph.facebook.com/v26.0'
+
+export async function getMetaBusinessProfile(
+  configuration: ChannelAgentConfiguration,
+  request: typeof fetch = fetch,
+): Promise<BusinessProfile> {
+  const url = new URL(
+    `${GRAPH_API_ROOT}/${encodeURIComponent(configuration.waPhoneNumberId)}/whatsapp_business_profile`,
+  )
+  url.searchParams.set('fields', PROFILE_FIELDS)
+  const phoneUrl = new URL(
+    `${GRAPH_API_ROOT}/${encodeURIComponent(configuration.waPhoneNumberId)}`,
+  )
+  phoneUrl.searchParams.set('fields', 'verified_name')
+  const [body, phone] = await Promise.all([
+    requestMetaBusinessProfile(url, configuration, request),
+    requestMetaBusinessProfile(phoneUrl, configuration, request),
+  ])
+  const profile =
+    isUnknownRecord(body) && Array.isArray(body.data)
+      ? (body.data as unknown[])[0]
+      : undefined
+  if (!isUnknownRecord(profile)) {
+    throw new MetaBusinessProfileError(
+      'Meta returned an unexpected WhatsApp business profile response',
+    )
+  }
+  return {
+    displayName:
+      isUnknownRecord(phone) && typeof phone.verified_name === 'string'
+        ? phone.verified_name
+        : '',
+    about: stringValue(profile.about),
+    address: stringValue(profile.address),
+    description: stringValue(profile.description),
+    email: stringValue(profile.email),
+    vertical: businessVertical(profile.vertical),
+    websites: Array.isArray(profile.websites)
+      ? profile.websites.filter(
+          (value): value is string => typeof value === 'string',
+        )
+      : [],
+    profilePictureUrl:
+      typeof profile.profile_picture_url === 'string'
+        ? profile.profile_picture_url
+        : null,
+  }
+}
+
+export async function updateMetaBusinessProfile(
+  configuration: ChannelAgentConfiguration,
+  input: z.infer<typeof businessProfileSchema>,
+  request: typeof fetch = fetch,
+): Promise<void> {
+  const url = new URL(
+    `${GRAPH_API_ROOT}/${encodeURIComponent(configuration.waPhoneNumberId)}/whatsapp_business_profile`,
+  )
+  const { profilePictureHandle, ...profile } = input
+  const { displayName, ...businessProfile } = profile
+  const body = await requestMetaBusinessProfile(url, configuration, request, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      ...businessProfile,
+      ...(profilePictureHandle
+        ? { profile_picture_handle: profilePictureHandle }
+        : {}),
+    }),
+  })
+  if (!isUnknownRecord(body) || body.success !== true) {
+    throw new MetaBusinessProfileError(
+      'Meta returned an unexpected business profile update response',
+    )
+  }
+  const current = await getMetaBusinessProfile(configuration, request)
+  if (current.displayName !== displayName) {
+    const phoneBody = await requestMetaBusinessProfile(
+      new URL(
+        `${GRAPH_API_ROOT}/${encodeURIComponent(configuration.waPhoneNumberId)}`,
+      ),
+      configuration,
+      request,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          new_display_name: displayName,
+        }),
+      },
+    )
+    if (!isUnknownRecord(phoneBody) || phoneBody.success !== true) {
+      throw new MetaBusinessProfileError(
+        'Meta returned an unexpected display name update response',
+      )
+    }
+  }
+}
+
+export async function uploadMetaBusinessProfilePicture(
+  configuration: ChannelAgentConfiguration,
+  file: File,
+  request: typeof fetch = fetch,
+): Promise<string> {
+  if (!configuration.waAppId) {
+    throw new MetaBusinessProfileError('The channel has no Meta app ID')
+  }
+  const sessionUrl = new URL(
+    `${GRAPH_API_ROOT}/${encodeURIComponent(configuration.waAppId)}/uploads`,
+  )
+  sessionUrl.searchParams.set('file_length', String(file.size))
+  sessionUrl.searchParams.set('file_type', file.type)
+  const session = await requestMetaBusinessProfile(
+    sessionUrl,
+    configuration,
+    request,
+    { method: 'POST' },
+  )
+  if (!isUnknownRecord(session) || typeof session.id !== 'string') {
+    throw new MetaBusinessProfileError(
+      'Meta returned an unexpected profile picture upload session',
+    )
+  }
+  const upload = await requestMetaBusinessProfile(
+    new URL(`${GRAPH_API_ROOT}/${encodeURIComponent(session.id)}`),
+    configuration,
+    request,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/octet-stream',
+        file_offset: '0',
+      },
+      body: await file.arrayBuffer(),
+    },
+  )
+  if (!isUnknownRecord(upload) || typeof upload.h !== 'string') {
+    throw new MetaBusinessProfileError(
+      'Meta returned an unexpected profile picture handle',
+    )
+  }
+  return upload.h
+}
+
+async function requestMetaBusinessProfile(
+  url: URL,
+  configuration: ChannelAgentConfiguration,
+  request: typeof fetch,
+  init: RequestInit = {},
+): Promise<unknown> {
+  try {
+    const headers = new Headers(init.headers)
+    headers.set(
+      'authorization',
+      `Bearer ${configuration.waSystemUserAccessToken}`,
+    )
+    const response = await request(url, { ...init, headers })
+    const body: unknown = await response.json().catch(() => undefined)
+    if (!response.ok) {
+      const message =
+        isUnknownRecord(body) &&
+        isUnknownRecord(body.error) &&
+        typeof body.error.message === 'string'
+          ? body.error.message
+          : `HTTP ${response.status}`
+      throw new MetaBusinessProfileError(
+        `Meta rejected the WhatsApp business profile request: ${message}`,
+      )
+    }
+    return body
+  } catch (error) {
+    if (error instanceof MetaBusinessProfileError) throw error
+    throw new MetaBusinessProfileError(
+      'Could not reach the WhatsApp business profile API',
+      { cause: error },
+    )
+  }
+}
+
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
+function businessVertical(value: unknown): BusinessProfile['vertical'] {
+  const result = businessProfileSchema.shape.vertical.safeParse(value)
+  return result.success ? result.data : 'UNDEFINED'
+}
+
+export class MetaBusinessProfileError extends Error {
   constructor(
     message: string,
     options?: ErrorOptions,

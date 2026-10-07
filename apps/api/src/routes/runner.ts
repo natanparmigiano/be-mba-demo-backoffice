@@ -1,5 +1,5 @@
-import { auth } from '@mba-demo/auth'
-import { db, member } from '@mba-demo/db'
+import { auth } from '@mba-desk/auth'
+import { db, member } from '@mba-desk/db'
 import {
   RunnerApiKeyInvalidError,
   RunnerApiKeyScopeError,
@@ -38,7 +38,7 @@ import {
   type RunnerApiKeyMetadata,
   type UpdateRunnerFunctionInput,
   type UpdateRunnerMcpInput,
-} from '@mba-demo/runner'
+} from '@mba-desk/runner'
 import { zValidator } from '@hono/zod-validator'
 import { and, eq } from 'drizzle-orm'
 import { Hono } from 'hono'

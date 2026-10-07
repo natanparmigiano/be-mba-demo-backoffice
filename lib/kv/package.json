@@ -1,5 +1,5 @@
 {
-  "name": "@mba-demo/kv",
+  "name": "@mba-desk/kv",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -16,7 +16,7 @@
     "test": "tsx --conditions=development --test src/**/*.test.ts"
   },
   "dependencies": {
-    "@mba-demo/db": "0.0.0",
+    "@mba-desk/db": "0.0.0",
     "drizzle-orm": "^0.45.3",
     "redis": "^6.2.1"
   },

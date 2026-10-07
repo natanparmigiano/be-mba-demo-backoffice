@@ -1,6 +1,6 @@
 # WhatsApp QR codes
 
-`@mba-demo/wa-qr` is the typed WhatsApp Business Management API client for
+`@mba-desk/wa-qr` is the typed WhatsApp Business Management API client for
 message QR codes attached to a business phone number.
 
 It covers every endpoint in the checked-in `QR codes` collection folder:
@@ -14,7 +14,7 @@ It covers every endpoint in the checked-in `QR codes` collection folder:
 ## Usage
 
 ```ts
-import { createWhatsAppQrClient } from '@mba-demo/wa-qr'
+import { createWhatsAppQrClient } from '@mba-desk/wa-qr'
 
 const qr = createWhatsAppQrClient({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
@@ -60,7 +60,7 @@ Access tokens are never included in errors.
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/wa-qr typecheck
-yarn workspace @mba-demo/wa-qr test
-yarn workspace @mba-demo/wa-qr build
+yarn workspace @mba-desk/wa-qr typecheck
+yarn workspace @mba-desk/wa-qr test
+yarn workspace @mba-desk/wa-qr build
 ```

@@ -3,11 +3,11 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: mba_demo_backoffice
+      POSTGRES_DB: mba_desk
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres -d mba_demo_backoffice']
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d mba_desk']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -15,7 +15,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
 
   app:
-    image: mba-demo-backoffice:local
+    image: mba-desk:local
     build: .
     command: ['app']
     restart: unless-stopped
@@ -27,7 +27,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8080
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_demo_backoffice
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_desk
       KV_ADAPTER: memory
       ENABLE_WORKER_IN_PROCESS: 'true'
       SUBSCRIBE_TO_TOPICS: ${SUBSCRIBE_TO_TOPICS:-all}
@@ -38,7 +38,7 @@ services:
       BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-}
       CORS_ORIGIN: ${COMPOSE_CORS_ORIGIN:-http://localhost:8080}
       FILES_ADAPTER: fs
-      FILES_DIRECTORY: /var/lib/mba-demo/files
+      FILES_DIRECTORY: /var/lib/mba-desk/files
       FILES_PUBLIC_URL: ${COMPOSE_FILES_PUBLIC_URL:-http://localhost:8080}
       FILES_SIGNING_SECRET: ${FILES_SIGNING_SECRET:-development-only-files-signing-secret}
     depends_on:
@@ -47,7 +47,7 @@ services:
     ports:
       - '${WEB_PORT:-8080}:8080'
     volumes:
-      - files-data:/var/lib/mba-demo/files
+      - files-data:/var/lib/mba-desk/files
     healthcheck:
       test:
         - CMD

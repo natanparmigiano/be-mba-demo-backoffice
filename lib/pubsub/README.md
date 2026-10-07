@@ -1,11 +1,11 @@
-# `@mba-demo/pubsub`
+# `@mba-desk/pubsub`
 
 Use this package for transient, fan-out messages that every active subscriber
 should receive. It uses Redis Pub/Sub when `REDIS_URL` is configured and falls
 back to a process-local Node.js `EventEmitter` when Redis is absent.
 
 Redis Pub/Sub is intentionally non-durable: messages are not stored, replayed,
-or retried for disconnected subscribers. Use `@mba-demo/events` and Kafka when
+or retried for disconnected subscribers. Use `@mba-desk/events` and Kafka when
 you need consumer groups, durable delivery, or replay.
 
 ## Adapter selection
@@ -35,7 +35,7 @@ Messages contain the exact channel and a string value. Handlers may be
 synchronous or asynchronous.
 
 ```ts
-import { pubsub } from '@mba-demo/pubsub'
+import { pubsub } from '@mba-desk/pubsub'
 
 const unsubscribe = await pubsub.subscribe('chat.updated', async (message) => {
   console.log(message.channel, message.value)
@@ -65,9 +65,9 @@ await pubsub.close()
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/pubsub typecheck
-yarn workspace @mba-demo/pubsub test
-yarn workspace @mba-demo/pubsub build
+yarn workspace @mba-desk/pubsub typecheck
+yarn workspace @mba-desk/pubsub test
+yarn workspace @mba-desk/pubsub build
 ```
 
 Unit tests cover environment selection, lifecycle behavior, memory delivery,

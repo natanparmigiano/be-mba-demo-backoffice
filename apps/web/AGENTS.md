@@ -49,8 +49,8 @@ Auth, React Router, i18next, Tailwind CSS 4, and semantic theme tokens.
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/web typecheck
-yarn workspace @mba-demo/web build
+yarn workspace @mba-desk/web typecheck
+yarn workspace @mba-desk/web build
 ```
 
 Also exercise affected routes, guard states, both themes, all three locales,

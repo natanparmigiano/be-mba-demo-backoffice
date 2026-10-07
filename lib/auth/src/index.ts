@@ -1,7 +1,8 @@
-import { randomBytes } from 'node:crypto'
-import { db } from '@mba-demo/db'
-import * as schema from '@mba-demo/db/schema'
-import { kv } from '@mba-demo/kv'
+import { createHash, randomBytes } from 'node:crypto'
+import { z } from 'zod'
+import { db } from '@mba-desk/db'
+import * as schema from '@mba-desk/db/schema'
+import { kv } from '@mba-desk/kv'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { admin, organization } from 'better-auth/plugins'
@@ -14,7 +15,7 @@ export { hasSsoProviders } from './sso-availability.js'
 const environment = getAuthEnvironment()
 
 export const auth = betterAuth({
-  appName: 'MBA Demo Backoffice',
+  appName: 'MBA Desk',
   baseURL: environment.baseURL,
   secret: environment.secret,
   trustedOrigins: environment.trustedOrigins,
@@ -28,7 +29,69 @@ export const auth = betterAuth({
     enabled: true,
   },
   plugins: [
-    organization(),
+    organization({
+      teams: { enabled: true, defaultTeam: { enabled: true } },
+      organizationHooks: {
+        beforeCreateTeam: async ({ team, organization }) => {
+          const defaultTeam = getDefaultTeamFields(team, organization.id)
+          return { data: defaultTeam ?? { isDefault: false } }
+        },
+        beforeUpdateTeam: async ({ team, updates }) => {
+          if (typeof updates.isDefault !== 'boolean') return undefined
+          const currentIsDefault: unknown = team.isDefault
+          return {
+            data: { ...updates, isDefault: currentIsDefault === true },
+          }
+        },
+      },
+      schema: {
+        organization: {
+          additionalFields: {
+            primaryColor: {
+              type: 'string',
+              required: false,
+              defaultValue: '#0866ff',
+              validator: {
+                input: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+                output: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+              },
+            },
+          },
+        },
+        team: {
+          additionalFields: {
+            slug: {
+              type: 'string',
+              required: true,
+              unique: true,
+              validator: {
+                input: z
+                  .string()
+                  .min(1)
+                  .max(80)
+                  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+                output: z.string(),
+              },
+            },
+            color: {
+              type: 'string',
+              required: true,
+              defaultValue: '#0866ff',
+              validator: {
+                input: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+                output: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+              },
+            },
+            isDefault: {
+              type: 'boolean',
+              required: true,
+              defaultValue: false,
+              fieldName: 'default',
+            },
+          },
+        },
+      },
+    }),
     admin(),
     sso({
       organizationProvisioning: {
@@ -47,6 +110,23 @@ export const auth = betterAuth({
 
 export type Auth = typeof auth
 export type Session = typeof auth.$Infer.Session
+
+export function getDefaultTeamFields(
+  team: Record<string, unknown>,
+  organizationId: string,
+): { name: string; slug: string; color: string; isDefault: true } | undefined {
+  if (typeof team.slug === 'string' && team.slug.length > 0) return undefined
+  const organizationHash = createHash('sha256')
+    .update(organizationId)
+    .digest('hex')
+    .slice(0, 16)
+  return {
+    name: 'Default Team',
+    slug: `default-team-${organizationHash}`,
+    color: '#0866ff',
+    isDefault: true,
+  }
+}
 
 const INITIAL_ADMIN_EMAIL = 'admin@meta.com'
 const INITIAL_ADMIN_NAME = 'Admin'

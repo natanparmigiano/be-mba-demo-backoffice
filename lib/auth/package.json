@@ -1,5 +1,5 @@
 {
-  "name": "@mba-demo/auth",
+  "name": "@mba-desk/auth",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -19,8 +19,8 @@
   },
   "dependencies": {
     "@better-auth/sso": "1.7.6",
-    "@mba-demo/db": "0.0.0",
-    "@mba-demo/kv": "0.0.0",
+    "@mba-desk/db": "0.0.0",
+    "@mba-desk/kv": "0.0.0",
     "better-auth": "^1.7.6"
   },
   "devDependencies": {

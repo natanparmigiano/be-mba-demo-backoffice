@@ -35,6 +35,7 @@ import {
 } from '../channel-qr'
 import { ChannelQrCode } from '../components/channel-qr-code'
 import {
+  BusinessProfileSettingsCard,
   ConversationalComponentsSettingsCard,
   QrCodesSettingsCard,
 } from '../components/channel-management-cards'
@@ -1401,6 +1402,7 @@ function ChannelFormPage({
   const [activeTab, setActiveTab] = useState<
     | 'identity'
     | 'registration'
+    | 'profile'
     | 'qr'
     | 'components'
     | 'webhook'
@@ -1456,6 +1458,10 @@ function ChannelFormPage({
           { value: 'identity', label: t('channels.tabs.identity') },
           ...(isEditing
             ? [
+                {
+                  value: 'profile' as const,
+                  label: t('channels.tabs.profile'),
+                },
                 {
                   value: 'registration' as const,
                   label: t('channels.tabs.registration'),
@@ -1603,6 +1609,13 @@ function ChannelFormPage({
               </div>
             )}
           </SettingsCard>
+        )}
+
+        {isEditing && activeTab === 'profile' && (
+          <BusinessProfileSettingsCard
+            channelId={channelId!}
+            canManage={canManage}
+          />
         )}
 
         {isEditing && activeTab === 'qr' && (

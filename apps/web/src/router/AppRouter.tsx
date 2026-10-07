@@ -19,6 +19,7 @@ import { StudioPage } from '../pages/StudioPage'
 import { StudioHomePage } from '../pages/StudioHomePage'
 import { TemplatesPage } from '../pages/TemplatesPage'
 import { TemplateSendingPage } from '../pages/TemplateSendingPage'
+import { TeamsPage } from '../pages/TeamsPage'
 import { WebhooksPage } from '../pages/WebhooksPage'
 import {
   AdminRoute,
@@ -80,6 +81,7 @@ export function AppRouter() {
               <Route path="/webhooks" element={<WebhooksPage />} />
               <Route path="/contacts" element={<ContactsPage />} />
               <Route path="/groups" element={<GroupsPage />} />
+              <Route path="/teams" element={<TeamsPage />} />
               <Route path="/templates" element={<TemplatesPage />} />
               <Route
                 path="/template-sending"

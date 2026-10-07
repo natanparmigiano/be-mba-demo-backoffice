@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import type { WhatsAppWebhook } from '@mba-demo/wa-webhooks'
+import type { WhatsAppWebhook } from '@mba-desk/wa-webhooks'
 import {
   archiveWhatsAppWebhookMedia,
   createWhatsAppMediaFilePath,

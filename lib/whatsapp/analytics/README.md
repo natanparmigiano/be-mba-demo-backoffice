@@ -1,6 +1,6 @@
 # WhatsApp analytics
 
-`@mba-demo/wa-analytics` is the typed WhatsApp Business Management API client
+`@mba-desk/wa-analytics` is the typed WhatsApp Business Management API client
 for WABA analytics. It covers the two queries in the checked-in `Analytics`
 collection and the additional analytics families in Meta's current
 documentation:
@@ -15,12 +15,12 @@ documentation:
 
 The package also exposes the related one-way operation that enables template
 insights for a WABA. Template button click opt-out is part of template updates
-and remains in `@mba-demo/wa-templates`.
+and remains in `@mba-desk/wa-templates`.
 
 ## Usage
 
 ```ts
-import { createWhatsAppAnalyticsClient } from '@mba-demo/wa-analytics'
+import { createWhatsAppAnalyticsClient } from '@mba-desk/wa-analytics'
 
 const analytics = createWhatsAppAnalyticsClient({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
@@ -81,7 +81,7 @@ References:
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/wa-analytics typecheck
-yarn workspace @mba-demo/wa-analytics test
-yarn workspace @mba-demo/wa-analytics build
+yarn workspace @mba-desk/wa-analytics typecheck
+yarn workspace @mba-desk/wa-analytics test
+yarn workspace @mba-desk/wa-analytics build
 ```

@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import type { FileStore, SignUrlOptions } from '@mba-demo/files'
+import type { FileStore, SignUrlOptions } from '@mba-desk/files'
 import {
   WhatsAppMessagingApiError,
   type SendMessageInput,
   type WhatsAppMessagingClientContract,
-} from '@mba-demo/wa-messaging'
+} from '@mba-desk/wa-messaging'
 import {
   createMessagingPlaygroundRoute,
   type MessagingPlaygroundRepository,

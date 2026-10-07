@@ -1,6 +1,6 @@
 # Files
 
-`@mba-demo/files` provides one object-storage contract with filesystem, PostgreSQL, and S3-compatible adapters. All adapters support `get`, `put`, `delete`, and expiring upload/download URLs.
+`@mba-desk/files` provides one object-storage contract with filesystem, PostgreSQL, and S3-compatible adapters. All adapters support `get`, `put`, `delete`, and expiring upload/download URLs.
 
 The filesystem adapter stores file bodies and metadata below `FILES_DIRECTORY`. Its URLs are HMAC-signed links to the API's `GET` and `PUT /api/files/signed` handlers. A signed URL is a bearer credential: keep its lifetime short and do not log or persist it unnecessarily.
 
@@ -11,7 +11,7 @@ The S3 adapter uses native SigV4 presigned URLs. `FILES_S3_ENDPOINT` is used by 
 ## API
 
 ```ts
-import { files } from '@mba-demo/files'
+import { files } from '@mba-desk/files'
 
 await files.put('organizations/123/avatar.png', bytes, {
   contentType: 'image/png',

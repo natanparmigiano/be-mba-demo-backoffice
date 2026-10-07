@@ -1,6 +1,6 @@
 # WhatsApp phone-number registration
 
-`@mba-demo/wa-registration` is the typed WhatsApp Cloud API client for the
+`@mba-desk/wa-registration` is the typed WhatsApp Cloud API client for the
 business phone-number registration lifecycle.
 
 It supports:
@@ -20,7 +20,7 @@ two-step verification; that action remains available only in WhatsApp Manager.
 ## Usage
 
 ```ts
-import { createWhatsAppRegistrationClient } from '@mba-demo/wa-registration'
+import { createWhatsAppRegistrationClient } from '@mba-desk/wa-registration'
 
 const registration = createWhatsAppRegistrationClient({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,

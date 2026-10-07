@@ -1,4 +1,4 @@
-# `@mba-demo/webhook-generator`
+# `@mba-desk/webhook-generator`
 
 Use this stateful CLI to generate schema-valid WhatsApp Cloud API and MBA
 webhook traffic with realistic identity, ownership, and status ordering. It
@@ -10,16 +10,16 @@ Meta's `X-Hub-Signature-256` convention.
 Inspect a short stream without network requests:
 
 ```bash
-yarn workspace @mba-demo/webhook-generator dev -- \
+yarn workspace @mba-desk/webhook-generator dev -- \
   --dry-run --contacts 20 --groups 3 --group-size 4 --rps 25 --events 100
 ```
 
-Run `yarn workspace @mba-demo/webhook-generator dev -- --help` for every option.
+Run `yarn workspace @mba-desk/webhook-generator dev -- --help` for every option.
 
 ## Event behavior
 
 The generator follows the checked-in Cloud API webhook examples and validates
-every payload against the shared `@mba-demo/wa-webhooks` contract:
+every payload against the shared `@mba-desk/wa-webhooks` contract:
 
 - Incoming text, image, location, interactive reply, and reaction messages use the standard `messages` envelope.
 - MBA-agent-owned traffic uses `field: standby` and groups contacts, messages, message echoes, or statuses under `value.standby`. Ordinary incoming messages continue to use `field: messages` and `value.messages[]`.
@@ -39,7 +39,7 @@ Send signed traffic to a configured local channel:
 
 ```bash
 WA_APP_SECRET=the-channel-app-secret \
-yarn workspace @mba-demo/webhook-generator dev -- \
+yarn workspace @mba-desk/webhook-generator dev -- \
   --target http://localhost:3000/api/wa-cloud/webhook/1 \
   --waba-id the-channel-waba-id \
   --phone-number-id the-channel-phone-number-id \
@@ -54,7 +54,7 @@ API. Use `--app-secret` instead of `WA_APP_SECRET` when preferred. Without
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/webhook-generator typecheck
-yarn workspace @mba-demo/webhook-generator test
-yarn workspace @mba-demo/webhook-generator build
+yarn workspace @mba-desk/webhook-generator typecheck
+yarn workspace @mba-desk/webhook-generator test
+yarn workspace @mba-desk/webhook-generator build
 ```

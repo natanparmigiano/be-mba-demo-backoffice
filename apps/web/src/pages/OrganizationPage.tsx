@@ -27,6 +27,16 @@ import {
   TableHeader,
   TableRow,
 } from '../components/ui'
+import {
+  applyOrganizationPrimaryColor,
+  DEFAULT_PRIMARY_COLOR,
+} from '../components/theme/organization-color'
+import { OrganizationLogo } from '../components/app/OrganizationLogo'
+import { OrganizationLogoPicker } from '../components/app/OrganizationLogoPicker'
+import {
+  removeOrganizationLogo,
+  uploadOrganizationLogo,
+} from '../components/app/organization-logo-api'
 
 interface MemberSummary {
   id: string
@@ -66,8 +76,15 @@ export function OrganizationPage() {
   const [dialog, setDialog] = useState<OrganizationDialog>(null)
   const [organizationName, setOrganizationName] = useState('')
   const [organizationSlug, setOrganizationSlug] = useState('')
+  const [primaryColor, setPrimaryColor] = useState(DEFAULT_PRIMARY_COLOR)
+  const [organizationLogo, setOrganizationLogo] = useState<Blob | null>(null)
   const [slugWasEdited, setSlugWasEdited] = useState(false)
   const [renameName, setRenameName] = useState('')
+  const [editPrimaryColor, setEditPrimaryColor] = useState(
+    DEFAULT_PRIMARY_COLOR,
+  )
+  const [editLogo, setEditLogo] = useState<Blob | null>(null)
+  const [removeEditLogo, setRemoveEditLogo] = useState(false)
   const [invitationEmail, setInvitationEmail] = useState('')
   const [invitationRole, setInvitationRole] = useState<'admin' | 'member'>(
     'member',
@@ -146,6 +163,14 @@ export function OrganizationPage() {
 
   const openDialog = (nextDialog: Exclude<OrganizationDialog, null>) => {
     setDialogError(null)
+    if (nextDialog === 'rename' && activeOrganization) {
+      setRenameName(activeOrganization.name)
+      setEditPrimaryColor(
+        activeOrganization.primaryColor ?? DEFAULT_PRIMARY_COLOR,
+      )
+      setEditLogo(null)
+      setRemoveEditLogo(false)
+    }
     setDialog(nextDialog)
   }
 
@@ -163,10 +188,15 @@ export function OrganizationPage() {
         const result = await authClient.organization.create({
           name: organizationName.trim(),
           slug: organizationSlug.trim(),
+          primaryColor,
         })
         if (result.error) throw new Error(result.error.message)
         if (!result.data)
           throw new Error(t('organizations.organizationNotCreated'))
+
+        if (organizationLogo) {
+          await uploadOrganizationLogo(result.data.id, organizationLogo)
+        }
 
         const activeResult = await authClient.organization.setActive({
           organizationId: result.data.id,
@@ -175,6 +205,8 @@ export function OrganizationPage() {
 
         setOrganizationName('')
         setOrganizationSlug('')
+        setPrimaryColor(DEFAULT_PRIMARY_COLOR)
+        setOrganizationLogo(null)
         setSlugWasEdited(false)
       },
       t('organizations.created'),
@@ -210,9 +242,18 @@ export function OrganizationPage() {
       async () => {
         const result = await authClient.organization.update({
           organizationId: activeOrganization.id,
-          data: { name: renameName.trim() },
+          data: {
+            name: renameName.trim(),
+            primaryColor: editPrimaryColor,
+          },
         })
         if (result.error) throw new Error(result.error.message)
+        if (editLogo) {
+          await uploadOrganizationLogo(activeOrganization.id, editLogo)
+        } else if (removeEditLogo && activeOrganization.logo) {
+          await removeOrganizationLogo(activeOrganization.id)
+        }
+        applyOrganizationPrimaryColor(editPrimaryColor)
       },
       t('organizations.renamed'),
       { closeDialog: true, refreshMembers: false },
@@ -344,16 +385,13 @@ export function OrganizationPage() {
                     )
                   }
                 >
-                  <span
+                  <OrganizationLogo
+                    organization={organization}
                     className={cn(
-                      'grid size-9 shrink-0 place-items-center rounded-lg',
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground group-hover:text-foreground',
+                      'size-9 rounded-lg ring-1',
+                      isActive ? 'ring-primary/30' : 'ring-border',
                     )}
-                  >
-                    <Building2 className="size-4" aria-hidden />
-                  </span>
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold text-foreground">
                       {organization.name}
@@ -375,9 +413,10 @@ export function OrganizationPage() {
           <section className="overflow-hidden rounded-2xl border bg-card">
             <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
               <div className="flex min-w-0 items-center gap-4">
-                <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                  <Building2 className="size-6" aria-hidden />
-                </span>
+                <OrganizationLogo
+                  organization={activeOrganization}
+                  className="size-12 ring-1 ring-primary/20"
+                />
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="truncate text-xl font-bold">
@@ -583,7 +622,12 @@ export function OrganizationPage() {
         onOpenChange={(open) => !open && closeDialog()}
         title={t('organizations.createTitle')}
         description={t('organizations.createDescription')}
-        icon={<DialogIcon icon={<Building2 className="size-5" />} />}
+        icon={
+          <OrganizationLogo
+            organization={null}
+            className="size-10 ring-1 ring-border"
+          />
+        }
       >
         <form className="grid w-full gap-4" onSubmit={createOrganization}>
           <Input
@@ -608,6 +652,19 @@ export function OrganizationPage() {
             }}
             pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
             required
+            disabled={isBusy}
+          />
+          <Input
+            label={t('organizations.primaryColor')}
+            hint={t('organizations.primaryColorHint')}
+            type="color"
+            value={primaryColor}
+            onChange={(event) => setPrimaryColor(event.target.value)}
+            disabled={isBusy}
+          />
+          <OrganizationLogoPicker
+            value={organizationLogo}
+            onChange={(logo) => setOrganizationLogo(logo)}
             disabled={isBusy}
           />
           <DialogError message={dialogError} />
@@ -663,7 +720,12 @@ export function OrganizationPage() {
         onOpenChange={(open) => !open && closeDialog()}
         title={t('organizations.renameTitle')}
         description={t('organizations.renameDescription')}
-        icon={<DialogIcon icon={<Pencil className="size-5" />} />}
+        icon={
+          <OrganizationLogo
+            organization={activeOrganization}
+            className="size-10 ring-1 ring-border"
+          />
+        }
       >
         <form className="grid w-full gap-4" onSubmit={renameOrganization}>
           <Input
@@ -672,6 +734,23 @@ export function OrganizationPage() {
             onChange={(event) => setRenameName(event.target.value)}
             autoFocus
             required
+            disabled={isBusy}
+          />
+          <Input
+            label={t('organizations.primaryColor')}
+            hint={t('organizations.primaryColorHint')}
+            type="color"
+            value={editPrimaryColor}
+            onChange={(event) => setEditPrimaryColor(event.target.value)}
+            disabled={isBusy}
+          />
+          <OrganizationLogoPicker
+            organization={removeEditLogo ? null : activeOrganization}
+            value={editLogo}
+            onChange={(logo, removeExisting) => {
+              setEditLogo(logo)
+              setRemoveEditLogo(Boolean(removeExisting))
+            }}
             disabled={isBusy}
           />
           <DialogError message={dialogError} />

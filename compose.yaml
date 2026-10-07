@@ -1,5 +1,5 @@
 x-app: &app
-  image: mba-demo-backoffice:local
+  image: mba-desk:local
   build:
     context: .
     dockerfile: Dockerfile
@@ -16,11 +16,11 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: mba_demo_backoffice
+      POSTGRES_DB: mba_desk
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres -d mba_demo_backoffice']
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d mba_desk']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -97,12 +97,12 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8080
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_demo_backoffice
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_desk
       REDIS_URL: redis://redis:6379
-      KAFKA_CLIENT_ID: mba-demo-app
+      KAFKA_CLIENT_ID: mba-desk-app
       KAFKA_BROKERS: kafka:9092
       FILES_ADAPTER: s3
-      FILES_S3_BUCKET: ${FILES_S3_BUCKET:-mba-demo-files}
+      FILES_S3_BUCKET: ${FILES_S3_BUCKET:-mba-desk-files}
       FILES_S3_CREATE_BUCKET: 'true'
       FILES_S3_REGION: us-east-1
       FILES_S3_ENDPOINT: http://minio:9000
@@ -142,15 +142,15 @@ services:
     command: ['worker']
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_demo_backoffice
-      KAFKA_CLIENT_ID: mba-demo-worker
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_desk
+      KAFKA_CLIENT_ID: mba-desk-worker
       KAFKA_BROKERS: kafka:9092
-      KAFKA_GROUP_ID: mba-demo-worker-consumer
+      KAFKA_GROUP_ID: mba-desk-worker-consumer
       SUBSCRIBE_TO_TOPICS: ${SUBSCRIBE_TO_TOPICS:-all}
       WA_WEBHOOK_MAX_RETRIES: ${WA_WEBHOOK_MAX_RETRIES:-5}
       WEBHOOK_ARCHIVE_ENABLED: ${WEBHOOK_ARCHIVE_ENABLED:-true}
       FILES_ADAPTER: s3
-      FILES_S3_BUCKET: ${FILES_S3_BUCKET:-mba-demo-files}
+      FILES_S3_BUCKET: ${FILES_S3_BUCKET:-mba-desk-files}
       FILES_S3_CREATE_BUCKET: 'true'
       FILES_S3_REGION: us-east-1
       FILES_S3_ENDPOINT: http://minio:9000

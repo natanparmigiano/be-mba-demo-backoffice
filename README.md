@@ -1,8 +1,8 @@
-# MBA Demo Backoffice
+# MBA Desk
 
-MBA Demo Backoffice provides an organization-scoped React application and a
-typed Hono API for administering WhatsApp channels, contacts, groups, chats,
-users, and SSO. The Yarn workspaces monorepo uses Better Auth,
+MBA Desk provides an organization-scoped React application and a
+typed Hono API for administering WhatsApp channels, contacts, groups, teams,
+chats, users, and SSO. The Yarn workspaces monorepo uses Better Auth,
 Drizzle/PostgreSQL, Redis-compatible KV storage and Pub/Sub, Kafka-compatible
 events, and filesystem/PostgreSQL/S3-compatible object storage; Hono RPC keeps the browser
 and server contract aligned.
@@ -101,7 +101,7 @@ yarn auth:create-admin --email admin@example.com --name "Admin" --role admin
 yarn sso help     # inspect SSO provider setup and lifecycle commands
 ```
 
-The database defaults to `postgresql://postgres:postgres@localhost:5432/mba_demo_backoffice` in development. In production, `NODE_ENV=production` requires an explicit `DATABASE_URL`. Set `PORT` to change the API port and `CORS_ORIGIN` to allow a different frontend origin.
+The database defaults to `postgresql://postgres:postgres@localhost:5432/mba_desk` in development. In production, `NODE_ENV=production` requires an explicit `DATABASE_URL`. Set `PORT` to change the API port and `CORS_ORIGIN` to allow a different frontend origin.
 
 ## Configuration
 
@@ -177,7 +177,7 @@ flowchart LR
    `import type`, so API runtime code stays out of the browser bundle.
 2. **External connections are lazy.** Shared packages do not connect during
    import. The API starts and closes resources explicitly during its lifecycle.
-3. **Workspace imports use package names.** Import through `@mba-demo/*`, never
+3. **Workspace imports use package names.** Import through `@mba-desk/*`, never
    through another workspace's source directory.
 4. **Durability is intentional.** Use Pub/Sub for transient notification and
    the event bus for durable, replayable work.
@@ -234,9 +234,9 @@ Compose runs the dedicated `worker` role instead.
 
 | Need                               | Package            | Local adapter  | Distributed adapter |
 | ---------------------------------- | ------------------ | -------------- | ------------------- |
-| Store values, counters, or TTLs    | `@mba-demo/kv`     | Memory         | Redis               |
-| Broadcast transient updates        | `@mba-demo/pubsub` | EventEmitter   | Redis Pub/Sub       |
-| Process durable or replayable work | `@mba-demo/events` | In-process bus | Kafka               |
+| Store values, counters, or TTLs    | `@mba-desk/kv`     | Memory         | Redis               |
+| Broadcast transient updates        | `@mba-desk/pubsub` | EventEmitter   | Redis Pub/Sub       |
+| Process durable or replayable work | `@mba-desk/events` | In-process bus | Kafka               |
 
 Use Pub/Sub when missing an event during a restart is acceptable. Use the event
 bus when work must survive process boundaries or use consumer groups. Kafka is
@@ -244,7 +244,7 @@ selected only when both `KAFKA_CLIENT_ID` and `KAFKA_BROKERS` are configured.
 
 ### Where should files be stored?
 
-All `@mba-demo/files` adapters expose `get`, `put`, `delete`, and signed upload
+All `@mba-desk/files` adapters expose `get`, `put`, `delete`, and signed upload
 and download URLs.
 
 | Adapter       | Best fit                                           | Important behavior                                                          |
@@ -255,7 +255,7 @@ and download URLs.
 
 ### How is the database organized?
 
-Import database APIs through `@mba-demo/db`. Postgres.js connects lazily, and
+Import database APIs through `@mba-desk/db`. Postgres.js connects lazily, and
 the API calls `closeDatabase()` during graceful shutdown. Schema definitions
 live under `lib/db/src/schema`:
 
@@ -271,30 +271,30 @@ perform no I/O until called.
 
 | Package                      | Use it for                                                                               |
 | ---------------------------- | ---------------------------------------------------------------------------------------- |
-| `@mba-demo/wa-analytics`     | Messaging, conversation, pricing, template, call, and group analytics                    |
-| `@mba-demo/wa-components`    | Conversational commands and icebreaker configuration                                     |
-| `@mba-demo/wa-flows`         | Flow creation, assets, previews, publishing, migration, metrics, and encryption keys     |
-| `@mba-demo/wa-media`         | Media upload, temporary URLs, authenticated download, and deletion                       |
-| `@mba-demo/wa-mba`           | Agent lifecycle, instructions, knowledge, connectors, evaluations, control, and insights |
-| `@mba-demo/wa-messaging`     | Text, media, contacts, locations, reactions, interactive messages, and templates         |
-| `@mba-demo/wa-moderation`    | Listing, blocking, and unblocking WhatsApp users                                         |
-| `@mba-demo/wa-qr`            | Click-to-chat QR code lifecycle and provider-managed images                              |
-| `@mba-demo/wa-registration`  | Ownership verification, registration, PINs, localization, and deregistration             |
-| `@mba-demo/wa-subscriptions` | App subscriptions and WABA callback overrides                                            |
-| `@mba-demo/wa-templates`     | Template CRUD, migration, library, authentication upserts, and groups                    |
-| `@mba-demo/wa-waba`          | WABA lookup and owned/shared account discovery                                           |
-| `@mba-demo/wa-webhooks`      | Webhook schemas, additive fields, and discriminated payload types                        |
+| `@mba-desk/wa-analytics`     | Messaging, conversation, pricing, template, call, and group analytics                    |
+| `@mba-desk/wa-components`    | Conversational commands and icebreaker configuration                                     |
+| `@mba-desk/wa-flows`         | Flow creation, assets, previews, publishing, migration, metrics, and encryption keys     |
+| `@mba-desk/wa-media`         | Media upload, temporary URLs, authenticated download, and deletion                       |
+| `@mba-desk/wa-mba`           | Agent lifecycle, instructions, knowledge, connectors, evaluations, control, and insights |
+| `@mba-desk/wa-messaging`     | Text, media, contacts, locations, reactions, interactive messages, and templates         |
+| `@mba-desk/wa-moderation`    | Listing, blocking, and unblocking WhatsApp users                                         |
+| `@mba-desk/wa-qr`            | Click-to-chat QR code lifecycle and provider-managed images                              |
+| `@mba-desk/wa-registration`  | Ownership verification, registration, PINs, localization, and deregistration             |
+| `@mba-desk/wa-subscriptions` | App subscriptions and WABA callback overrides                                            |
+| `@mba-desk/wa-templates`     | Template CRUD, migration, library, authentication upserts, and groups                    |
+| `@mba-desk/wa-waba`          | WABA lookup and owned/shared account discovery                                           |
+| `@mba-desk/wa-webhooks`      | Webhook schemas, additive fields, and discriminated payload types                        |
 
 ### Common integration questions
 
 #### Where does Flow message delivery belong?
 
-In `@mba-demo/wa-messaging`; `@mba-demo/wa-flows` manages Flow definitions and
+In `@mba-desk/wa-messaging`; `@mba-desk/wa-flows` manages Flow definitions and
 assets.
 
 #### How is inbound media archived?
 
-The webhook subscriber combines `@mba-demo/wa-media` with `@mba-demo/files`,
+The webhook subscriber combines `@mba-desk/wa-media` with `@mba-desk/files`,
 stores bytes under deterministic UUID-sharded keys, and retains the key on the
 message row.
 
@@ -305,7 +305,7 @@ retry policy remains explicit at the application boundary.
 
 #### Which package owns the messages endpoint?
 
-`@mba-demo/wa-messaging` owns `/{phone-number-id}/messages`.
+`@mba-desk/wa-messaging` owns `/{phone-number-id}/messages`.
 
 ## Render deployment
 

@@ -22,7 +22,7 @@ and should be updated when behavior changes.
 
 - Keep TypeScript strict and preserve the existing ESM style. Backend relative
   imports use `.js` extensions in TypeScript source.
-- Import other workspaces through their `@mba-demo/*` package names. Do not
+- Import other workspaces through their `@mba-desk/*` package names. Do not
   reach into sibling workspace source directories.
 - Keep public library APIs behind their documented exports or `src/index.ts`.
 - Do not edit generated `dist/`, coverage, or `*.tsbuildinfo` files.

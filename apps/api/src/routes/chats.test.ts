@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { messages } from '@mba-demo/db'
-import { WhatsAppMessagingApiError } from '@mba-demo/wa-messaging'
+import { messages } from '@mba-desk/db'
+import { WhatsAppMessagingApiError } from '@mba-desk/wa-messaging'
 import { PgDialect } from 'drizzle-orm/pg-core'
 import {
   ChatMarkReadError,

@@ -1,11 +1,11 @@
-import { auth } from '@mba-demo/auth'
-import { channels, db, member } from '@mba-demo/db'
+import { auth } from '@mba-desk/auth'
+import { channels, db, member } from '@mba-desk/db'
 import {
   createWhatsAppModerationClient,
   WhatsAppModerationApiError,
   WhatsAppModerationResponseError,
   type WhatsAppModerationClientContract,
-} from '@mba-demo/wa-moderation'
+} from '@mba-desk/wa-moderation'
 import { zValidator } from '@hono/zod-validator'
 import { and, eq } from 'drizzle-orm'
 import { Hono, type Context } from 'hono'

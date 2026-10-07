@@ -1,6 +1,6 @@
-# `@mba-demo/runner`
+# `@mba-desk/runner`
 
-`@mba-demo/runner` stores organization-scoped JavaScript functions, creates an
+`@mba-desk/runner` stores organization-scoped JavaScript functions, creates an
 immutable revision for every update, validates revision-specific typed
 parameters, executes a selected revision in a resource-limited `isolated-vm`
 V8 isolate, and records every started execution in PostgreSQL.
@@ -8,7 +8,7 @@ V8 isolate, and records every started execution in PostgreSQL.
 ## Public API
 
 ```ts
-import { runner } from '@mba-demo/runner'
+import { runner } from '@mba-desk/runner'
 
 const definition = await runner.createFunction('organization-id', {
   name: 'greet',
@@ -52,7 +52,7 @@ hash, revocation state, and expiration in one scoped lookup. Keys can be
 invalidated immediately with `revokeApiKey`.
 
 `Runner` accepts injected repository and executor implementations for tests.
-The default singleton uses `@mba-demo/db`, publishes the versioned
+The default singleton uses `@mba-desk/db`, publishes the versioned
 `runner.execution.requested.v1` event, and waits for the worker's durable
 PostgreSQL result without changing the public `execute*()` method signatures or
 return values. The event contains only a schema version and execution-log ID;
@@ -148,8 +148,8 @@ executed.
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/runner typecheck
-yarn workspace @mba-demo/runner test
-yarn workspace @mba-demo/runner build
+yarn workspace @mba-desk/runner typecheck
+yarn workspace @mba-desk/runner test
+yarn workspace @mba-desk/runner build
 yarn smoke:runner # requires the development PostgreSQL container
 ```

@@ -1,4 +1,4 @@
-import { files as defaultFiles, type FileStore } from '@mba-demo/files'
+import { files as defaultFiles, type FileStore } from '@mba-desk/files'
 import { Hono } from 'hono'
 
 const INVALID_URL_MESSAGE = 'Invalid or expired file URL'

@@ -1,6 +1,6 @@
 import { EventEncoder } from '@ag-ui/encoder'
 import { RunAgentInputSchema, type RunAgentInput } from '@ag-ui/core'
-import { auth } from '@mba-demo/auth'
+import { auth } from '@mba-desk/auth'
 import {
   HashbrownOpenAI,
   type OpenAIHashbrownRunAgentInput,

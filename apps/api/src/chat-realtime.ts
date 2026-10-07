@@ -1,5 +1,5 @@
-import type { WhatsAppChatUpdateType } from '@mba-demo/db'
-import type { PubSub } from '@mba-demo/pubsub'
+import type { WhatsAppChatUpdateType } from '@mba-desk/db'
+import type { PubSub } from '@mba-desk/pubsub'
 
 export type ChatRealtime = Pick<PubSub, 'publish' | 'start' | 'subscribe'>
 

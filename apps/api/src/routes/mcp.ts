@@ -5,7 +5,7 @@ import {
   runner as defaultRunner,
   type RunnerExecutionResult,
   type RunnerMcpRuntimeDefinition,
-} from '@mba-demo/runner'
+} from '@mba-desk/runner'
 import { createMcpHonoApp } from '@modelcontextprotocol/hono'
 import { createMcpHandler } from '@modelcontextprotocol/server'
 import type { Context } from 'hono'

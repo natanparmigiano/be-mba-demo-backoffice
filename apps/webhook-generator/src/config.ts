@@ -22,7 +22,7 @@ export interface CliConfig {
 export const helpText = `Synthetic WhatsApp Cloud API webhook generator
 
 Usage:
-  yarn workspace @mba-demo/webhook-generator dev -- [options]
+  yarn workspace @mba-desk/webhook-generator dev -- [options]
 
 Traffic:
   --contacts <count>          Contact pool size (default: 100)

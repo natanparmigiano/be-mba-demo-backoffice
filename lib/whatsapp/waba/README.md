@@ -1,6 +1,6 @@
 # WhatsApp Business Accounts
 
-`@mba-demo/wa-waba` is the typed Graph API client for discovering and reading
+`@mba-desk/wa-waba` is the typed Graph API client for discovering and reading
 WhatsApp Business Accounts (WABAs).
 
 It covers every endpoint in the checked-in `WhatsApp Business Accounts
@@ -13,7 +13,7 @@ It covers every endpoint in the checked-in `WhatsApp Business Accounts
 ## Usage
 
 ```ts
-import { createWhatsAppWabaClient } from '@mba-demo/wa-waba'
+import { createWhatsAppWabaClient } from '@mba-desk/wa-waba'
 
 const wabas = createWhatsAppWabaClient({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
@@ -46,7 +46,7 @@ Access tokens are never included in errors.
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/wa-waba typecheck
-yarn workspace @mba-demo/wa-waba test
-yarn workspace @mba-demo/wa-waba build
+yarn workspace @mba-desk/wa-waba typecheck
+yarn workspace @mba-desk/wa-waba test
+yarn workspace @mba-desk/wa-waba build
 ```

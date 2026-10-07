@@ -45,9 +45,9 @@ and subscription, process startup/shutdown, and production SPA delivery.
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/api typecheck
-yarn workspace @mba-demo/api test
-yarn workspace @mba-demo/api build
+yarn workspace @mba-desk/api typecheck
+yarn workspace @mba-desk/api test
+yarn workspace @mba-desk/api build
 ```
 
 Add route contract tests for status codes and response bodies, plus focused

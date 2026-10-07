@@ -58,6 +58,7 @@ export const organization = authSchema.table("organization", {
   logo: text("logo"),
   createdAt: timestamp("created_at").notNull(),
   metadata: text("metadata"),
+  primaryColor: text("primary_color").default("#0866ff"),
 });
 
 export const team = authSchema.table(
@@ -73,6 +74,9 @@ export const team = authSchema.table(
     updatedAt: timestamp("updated_at").$onUpdate(
       () => /* @__PURE__ */ new Date(),
     ),
+    slug: text("slug").notNull().unique(),
+    color: text("color").default("#0866ff").notNull(),
+    default: boolean("default").default(false).notNull(),
   },
   (table) => [index("team_organizationId_idx").on(table.organizationId)],
 );

@@ -162,7 +162,7 @@ A status webhook can arrive before the full message is available, and an outboun
 Finite text values use Drizzle's `text(name, { enum: values })` form. This produces precise TypeScript unions without creating PostgreSQL enum types, check constraints, or other database objects. The exported `as const` arrays are the single source for both column inference and application types.
 
 JSONB remains native PostgreSQL JSONB, but every JSON column uses a concrete
-TypeScript type from `@mba-demo/wa-webhooks` or `@mba-demo/wa-messaging`. No
+TypeScript type from `@mba-desk/wa-webhooks` or `@mba-desk/wa-messaging`. No
 complete persisted message or status is typed as a generic record; unknown
 values remain only where Meta explicitly permits custom Flow data or additive
 loose-object fields.
@@ -206,7 +206,7 @@ Channel-scoped unique indexes on `wa_id` and `user_id` provide the two supported
 | `interactive_type`                | Typed subtype for reply/list/flow/product/catalog behavior without inspecting JSONB.                                                                                                                         |
 | `text_content`                    | Primary display text extracted from text, reply, caption, location, order, reaction, system, template, contact-card, or edited content.                                                                      |
 | `media_*`                         | Media ID, URL/link, MIME type, SHA-256, filename, caption, voice-note flag, and animated-sticker flag.                                                                                                       |
-| `media_file_path`                 | Durable `@mba-demo/files` object key after verified provider media has been archived; nullable until media bytes are available.                                                                              |
+| `media_file_path`                 | Durable `@mba-desk/files` object key after verified provider media has been archived; nullable until media bytes are available.                                                                              |
 | `*_data` content columns          | Typed interactive, contact, location, button, order, reaction, template, system, edit, revoke, context, referral, identity, and error data.                                                                  |
 | `dispatch_status`                 | Separate local state machine for queued/sending/accepted/failed/unknown outbound requests; provider delivery status has different semantics.                                                                 |
 | `sender_phone`                    | Normalized `from` value for direct chat lookup.                                                                                                                                                              |

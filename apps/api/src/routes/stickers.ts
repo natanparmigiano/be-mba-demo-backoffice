@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { auth } from '@mba-demo/auth'
-import { db, member, stickerLibrary } from '@mba-demo/db'
-import { files as defaultFiles, type FileStore } from '@mba-demo/files'
+import { auth } from '@mba-desk/auth'
+import { db, member, stickerLibrary } from '@mba-desk/db'
+import { files as defaultFiles, type FileStore } from '@mba-desk/files'
 import { and, desc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 

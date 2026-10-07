@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { auth } from '@mba-demo/auth'
+import { auth } from '@mba-desk/auth'
 import {
   channels,
   chatEvents,
@@ -10,8 +10,8 @@ import {
   member,
   messages,
   persistWhatsAppOutboundMessage,
-} from '@mba-demo/db'
-import { files as defaultFiles, type FileStore } from '@mba-demo/files'
+} from '@mba-desk/db'
+import { files as defaultFiles, type FileStore } from '@mba-desk/files'
 import {
   createWhatsAppMediaClient,
   MEDIA_SIZE_LIMIT_BYTES,
@@ -19,12 +19,12 @@ import {
   WhatsAppMediaResponseError,
   type UploadMediaInput,
   type UploadMediaResponse,
-} from '@mba-demo/wa-media'
+} from '@mba-desk/wa-media'
 import {
   createWhatsAppMbaClient,
   WhatsAppMbaApiError,
   WhatsAppMbaResponseError,
-} from '@mba-demo/wa-mba'
+} from '@mba-desk/wa-mba'
 import {
   createWhatsAppMessagingClient,
   whatsappOutboundMessageSchema,
@@ -34,15 +34,15 @@ import {
   type SendMessageInput,
   type WhatsAppOutboundMessage,
   type WhatsAppSendMessageResponse,
-} from '@mba-demo/wa-messaging'
+} from '@mba-desk/wa-messaging'
 import {
   createWhatsAppTemplatesClient,
   WhatsAppTemplatesApiError,
   WhatsAppTemplatesResponseError,
   type TemplateComponent as WhatsAppTemplateComponent,
   type TemplatePage,
-} from '@mba-demo/wa-templates'
-import { pubsub } from '@mba-demo/pubsub'
+} from '@mba-desk/wa-templates'
+import { pubsub } from '@mba-desk/pubsub'
 import { zValidator } from '@hono/zod-validator'
 import {
   and,

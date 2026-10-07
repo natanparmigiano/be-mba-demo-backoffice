@@ -3,7 +3,7 @@ import {
   contactNameSchema,
   locationContentSchema,
   sharedContactSchema,
-} from '@mba-demo/wa-webhooks'
+} from '@mba-desk/wa-webhooks'
 
 export const outboundMessageContextSchema = z.looseObject({
   message_id: z.string(),

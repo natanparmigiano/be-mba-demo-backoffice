@@ -1,4 +1,4 @@
-import { db, llmResponseRequests } from '@mba-demo/db'
+import { db, llmResponseRequests } from '@mba-desk/db'
 
 export interface LlmRequestIdentity {
   safetyIdentifier: string

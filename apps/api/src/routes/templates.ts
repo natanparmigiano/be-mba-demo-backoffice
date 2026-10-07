@@ -1,5 +1,5 @@
-import { auth } from '@mba-demo/auth'
-import { channels, db, member } from '@mba-demo/db'
+import { auth } from '@mba-desk/auth'
+import { channels, db, member } from '@mba-desk/db'
 import {
   createWhatsAppMediaClient,
   MEDIA_SIZE_LIMIT_BYTES,
@@ -10,7 +10,7 @@ import {
   type UploadMediaInput,
   type VideoMimeType,
   type WhatsAppMediaClientContract,
-} from '@mba-demo/wa-media'
+} from '@mba-desk/wa-media'
 import {
   createWhatsAppTemplatesClient,
   WhatsAppTemplatesApiError,
@@ -18,7 +18,7 @@ import {
   type CreateTemplateInput,
   type UpdateTemplateInput,
   type WhatsAppTemplatesClientContract,
-} from '@mba-demo/wa-templates'
+} from '@mba-desk/wa-templates'
 import { zValidator } from '@hono/zod-validator'
 import { and, eq } from 'drizzle-orm'
 import { Hono, type Context } from 'hono'

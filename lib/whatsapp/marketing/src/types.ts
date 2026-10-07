@@ -1,4 +1,4 @@
-import type { Template } from '@mba-demo/wa-messaging'
+import type { Template } from '@mba-desk/wa-messaging'
 
 export type MarketingMessageProductPolicy = 'CLOUD_API_FALLBACK' | 'STRICT'
 
@@ -46,4 +46,4 @@ export interface MarketingMessageRequestOptions {
   signal?: AbortSignal
 }
 
-export type { Template } from '@mba-demo/wa-messaging'
+export type { Template } from '@mba-desk/wa-messaging'

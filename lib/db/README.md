@@ -1,4 +1,4 @@
-# `@mba-demo/db`
+# `@mba-desk/db`
 
 This package is the authoritative PostgreSQL boundary. It owns the lazy
 Postgres.js connection, Drizzle registry, schemas, and migration runtime.
@@ -8,8 +8,8 @@ provider IDs and unique indexes make webhook persistence retry-safe.
 ## Public API
 
 ```ts
-import { db, closeDatabase, type Database } from '@mba-demo/db'
-import * as schema from '@mba-demo/db/schema'
+import { db, closeDatabase, type Database } from '@mba-desk/db'
+import * as schema from '@mba-desk/db/schema'
 ```
 
 `db` is initialized with the complete schema registry, enabling Drizzle relational queries and type inference. `closeDatabase()` drains the underlying Postgres.js client and should be called during process shutdown.
@@ -18,7 +18,7 @@ import * as schema from '@mba-demo/db/schema'
 
 `DATABASE_URL` must use `postgres://` or `postgresql://`.
 
-- Development falls back to `postgresql://postgres:postgres@localhost:5432/mba_demo_backoffice`.
+- Development falls back to `postgresql://postgres:postgres@localhost:5432/mba_desk`.
 - Production requires an explicit `DATABASE_URL`.
 - Provider-specific `verifySSL` query parameters are removed before connecting;
   Postgres.js otherwise forwards them as unsupported PostgreSQL settings. Use
@@ -64,10 +64,17 @@ terminal logs and MCP membership are removed before the function deletion
 cascades to revisions and revision parameters. Direct function IDs are also
 removed from organization API-key allowlists in the same transaction.
 
-When adding a schema file, export it from `src/schema/index.ts`. Drizzle Kit reads `src/schema/*.ts`, while runtime consumers receive the registry through `@mba-demo/db/schema`.
+When adding a schema file, export it from `src/schema/index.ts`. Drizzle Kit reads `src/schema/*.ts`, while runtime consumers receive the registry through `@mba-desk/db/schema`.
 
 Never hand-edit `auth.ts`; regenerate it with `yarn auth:generate` after Better
 Auth configuration or plugin changes.
+
+`auth.team` extends Better Auth's team model with a required unique slug, a
+validated color, and the boolean SQL column `default`. A partial unique index
+allows at most one default team per organization; the application serializes
+default switches on the organization row. `auth.team_member` is the
+many-to-many boundary between teams and users; application writes must also
+verify that selected users belong to the team's organization.
 
 `llm.response_requests` is an append-only audit trail for calls made through
 the Responses API proxy and Hashbrown endpoint. It records the originating
@@ -84,7 +91,7 @@ persistent filesystem. It is not recommended for production or general use;
 production deployments should use the S3-compatible files adapter.
 
 `studio.projects` stores organization-scoped Studio project metadata and the
-durable `@mba-demo/files` key for each AGTX document. Its recent-project order
+durable `@mba-desk/files` key for each AGTX document. Its recent-project order
 uses `last_opened_at`; `last_edited_at` advances when AGTX bytes are saved.
 
 ### MBA chats and messages
@@ -94,17 +101,17 @@ uses `last_opened_at`; `last_edited_at` advances when AGTX bytes are saved.
 `mba.messages` stores the current WhatsApp message projection and belongs to a chat. Its optional `contact_id` identifies the remote direct-chat contact or the sender represented by a group message. Common identifiers, timestamps, forwarding markers, AI-generation provenance, display text, media metadata, outbound template names and their nullable Marketing Messages API flag, the durable file-store key for downloaded media, and typed UI-facing content objects are normalized during ingestion, while the complete deeply typed message remains in JSONB. Incoming messages receive the local `read` status when the chat is handled by the MBA agent and `delivered` otherwise; current outbound delivery status, recipient, Meta billing-conversation, pricing, callback, and error data are projected onto the message. AI-owned inbound traffic also advances the local read cursor without increasing the unread count.
 
 `mba.agent_knowledge_file_archives` maps an organization-scoped Meta knowledge
-file ID to its durable `@mba-demo/files` storage path. Files configured outside
+file ID to its durable `@mba-desk/files` storage path. Files configured outside
 this application intentionally have no row; agent export treats those entries
 as missing rather than failing the complete export.
 
 `mba.agent_backups` records organization- and channel-scoped AGTX snapshots.
-The archive bytes live in `@mba-demo/files`; PostgreSQL stores the safe file
+The archive bytes live in `@mba-desk/files`; PostgreSQL stores the safe file
 name, unique storage path, byte size, and creation time. The composite channel
 and organization foreign key prevents cross-tenant backup associations.
 
 `mba.sticker_library` stores organization-scoped, SHA-256-deduplicated WebP
-sticker metadata. Sticker bytes remain in `@mba-demo/files`; the database keeps
+sticker metadata. Sticker bytes remain in `@mba-desk/files`; the database keeps
 their unique storage paths, sizes, and creation order.
 
 `mba.message_status_events` preserves the append-only delivery-status history while the provider message ID makes message upserts idempotent. `mba.chat_events` stores non-message activity attached to a chat: billing-window observations, Business Agents ownership handovers and agent events, group changes, calls, call statuses, and user preferences. The model supports incoming `messages`, Business Agents `standby`, history, message echoes, and status-first rows.
@@ -155,9 +162,9 @@ yarn db:studio
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/db typecheck
-yarn workspace @mba-demo/db test
-yarn workspace @mba-demo/db build
+yarn workspace @mba-desk/db typecheck
+yarn workspace @mba-desk/db test
+yarn workspace @mba-desk/db build
 ```
 
 Environment tests validate development defaults, production requirements, configured URLs, and accepted PostgreSQL protocols.

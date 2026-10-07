@@ -5,7 +5,7 @@ import {
   WhatsAppSubscriptionsApiError,
   type WhatsAppSubscriptionsClientContract,
   type WhatsAppWebhookRegistrationClientContract,
-} from '@mba-demo/wa-subscriptions'
+} from '@mba-desk/wa-subscriptions'
 import { createSubscriptionsPlaygroundRoute } from './subscriptions-playground.js'
 
 const configuration = {

@@ -17,6 +17,13 @@ through component code.
 
 `index.html` performs the initial theme resolution before React starts to prevent a flash of the wrong theme.
 
+The active organization's `primaryColor` overrides `--primary`. The last
+resolved organization color is cached under `mba-desk-primary-color` and is
+also applied by the inline bootstrap before React starts, preventing a flash of
+the default primary color while the session loads.
+Entering the public login page clears that organization override and restores
+the default primary color while preserving the user's light/dark preference.
+
 `ThemeSwitcher` is an icon-only native select. Its icon adapts to system, light, or dark mode while the expanded selector exposes localized option names.
 
 ## Semantic tokens
@@ -31,6 +38,8 @@ Core brand tokens in `styles.css`:
 | `--accent`     | `rgb(0% 7.5% 33.7%)`     | Same                     |
 
 The remaining semantic roles cover foreground, card, muted, border, input, focus ring, success, warning, destructive, chat bubbles, and read status.
+Scrollbar thumb, hover, and track tokens are translucent mixes of `--primary`,
+so organization branding applies to native and WebKit scrollbars as well.
 
 `@theme inline` maps variables to Tailwind names. Examples:
 

@@ -14,6 +14,7 @@ then to pages or design-system examples—never in the opposite direction.
 | `runner/`              | Lazy Monaco editor and parameter-aware JavaScript language service.     |
 | `design-system/`       | Documentation sections that demonstrate the reusable primitives.        |
 | `theme/`               | Global theme provider and adaptive theme selector.                      |
+| `app/`                 | Application shell controls, organization logos, and logo cropper.       |
 | `LanguageSwitcher.tsx` | Language selector with explicit-override persistence.                   |
 
 ## Dependency direction
@@ -53,3 +54,8 @@ Avoid creating components solely for one wrapper element or one styling class.
 - Require accessible labels for icon-only controls.
 - Keep visible copy in i18n resources; generic primitives receive already-translated strings.
 - Export public primitives from the folder's `index.ts`.
+
+Organization logo selection stays in `app/OrganizationLogoPicker.tsx`. It
+normalizes browser-supported images to a cropped 512-by-512 PNG before upload.
+`app/OrganizationLogo.tsx` owns the shared image endpoint and built-in fallback
+used by the shell and organization surfaces.

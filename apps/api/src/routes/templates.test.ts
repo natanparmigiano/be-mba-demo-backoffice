@@ -3,8 +3,8 @@ import { describe, it } from 'node:test'
 import {
   WhatsAppTemplatesApiError,
   type WhatsAppTemplatesClientContract,
-} from '@mba-demo/wa-templates'
-import type { WhatsAppMediaClientContract } from '@mba-demo/wa-media'
+} from '@mba-desk/wa-templates'
+import type { WhatsAppMediaClientContract } from '@mba-desk/wa-media'
 import { createTemplatesRoute } from './templates.js'
 
 const configuration = {

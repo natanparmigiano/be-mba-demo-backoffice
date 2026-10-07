@@ -1,4 +1,4 @@
-# `@mba-demo/events`
+# `@mba-desk/events`
 
 Use one event-bus interface for publishing, subscription, startup, and
 shutdown. Configure Kafka whenever publishers and subscribers run in different
@@ -37,7 +37,7 @@ Messages contain the topic, string value, optional key, string headers, and nume
 Example:
 
 ```ts
-import { events } from '@mba-demo/events'
+import { events } from '@mba-desk/events'
 
 const unsubscribe = events.subscribe('orders.created.v1', async (event) => {
   console.log(event.key, event.value)
@@ -84,16 +84,16 @@ The event library does not decide which application handlers run. `apps/api/src/
 
 Runner calls publish `runner.execution.requested.v1` with a versioned payload
 containing only the durable execution-log ID. The subscriber atomically claims
-the queued PostgreSQL row and executes it through `@mba-demo/runner`. Memory
+the queued PostgreSQL row and executes it through `@mba-desk/runner`. Memory
 mode therefore requires the in-process worker; separate API and worker
 processes require Kafka.
 
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/events typecheck
-yarn workspace @mba-demo/events test
-yarn workspace @mba-demo/events build
+yarn workspace @mba-desk/events typecheck
+yarn workspace @mba-desk/events test
+yarn workspace @mba-desk/events build
 ```
 
 Unit tests cover adapter selection and in-memory delivery. The full Compose smoke path exercises Kafka across separate app and worker containers.

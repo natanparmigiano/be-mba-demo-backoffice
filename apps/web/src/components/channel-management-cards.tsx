@@ -1,5 +1,6 @@
 import {
   Command,
+  ImageIcon,
   LoaderCircle,
   MessageCircleQuestion,
   Pencil,
@@ -7,6 +8,7 @@ import {
   QrCode,
   RefreshCw,
   Trash2,
+  Upload,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +16,296 @@ import { apiClient } from '../api'
 import type { ChannelQrState } from '../channel-qr'
 import { ChannelQrCode } from './channel-qr-code'
 import { SettingsCard } from './settings-card'
-import { Button, Dialog, Input, Textarea } from './ui'
+import { Button, Dialog, Input, Select, Textarea } from './ui'
+
+interface BusinessProfileForm {
+  displayName: string
+  about: string
+  address: string
+  description: string
+  email: string
+  vertical: string
+  websites: string
+  profilePictureUrl: string | null
+}
+
+const emptyBusinessProfile: BusinessProfileForm = {
+  displayName: '',
+  about: '',
+  address: '',
+  description: '',
+  email: '',
+  vertical: 'UNDEFINED',
+  websites: '',
+  profilePictureUrl: null,
+}
+
+const businessVerticals = [
+  'UNDEFINED',
+  'OTHER',
+  'AUTO',
+  'BEAUTY',
+  'APPAREL',
+  'EDU',
+  'ENTERTAIN',
+  'EVENT_PLAN',
+  'FINANCE',
+  'GROCERY',
+  'GOVT',
+  'HOTEL',
+  'HEALTH',
+  'NONPROFIT',
+  'PROF_SERVICES',
+  'RETAIL',
+  'TRAVEL',
+  'RESTAURANT',
+] as const
+
+export function BusinessProfileSettingsCard({
+  channelId,
+  canManage,
+}: {
+  channelId: number
+  canManage: boolean
+}) {
+  const { t } = useTranslation()
+  const [profile, setProfile] = useState(emptyBusinessProfile)
+  const [picture, setPicture] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await apiClient.api.channels[':id'][
+        'business-profile'
+      ].$get({ param: { id: String(channelId) } })
+      if (!response.ok) throw new Error(await responseMessage(response))
+      const { profile: loaded } = await response.json()
+      setProfile({ ...loaded, websites: loaded.websites.join('\n') })
+    } catch (reason) {
+      setError(
+        reason instanceof Error && reason.message
+          ? reason.message
+          : t('channels.profile.loadFailed'),
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }, [channelId, t])
+
+  useEffect(() => void load(), [load])
+  useEffect(() => {
+    if (!picture) {
+      setPreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(picture)
+    setPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [picture])
+
+  const update = (field: keyof BusinessProfileForm, value: string) =>
+    setProfile((current) => ({ ...current, [field]: value }))
+
+  const save = async () => {
+    setIsSaving(true)
+    setError(null)
+    setNotice(null)
+    try {
+      let profilePictureHandle: string | undefined
+      if (picture) {
+        const body = new FormData()
+        body.set('picture', picture)
+        const upload = await fetch(
+          `/api/channels/${channelId}/business-profile/picture`,
+          { method: 'POST', body },
+        )
+        if (!upload.ok) throw new Error(await responseMessage(upload))
+        profilePictureHandle = ((await upload.json()) as { handle: string })
+          .handle
+      }
+      const response = await apiClient.api.channels[':id'][
+        'business-profile'
+      ].$put({
+        param: { id: String(channelId) },
+        json: {
+          displayName: profile.displayName.trim(),
+          about: profile.about.trim(),
+          address: profile.address.trim(),
+          description: profile.description.trim(),
+          email: profile.email.trim(),
+          vertical: profile.vertical as (typeof businessVerticals)[number],
+          websites: profile.websites
+            .split(/\r?\n/)
+            .map((website) => website.trim())
+            .filter(Boolean),
+          ...(profilePictureHandle ? { profilePictureHandle } : {}),
+        },
+      })
+      if (!response.ok) throw new Error(await responseMessage(response))
+      const { profile: saved } = await response.json()
+      setProfile({ ...saved, websites: saved.websites.join('\n') })
+      setPicture(null)
+      setNotice(t('channels.profile.saved'))
+    } catch (reason) {
+      setError(
+        reason instanceof Error && reason.message
+          ? reason.message
+          : t('channels.profile.saveFailed'),
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <SettingsCard
+      icon={<ImageIcon className="size-5" aria-hidden />}
+      title={t('channels.profile.title')}
+      description={t('channels.profile.description')}
+      disabled={isLoading || isSaving}
+      error={error}
+      footer={
+        canManage ? (
+          <Button
+            type="button"
+            isLoading={isSaving}
+            disabled={isLoading || !profile.displayName.trim()}
+            onClick={() => void save()}
+          >
+            {t('channels.profile.save')}
+          </Button>
+        ) : undefined
+      }
+    >
+      {isLoading ? (
+        <div
+          className="flex items-center gap-2 text-sm text-muted-foreground"
+          role="status"
+        >
+          <LoaderCircle className="size-4 animate-spin" aria-hidden />
+          {t('channels.profile.loading')}
+        </div>
+      ) : (
+        <div className="grid gap-5">
+          {notice && (
+            <p className="text-sm text-success" role="status">
+              {notice}
+            </p>
+          )}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border bg-muted">
+              {previewUrl || profile.profilePictureUrl ? (
+                <img
+                  className="size-full object-cover"
+                  src={previewUrl ?? profile.profilePictureUrl ?? undefined}
+                  alt={t('channels.profile.pictureAlt')}
+                />
+              ) : (
+                <ImageIcon
+                  className="size-8 text-muted-foreground"
+                  aria-hidden
+                />
+              )}
+            </div>
+            <div className="grid gap-2">
+              <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg border bg-card px-3.5 py-2 text-sm font-semibold shadow-xs hover:bg-muted focus-within:ring-3 focus-within:ring-ring/15">
+                <Upload className="size-4" aria-hidden />
+                {t('channels.profile.choosePicture')}
+                <input
+                  className="sr-only"
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  disabled={!canManage || isSaving}
+                  onChange={(event) =>
+                    setPicture(event.target.files?.[0] ?? null)
+                  }
+                />
+              </label>
+              <p className="text-xs text-muted-foreground">
+                {picture?.name ?? t('channels.profile.pictureHint')}
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label={t('channels.profile.displayName')}
+              hint={t('channels.profile.displayNameHint')}
+              value={profile.displayName}
+              maxLength={512}
+              disabled={!canManage}
+              required
+              onChange={(event) => update('displayName', event.target.value)}
+            />
+            <Input
+              label={t('channels.profile.about')}
+              value={profile.about}
+              maxLength={139}
+              disabled={!canManage}
+              onChange={(event) => update('about', event.target.value)}
+            />
+            <Input
+              label={t('channels.profile.email')}
+              type="email"
+              value={profile.email}
+              maxLength={128}
+              disabled={!canManage}
+              onChange={(event) => update('email', event.target.value)}
+            />
+            <Select
+              label={t('channels.profile.category')}
+              value={profile.vertical}
+              disabled={!canManage}
+              onChange={(event) => update('vertical', event.target.value)}
+            >
+              {businessVerticals.map((vertical) => (
+                <option key={vertical} value={vertical}>
+                  {t(`channels.profile.verticals.${vertical}`)}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <Textarea
+            label={t('channels.profile.descriptionLabel')}
+            value={profile.description}
+            maxLength={512}
+            disabled={!canManage}
+            onChange={(event) => update('description', event.target.value)}
+          />
+          <Textarea
+            label={t('channels.profile.address')}
+            value={profile.address}
+            maxLength={256}
+            disabled={!canManage}
+            onChange={(event) => update('address', event.target.value)}
+          />
+          <Textarea
+            label={t('channels.profile.websites')}
+            hint={t('channels.profile.websitesHint')}
+            value={profile.websites}
+            disabled={!canManage}
+            onChange={(event) => update('websites', event.target.value)}
+          />
+        </div>
+      )}
+    </SettingsCard>
+  )
+}
+
+async function responseMessage(response: Response): Promise<string> {
+  const body: unknown = await response.json().catch(() => undefined)
+  return typeof body === 'object' &&
+    body !== null &&
+    'message' in body &&
+    typeof body.message === 'string'
+    ? body.message
+    : `Request failed (${response.status})`
+}
 
 interface ConversationalCommand {
   command_name: string

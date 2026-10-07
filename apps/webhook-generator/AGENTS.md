@@ -6,7 +6,7 @@ payloads.
 
 ## Generation invariants
 
-- Build payloads against `@mba-demo/wa-webhooks` and validate every generated event
+- Build payloads against `@mba-desk/wa-webhooks` and validate every generated event
   before delivery or dry-run output.
 - Ordinary incoming messages use `messages`; MBA-agent-owned incoming messages
   use `standby`.
@@ -34,9 +34,9 @@ payloads.
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/webhook-generator typecheck
-yarn workspace @mba-demo/webhook-generator test
-yarn workspace @mba-demo/webhook-generator build
+yarn workspace @mba-desk/webhook-generator typecheck
+yarn workspace @mba-desk/webhook-generator test
+yarn workspace @mba-desk/webhook-generator build
 ```
 
 Tests should cover ordering/state transitions, uniqueness, deterministic

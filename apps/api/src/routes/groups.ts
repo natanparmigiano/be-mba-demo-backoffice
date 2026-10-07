@@ -1,5 +1,5 @@
-import { auth } from '@mba-demo/auth'
-import { channels, db, groups, member } from '@mba-demo/db'
+import { auth } from '@mba-desk/auth'
+import { channels, db, groups, member } from '@mba-desk/db'
 import { zValidator } from '@hono/zod-validator'
 import { and, desc, eq, ilike, lt, or, type SQL } from 'drizzle-orm'
 import { Hono } from 'hono'

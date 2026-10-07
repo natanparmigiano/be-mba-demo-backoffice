@@ -60,7 +60,7 @@ import { apiClient } from './api'
 const response = await apiClient.api.health.$get()
 ```
 
-The API type comes from `@mba-demo/api`. Prefer inferred request and response types instead of duplicating server DTOs in the frontend.
+The API type comes from `@mba-desk/api`. Prefer inferred request and response types instead of duplicating server DTOs in the frontend.
 
 ## Localization lifecycle
 

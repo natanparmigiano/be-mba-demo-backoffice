@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { auth } from '@mba-demo/auth'
-import { channels, db, member } from '@mba-demo/db'
-import { files as defaultFiles, type FileStore } from '@mba-demo/files'
+import { auth } from '@mba-desk/auth'
+import { channels, db, member } from '@mba-desk/db'
+import { files as defaultFiles, type FileStore } from '@mba-desk/files'
 import {
   createWhatsAppMessagingClient,
   whatsappOutboundMessageSchema,
@@ -9,7 +9,7 @@ import {
   WhatsAppMessagingResponseError,
   type SendMessageInput,
   type WhatsAppMessagingClientContract,
-} from '@mba-demo/wa-messaging'
+} from '@mba-desk/wa-messaging'
 import { zValidator } from '@hono/zod-validator'
 import { and, eq } from 'drizzle-orm'
 import { Hono, type Context } from 'hono'

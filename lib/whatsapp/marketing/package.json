@@ -1,5 +1,5 @@
 {
-  "name": "@mba-demo/wa-marketing",
+  "name": "@mba-desk/wa-marketing",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -16,7 +16,7 @@
     "test": "tsx --conditions=development --test src/**/*.test.ts"
   },
   "dependencies": {
-    "@mba-demo/wa-messaging": "0.0.0"
+    "@mba-desk/wa-messaging": "0.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",

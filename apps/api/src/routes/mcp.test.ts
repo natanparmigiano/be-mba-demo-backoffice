@@ -6,7 +6,7 @@ import {
   RunnerMcpAccessForbiddenError,
   type RunnerExecutionResult,
   type RunnerMcpRuntimeDefinition,
-} from '@mba-demo/runner'
+} from '@mba-desk/runner'
 import { parseRunnerMcpPackageYaml } from '../runner-mcp-package.js'
 import { createMcpRoute, type McpRunnerApi } from './mcp.js'
 

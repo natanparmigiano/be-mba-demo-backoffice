@@ -6,7 +6,7 @@ import {
   type RunnerExecutionResult,
   type RunnerMcpRuntimeDefinition,
   type RunnerParameterDefinition,
-} from '@mba-demo/runner'
+} from '@mba-desk/runner'
 import { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 

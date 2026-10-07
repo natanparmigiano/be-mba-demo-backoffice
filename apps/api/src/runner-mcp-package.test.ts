@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { describe, it } from 'node:test'
 import { Script } from 'node:vm'
-import { validateRunnerFunctionCode } from '@mba-demo/runner'
+import { validateRunnerFunctionCode } from '@mba-desk/runner'
 import {
   parseRunnerMcpPackageYaml,
   stringifyRunnerMcpPackageYaml,

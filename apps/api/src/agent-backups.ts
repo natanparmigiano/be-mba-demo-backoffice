@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { agentBackups, db } from '@mba-demo/db'
-import { files, type FileStore } from '@mba-demo/files'
+import { agentBackups, db } from '@mba-desk/db'
+import { files, type FileStore } from '@mba-desk/files'
 import { and, desc, eq } from 'drizzle-orm'
 
 export interface AgentBackupSummary {

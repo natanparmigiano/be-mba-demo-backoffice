@@ -1,8 +1,8 @@
-# `@mba-demo/auth`
+# `@mba-desk/auth`
 
 This package is the server's single Better Auth configuration boundary. It
 stores durable identities and organizations in PostgreSQL, places sessions and
-verification state in the selected `@mba-demo/kv` adapter, and exposes the
+verification state in the selected `@mba-desk/kv` adapter, and exposes the
 handler mounted by Hono at `/api/auth/*`.
 
 Production must provide `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`.
@@ -13,13 +13,21 @@ storage; process memory cannot coordinate sessions or verification state.
 
 The exported `auth` instance is configured with:
 
-- Application name `MBA Demo Backoffice`.
+- Application name `MBA Desk`.
 - Email-and-password authentication enabled.
 - SAML/OIDC SSO with verified domains and organization provisioning.
 - Application administration with `user` and `admin` roles.
 - Organizations, invitations, and members.
+- Teams with required unique slugs, validated colors, a single organization
+  default, and user membership. Creating an organization immediately creates
+  its `Default Team` and adds the creator through Better Auth's default-team
+  flow.
+- An optional validated organization `primaryColor`; new organizations default
+  to the application's `#0866ff` primary color.
+- An optional organization `logo` containing the relative key of its image in
+  the configured file store; the API owns upload, access, and deletion.
 - The PostgreSQL Drizzle adapter with schema name `auth`.
-- All schema exports from `@mba-demo/db/schema`.
+- All schema exports from `@mba-desk/db/schema`.
 - A KV-backed secondary storage adapter.
 - One trusted origin derived from `CORS_ORIGIN`.
 
@@ -96,7 +104,7 @@ Do not hand-maintain duplicate auth tables in another schema.
 ## Public API
 
 ```ts
-import { auth, hasSsoProviders, type Auth, type Session } from '@mba-demo/auth'
+import { auth, hasSsoProviders, type Auth, type Session } from '@mba-desk/auth'
 ```
 
 `hasSsoProviders()` returns only whether the durable SSO provider table contains a domain-verified provider. The API uses it for the guest login capability check without exposing provider configuration or presenting an unusable SSO form while DNS verification is pending.
@@ -104,9 +112,9 @@ import { auth, hasSsoProviders, type Auth, type Session } from '@mba-demo/auth'
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/auth typecheck
-yarn workspace @mba-demo/auth test
-yarn workspace @mba-demo/auth build
+yarn workspace @mba-desk/auth typecheck
+yarn workspace @mba-desk/auth test
+yarn workspace @mba-desk/auth build
 ```
 
 Tests cover production environment requirements, initial-admin bootstrap behavior, and the KV secondary-storage bridge without requiring PostgreSQL or Redis.

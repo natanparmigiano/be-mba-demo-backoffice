@@ -1,4 +1,4 @@
-import { db, storedFiles, type Database } from '@mba-demo/db'
+import { db, storedFiles, type Database } from '@mba-desk/db'
 import { eq } from 'drizzle-orm'
 import type { PostgresConfiguration } from './env.js'
 import { HmacSignedUrlSupport } from './signed-url.js'

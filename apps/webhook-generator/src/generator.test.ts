@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { whatsappWebhookSchema } from '@mba-demo/wa-webhooks'
+import { whatsappWebhookSchema } from '@mba-desk/wa-webhooks'
 import { SyntheticWebhookGenerator } from './generator.js'
 import type { GeneratedWebhook } from './types.js'
 

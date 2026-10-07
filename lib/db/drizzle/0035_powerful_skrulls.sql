@@ -1,0 +1,1 @@
+ALTER TABLE "auth"."organization" ADD COLUMN "primary_color" text DEFAULT '#0866ff';

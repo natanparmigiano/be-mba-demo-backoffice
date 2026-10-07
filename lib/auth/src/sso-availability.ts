@@ -1,4 +1,4 @@
-import { db } from '@mba-demo/db'
+import { db } from '@mba-desk/db'
 
 type FindVerifiedSsoProvider = () => Promise<{ id: string } | undefined>
 

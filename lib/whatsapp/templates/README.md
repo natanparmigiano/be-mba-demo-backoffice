@@ -1,6 +1,6 @@
 # WhatsApp templates
 
-`@mba-demo/wa-templates` is the typed WhatsApp Business Management API client
+`@mba-desk/wa-templates` is the typed WhatsApp Business Management API client
 for the complete documented message-template lifecycle.
 
 It supports:
@@ -25,7 +25,7 @@ objects preserve additive Meta fields.
 ## Usage
 
 ```ts
-import { createWhatsAppTemplatesClient } from '@mba-demo/wa-templates'
+import { createWhatsAppTemplatesClient } from '@mba-desk/wa-templates'
 
 const templates = createWhatsAppTemplatesClient({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,

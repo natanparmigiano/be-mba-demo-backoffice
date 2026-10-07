@@ -92,7 +92,7 @@ describe('FileSystemFileStore', () => {
 })
 
 async function createStore(now?: () => number): Promise<FileSystemFileStore> {
-  const directory = await mkdtemp(join(tmpdir(), 'mba-demo-files-'))
+  const directory = await mkdtemp(join(tmpdir(), 'mba-desk-files-'))
   directories.push(directory)
   return new FileSystemFileStore(
     {

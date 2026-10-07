@@ -1,4 +1,4 @@
-# `@mba-demo/sso-cli`
+# `@mba-desk/sso-cli`
 
 Use this HTTP CLI to administer the complete Better Auth SSO provider
 lifecycle without hand-writing cookies, JSON payloads, or escaped SAML XML. It

@@ -1,6 +1,6 @@
-import { auth } from '@mba-demo/auth'
-import { db } from '@mba-demo/db'
-import * as schema from '@mba-demo/db/schema'
+import { auth } from '@mba-desk/auth'
+import { db } from '@mba-desk/db'
+import * as schema from '@mba-desk/db/schema'
 import { and, asc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 

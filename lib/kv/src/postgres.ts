@@ -1,4 +1,4 @@
-import { db, keyValueEntries, type Database } from '@mba-demo/db'
+import { db, keyValueEntries, type Database } from '@mba-desk/db'
 import { and, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm'
 import type { KeyValueStore, SetOptions } from './types.js'
 

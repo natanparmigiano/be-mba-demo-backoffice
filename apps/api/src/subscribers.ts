@@ -1,17 +1,17 @@
-import { db, ingestWhatsAppWebhook, webhooks } from '@mba-demo/db'
+import { db, ingestWhatsAppWebhook, webhooks } from '@mba-desk/db'
 import type {
   EventBus,
   EventHandler,
   EventMessage,
   Unsubscribe,
-} from '@mba-demo/events'
-import { pubsub, type PubSub } from '@mba-demo/pubsub'
+} from '@mba-desk/events'
+import { pubsub, type PubSub } from '@mba-desk/pubsub'
 import {
   RUNNER_EXECUTION_REQUESTED_TOPIC,
   runner as defaultRunner,
   runnerExecutionRequestedSchema,
-} from '@mba-demo/runner'
-import { whatsappWebhookSchema } from '@mba-demo/wa-webhooks'
+} from '@mba-desk/runner'
+import { whatsappWebhookSchema } from '@mba-desk/wa-webhooks'
 import { z } from 'zod'
 import {
   WA_CLOUD_WEBHOOK_FORWARD_TOPIC,

@@ -3,7 +3,7 @@ import { describe, it } from 'node:test'
 import {
   WhatsAppModerationApiError,
   type WhatsAppModerationClientContract,
-} from '@mba-demo/wa-moderation'
+} from '@mba-desk/wa-moderation'
 import {
   createModerationPlaygroundRoute,
   type ModerationPlaygroundRepository,

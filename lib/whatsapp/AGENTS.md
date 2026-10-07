@@ -32,6 +32,6 @@ Run the changed library's typecheck and tests, then verify the web workspace:
 ```bash
 yarn workspace <changed-whatsapp-workspace> typecheck
 yarn workspace <changed-whatsapp-workspace> test
-yarn workspace @mba-demo/web typecheck
-yarn workspace @mba-demo/web build
+yarn workspace @mba-desk/web typecheck
+yarn workspace @mba-desk/web build
 ```

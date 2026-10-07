@@ -1,4 +1,4 @@
-# `@mba-demo/kv`
+# `@mba-desk/kv`
 
 Use this string key/value interface for Redis-style application and Better Auth
 secondary storage. Redis is selected automatically when `REDIS_URL` is set;
@@ -12,7 +12,7 @@ available explicitly with `KV_ADAPTER=memory`.
 otherwise. Explicit Redis mode requires a valid `redis://` or `rediss://` URL.
 
 ```ts
-import { kv } from '@mba-demo/kv'
+import { kv } from '@mba-desk/kv'
 
 await kv.set('example', 'value', { ttlSeconds: 60 })
 const value = await kv.get('example')
@@ -60,9 +60,9 @@ Redis, while Simple Compose explicitly selects process-local memory.
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/kv typecheck
-yarn workspace @mba-demo/kv test
-yarn workspace @mba-demo/kv build
+yarn workspace @mba-desk/kv typecheck
+yarn workspace @mba-desk/kv test
+yarn workspace @mba-desk/kv build
 ```
 
 Tests cover environment validation, adapter selection without eager external

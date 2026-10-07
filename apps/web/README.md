@@ -1,7 +1,7 @@
-# MBA Demo Backoffice frontend
+# MBA Desk frontend
 
-The React frontend provides the authenticated, organization-scoped backoffice
-for chats, channels, contacts, groups, users, and SSO-enabled sign-in. It uses
+The React frontend provides the authenticated, organization-scoped MBA Desk
+for chats, channels, contacts, groups, teams, users, and SSO-enabled sign-in. It uses
 the API's inferred Hono `AppType`, so browser requests stay aligned with the
 server contract without duplicate DTOs.
 
@@ -12,7 +12,7 @@ The repository requires Node.js 24 or newer and Yarn 1.22.
 From the repository root:
 
 ```sh
-yarn workspace @mba-demo/web dev
+yarn workspace @mba-desk/web dev
 ```
 
 The Vite development server runs on `http://localhost:5173`. Requests beginning with `/api` are proxied to `http://localhost:3000`, so the API must be running for authentication and application data.
@@ -40,8 +40,8 @@ yarn dev
 ## Validation commands
 
 ```sh
-yarn workspace @mba-demo/web typecheck
-yarn workspace @mba-demo/web build
+yarn workspace @mba-desk/web typecheck
+yarn workspace @mba-desk/web build
 ```
 
 The build command runs TypeScript project validation before creating the production bundle in `dist/`.
@@ -64,6 +64,7 @@ The build command runs TypeScript project validation before creating the product
 | `/channels`                           | Private        | Manages WhatsApp channels and webhook forwarding.                                   |
 | `/contacts`                           | Private        | Searches contacts; owners/admins can create and safely delete them.                 |
 | `/groups`                             | Private        | Searches and filters cursor-paginated WhatsApp groups.                              |
+| `/teams`                              | Private        | Manages organization teams, defaults, colors, slugs, and user membership.           |
 | `/templates`                          | Private        | Manages WhatsApp message templates and provider approval states.                    |
 | `/templates/new`                      | Private        | Creates and submits a WhatsApp message template.                                    |
 | `/templates/:channelId/:templateId`   | Private        | Previews and edits a provider-backed message template.                              |
@@ -104,7 +105,7 @@ The main frontend areas are:
 
 ## Backend integration
 
-`src/api.ts` creates a Hono RPC client with `hc<AppType>('/')`. The `AppType` import comes from the `@mba-demo/api` workspace, so request paths and response types are derived from the backend contract.
+`src/api.ts` creates a Hono RPC client with `hc<AppType>('/')`. The `AppType` import comes from the `@mba-desk/api` workspace, so request paths and response types are derived from the backend contract.
 
 Better Auth uses the current browser origin. In development, Vite proxies its `/api` calls to the API process. Keep browser-facing calls relative rather than hard-coding an API host unless deployment requirements change.
 

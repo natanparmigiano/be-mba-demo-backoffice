@@ -4,7 +4,7 @@ import { describe, it } from 'node:test'
 import {
   MBA_WEBHOOK_SUBSCRIPTION_FIELDS,
   WhatsAppWebhookRegistrationApiError,
-} from '@mba-demo/wa-subscriptions'
+} from '@mba-desk/wa-subscriptions'
 import { createAgentExportArchive } from '../agent-export.js'
 import { parseAgentArchive } from '../agent-import.js'
 import { parseRunnerMcpPackageYaml } from '../runner-mcp-package.js'
@@ -571,6 +571,108 @@ describe('channel management route', () => {
 
     assert.equal(register.status, 403)
     assert.equal(deregister.status, 403)
+  })
+
+  it('reads and updates the WhatsApp business profile for an owned channel', async () => {
+    const profile = {
+      displayName: 'Example Business',
+      about: 'Coffee nearby',
+      address: 'Main Street 1',
+      description: 'Local coffee shop',
+      email: 'hello@example.com',
+      vertical: 'RESTAURANT' as const,
+      websites: ['https://example.com'],
+      profilePictureUrl: 'https://example.com/profile.jpg',
+    }
+    let updated: unknown
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'admin' }),
+      repository: createRepository(),
+      getBusinessProfile: async () => profile,
+      updateBusinessProfile: async (_configuration, input) => {
+        updated = input
+      },
+    })
+
+    const getResponse = await route.request('/7/business-profile')
+    const updateResponse = await route.request('/7/business-profile', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        displayName: profile.displayName,
+        about: profile.about,
+        address: profile.address,
+        description: profile.description,
+        email: profile.email,
+        vertical: profile.vertical,
+        websites: profile.websites,
+      }),
+    })
+
+    assert.equal(getResponse.status, 200)
+    assert.deepEqual(await getResponse.json(), { profile })
+    assert.equal(updateResponse.status, 200)
+    assert.deepEqual(updated, {
+      displayName: profile.displayName,
+      about: profile.about,
+      address: profile.address,
+      description: profile.description,
+      email: profile.email,
+      vertical: profile.vertical,
+      websites: profile.websites,
+    })
+  })
+
+  it('validates and uploads a selected business profile picture', async () => {
+    let uploaded: File | undefined
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'owner' }),
+      repository: createRepository(),
+      uploadBusinessProfilePicture: async (_configuration, file) => {
+        uploaded = file
+        return 'uploaded-picture-handle'
+      },
+    })
+    const form = new FormData()
+    form.set(
+      'picture',
+      new File([new Uint8Array([1, 2, 3])], 'profile.png', {
+        type: 'image/png',
+      }),
+    )
+
+    const response = await route.request('/7/business-profile/picture', {
+      method: 'POST',
+      body: form,
+    })
+
+    assert.equal(response.status, 200)
+    assert.deepEqual(await response.json(), {
+      handle: 'uploaded-picture-handle',
+    })
+    assert.equal(uploaded?.name, 'profile.png')
+  })
+
+  it('prevents members from changing the WhatsApp business profile', async () => {
+    const route = createChannelManagementRoute({
+      getAccess: async () => ({ organizationId: 'org-one', role: 'member' }),
+      repository: createRepository(),
+    })
+    const response = await route.request('/7/business-profile', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        displayName: 'Example Business',
+        about: '',
+        address: '',
+        description: '',
+        email: '',
+        vertical: 'UNDEFINED',
+        websites: [],
+      }),
+    })
+
+    assert.equal(response.status, 403)
   })
 
   it('returns the first Meta message QR code for an owned channel', async () => {
@@ -1569,7 +1671,7 @@ describe('channel management route', () => {
       }),
     )
     const localMcpImportResponse = await route.request(
-      'http://backoffice.example/7/agent-import/inspect',
+      'http://desk.example/7/agent-import/inspect',
       { method: 'POST', body: localMcpImportForm },
     )
 
@@ -3003,6 +3105,7 @@ function createRepository(
       waPhoneNumberId: 'phone-id',
       waSystemUserAccessToken: 'access-secret',
       waWabaId: 'waba-id',
+      waAppId: 'app-id',
     }),
     create: async () => channel,
     update: async () => channel,

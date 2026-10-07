@@ -1,5 +1,5 @@
-import { auth } from '@mba-demo/auth'
-import { channels, db, member } from '@mba-demo/db'
+import { auth } from '@mba-desk/auth'
+import { channels, db, member } from '@mba-desk/db'
 import {
   createWhatsAppTemplatesClient,
   WhatsAppTemplatesApiError,
@@ -7,7 +7,7 @@ import {
   type CreateTemplateInput,
   type UpdateTemplateInput,
   type WhatsAppTemplatesClientContract,
-} from '@mba-demo/wa-templates'
+} from '@mba-desk/wa-templates'
 import { zValidator } from '@hono/zod-validator'
 import { and, eq } from 'drizzle-orm'
 import { Hono, type Context } from 'hono'

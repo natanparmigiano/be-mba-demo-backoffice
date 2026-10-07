@@ -2,7 +2,7 @@ import {
   RUNNER_MCP_PACKAGE_MAX_BYTES,
   runnerMcpPackageSchema,
   type RunnerMcpPackage,
-} from '@mba-demo/runner'
+} from '@mba-desk/runner'
 import { ZodError } from 'zod'
 import { parseYaml, stringifyYaml } from './yaml.js'
 

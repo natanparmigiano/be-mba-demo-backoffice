@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import type { WhatsAppMbaClientContract } from '@mba-demo/wa-mba'
+import type { WhatsAppMbaClientContract } from '@mba-desk/wa-mba'
 import {
   createMbaPlaygroundRoute,
   type MbaPlaygroundRepository,

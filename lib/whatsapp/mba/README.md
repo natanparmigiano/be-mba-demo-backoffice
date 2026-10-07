@@ -1,6 +1,6 @@
 # WhatsApp Meta Business Agent
 
-`@mba-demo/wa-mba` is the typed client for the Meta Business Agent Platform
+`@mba-desk/wa-mba` is the typed client for the Meta Business Agent Platform
 APIs used with a WhatsApp Business phone number. It covers every operation in
 the checked-in `WhatsApp Cloud API/MBA` collection:
 
@@ -14,7 +14,7 @@ the checked-in `WhatsApp Cloud API/MBA` collection:
 ## Usage
 
 ```ts
-import { createWhatsAppMbaClient } from '@mba-demo/wa-mba'
+import { createWhatsAppMbaClient } from '@mba-desk/wa-mba'
 
 const mba = createWhatsAppMbaClient({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
@@ -74,7 +74,7 @@ responses throw `WhatsAppMbaResponseError`.
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/wa-mba typecheck
-yarn workspace @mba-demo/wa-mba test
-yarn workspace @mba-demo/wa-mba build
+yarn workspace @mba-desk/wa-mba typecheck
+yarn workspace @mba-desk/wa-mba test
+yarn workspace @mba-desk/wa-mba build
 ```

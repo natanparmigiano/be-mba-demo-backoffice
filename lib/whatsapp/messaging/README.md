@@ -1,6 +1,6 @@
 # WhatsApp messaging
 
-`@mba-demo/wa-messaging` is the typed WhatsApp Cloud API client for sending
+`@mba-desk/wa-messaging` is the typed WhatsApp Cloud API client for sending
 messages. It deliberately covers only the `/{phone-number-id}/messages`
 operation; media upload, template management, phone-number administration, and
 other Graph API endpoints belong in separate packages.
@@ -13,12 +13,12 @@ also has a named convenience method such as `sendText()` or `sendImage()`.
 The same client marks incoming messages as read, displays typing indicators,
 sends contextual replies, and supports link previews on text messages.
 The package also exports the corresponding request and response Zod schemas;
-webhook schemas live separately in `@mba-demo/wa-webhooks`.
+webhook schemas live separately in `@mba-desk/wa-webhooks`.
 
 ## Usage
 
 ```ts
-import { createWhatsAppMessagingClient } from '@mba-demo/wa-messaging'
+import { createWhatsAppMessagingClient } from '@mba-desk/wa-messaging'
 
 const messaging = createWhatsAppMessagingClient({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,

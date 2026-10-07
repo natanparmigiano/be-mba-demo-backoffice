@@ -30,7 +30,7 @@ required by `isolated-vm`.
 
 ## Entrypoint roles
 
-`mba-demo-backend-entrypoint` accepts one command. The image defaults to `app`,
+`mba-desk-backend-entrypoint` accepts one command. The image defaults to `app`,
 while deployment profiles can override it with `worker` when needed:
 
 | Command  | Behavior                                                                       |
@@ -116,7 +116,7 @@ This starts only PostgreSQL and the app. `KV_ADAPTER=memory` explicitly selects
 process-local KV, while the missing Kafka configuration selects in-memory events.
 `ENABLE_WORKER_IN_PROCESS=true` ensures publishers and subscribers share the
 same app process. Files use the durable `files-data` volume mounted at
-`/var/lib/mba-demo/files`; the rest of the application filesystem remains
+`/var/lib/mba-desk/files`; the rest of the application filesystem remains
 read-only.
 
 Do not split a memory-mode publisher and worker into separate containers: process-local events cannot cross that boundary.
@@ -187,7 +187,7 @@ During Blueprint creation, Render prompts for three non-synchronized variables:
 
 | Variable           | Value                                                                                             |
 | ------------------ | ------------------------------------------------------------------------------------------------- |
-| `BETTER_AUTH_URL`  | The final public service URL, such as `https://mba-demo-backoffice.onrender.com`                  |
+| `BETTER_AUTH_URL`  | The final public service URL, such as `https://mba-desk.onrender.com`                             |
 | `CORS_ORIGIN`      | The browser origin allowed to call the API; for the bundled app, use the same public service URL  |
 | `FILES_PUBLIC_URL` | The public service URL used as the base for application-served signed URLs; normally the same URL |
 

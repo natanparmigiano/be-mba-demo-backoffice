@@ -1,5 +1,5 @@
 {
-  "name": "@mba-demo/db",
+  "name": "@mba-desk/db",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -29,8 +29,8 @@
     "postgres": "^3.4.9"
   },
   "devDependencies": {
-    "@mba-demo/wa-messaging": "0.0.0",
-    "@mba-demo/wa-webhooks": "0.0.0",
+    "@mba-desk/wa-messaging": "0.0.0",
+    "@mba-desk/wa-webhooks": "0.0.0",
     "@types/node": "^24.5.2",
     "drizzle-kit": "^0.31.11",
     "tsx": "^4.20.5",

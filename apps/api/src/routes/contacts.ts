@@ -1,4 +1,4 @@
-import { auth } from '@mba-demo/auth'
+import { auth } from '@mba-desk/auth'
 import {
   channels,
   chatEvents,
@@ -8,7 +8,7 @@ import {
   member,
   messages,
   messageStatusEvents,
-} from '@mba-demo/db'
+} from '@mba-desk/db'
 import { zValidator } from '@hono/zod-validator'
 import {
   and,

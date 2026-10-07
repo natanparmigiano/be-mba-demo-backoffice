@@ -1,5 +1,5 @@
 {
-  "name": "@mba-demo/wa-messaging",
+  "name": "@mba-desk/wa-messaging",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -16,7 +16,7 @@
     "test": "tsx --conditions=development --test src/**/*.test.ts"
   },
   "dependencies": {
-    "@mba-demo/wa-webhooks": "0.0.0",
+    "@mba-desk/wa-webhooks": "0.0.0",
     "zod": "^4.1.11"
   },
   "devDependencies": {

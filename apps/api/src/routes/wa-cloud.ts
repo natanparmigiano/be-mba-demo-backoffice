@@ -4,9 +4,9 @@ import {
   findWhatsAppChannelById,
   type WhatsAppChannelConfiguration,
   WhatsAppWebhookChannelMismatchError,
-} from '@mba-demo/db'
-import type { EventBus } from '@mba-demo/events'
-import { whatsappWebhookSchema } from '@mba-demo/wa-webhooks'
+} from '@mba-desk/db'
+import type { EventBus } from '@mba-desk/events'
+import { whatsappWebhookSchema } from '@mba-desk/wa-webhooks'
 import { Hono } from 'hono'
 
 export const WA_CLOUD_WEBHOOK_TOPIC = 'wa-cloud.webhook.v1'

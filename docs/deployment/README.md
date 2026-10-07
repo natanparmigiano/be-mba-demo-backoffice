@@ -54,7 +54,7 @@ The production image has two roles:
 | Event worker    | `worker`            | Starts registered event subscribers without HTTP or migrations                                    |
 
 The image defaults to the `app` role. Platforms that override both Docker
-`ENTRYPOINT` and `CMD` must invoke `mba-demo-backend-entrypoint app` explicitly;
+`ENTRYPOINT` and `CMD` must invoke `mba-desk-backend-entrypoint app` explicitly;
 the Render Blueprint leaves the Docker command unset so the image default is
 preserved.
 
@@ -196,7 +196,7 @@ docker compose -f compose.dev.yaml logs -f
 docker compose -f compose.dev.yaml down
 ```
 
-The `mba-demo-backoffice-dev` project name and `dev-*` volumes isolate
+The `mba-desk-dev` project name and `dev-*` volumes isolate
 development data from the other Compose modes. To deliberately remove all
 development PostgreSQL, Redis, Kafka, and MinIO data:
 
@@ -346,7 +346,7 @@ The managed Redis-compatible service means additional web instances can share KV
 
    | Variable                     | Value                                                                        |
    | ---------------------------- | ---------------------------------------------------------------------------- |
-   | `BETTER_AUTH_URL`            | Final public service URL, such as `https://mba-demo-backoffice.onrender.com` |
+   | `BETTER_AUTH_URL`            | Final public service URL, such as `https://mba-desk.onrender.com`            |
    | `CORS_ORIGIN`                | Browser origin allowed to call the API; normally the same public URL         |
    | `FILES_PUBLIC_URL`           | Public base for application-served signed URLs; normally the same public URL |
    | `BETTER_AUTH_ADMIN_USER_IDS` | Optional comma-separated Better Auth user IDs                                |
@@ -377,7 +377,7 @@ The same image can run on another container platform with externally managed ser
 ### Build
 
 ```bash
-docker build --target runtime -t mba-demo-backoffice:latest .
+docker build --target runtime -t mba-desk:latest .
 ```
 
 The image runs as the unprivileged `node` user, uses `SIGTERM`, and includes the compiled API, web application, libraries, and Drizzle migrations. The synthetic webhook generator is a development/load-testing workspace and is not copied into the runtime image.
@@ -396,13 +396,13 @@ BETTER_AUTH_SECRET=replace-with-a-high-entropy-secret
 BETTER_AUTH_URL=https://app.example.com
 CORS_ORIGIN=https://app.example.com
 FILES_ADAPTER=fs
-FILES_DIRECTORY=/var/lib/mba-demo/files
+FILES_DIRECTORY=/var/lib/mba-desk/files
 FILES_PUBLIC_URL=https://app.example.com
 FILES_SIGNING_SECRET=replace-with-an-independent-high-entropy-secret
 ```
 
 ```bash
-docker run --name mba-demo-app --env-file production.env -p 8080:8080 mba-demo-backoffice:latest app
+docker run --name mba-desk-app --env-file production.env -p 8080:8080 mba-desk:latest app
 ```
 
 Use a hostname reachable from inside the container in `DATABASE_URL`;
@@ -422,8 +422,8 @@ For independent event processing, configure both processes with the same Postgre
 Run the same image with different role arguments:
 
 ```bash
-docker run --env-file app.env -p 8080:8080 mba-demo-backoffice:latest app
-docker run --env-file worker.env mba-demo-backoffice:latest worker
+docker run --env-file app.env -p 8080:8080 mba-desk:latest app
+docker run --env-file worker.env mba-desk:latest worker
 ```
 
 All worker replicas using the same `KAFKA_GROUP_ID` share delivery as one consumer group. Use distinct group IDs only when separate logical consumers must each receive every event.

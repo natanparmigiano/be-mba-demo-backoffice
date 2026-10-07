@@ -1,6 +1,6 @@
 # WhatsApp conversational components
 
-`@mba-demo/wa-components` is the typed WhatsApp Business Management API client
+`@mba-desk/wa-components` is the typed WhatsApp Business Management API client
 for conversational automation attached to a business phone number. It manages
 icebreakers (called `prompts` by Meta) and commands.
 
@@ -12,7 +12,7 @@ It covers Meta's two configuration operations:
 ## Usage
 
 ```ts
-import { createWhatsAppComponentsClient } from '@mba-demo/wa-components'
+import { createWhatsAppComponentsClient } from '@mba-desk/wa-components'
 
 const components = createWhatsAppComponentsClient({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
@@ -61,7 +61,7 @@ Graph API error fields. Invalid successful responses throw
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/wa-components typecheck
-yarn workspace @mba-demo/wa-components test
-yarn workspace @mba-demo/wa-components build
+yarn workspace @mba-desk/wa-components typecheck
+yarn workspace @mba-desk/wa-components test
+yarn workspace @mba-desk/wa-components build
 ```

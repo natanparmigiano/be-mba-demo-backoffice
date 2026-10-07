@@ -1,4 +1,4 @@
-import type { KeyValueStore } from '@mba-demo/kv'
+import type { KeyValueStore } from '@mba-desk/kv'
 
 export function createSecondaryStorage(store: KeyValueStore) {
   return {

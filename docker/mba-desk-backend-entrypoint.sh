@@ -14,7 +14,7 @@ case "$role" in
     exec node dist/worker.js
     ;;
   *)
-    echo "Usage: mba-demo-backend-entrypoint {app|worker}" >&2
+    echo "Usage: mba-desk-backend-entrypoint {app|worker}" >&2
     exit 64
     ;;
 esac

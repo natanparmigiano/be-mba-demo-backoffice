@@ -6,8 +6,8 @@ import type {
   WhatsAppMessageStatus,
   WhatsAppWebhook,
   WhatsAppWebhookChange,
-} from '@mba-demo/wa-webhooks'
-import { whatsappWebhookSchema } from '@mba-demo/wa-webhooks'
+} from '@mba-desk/wa-webhooks'
+import { whatsappWebhookSchema } from '@mba-desk/wa-webhooks'
 import { SeededRandom } from './random.js'
 import type {
   ConversationOwner,

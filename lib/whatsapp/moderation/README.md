@@ -1,6 +1,6 @@
 # WhatsApp user moderation
 
-`@mba-demo/wa-moderation` is the typed WhatsApp Cloud API client for managing a
+`@mba-desk/wa-moderation` is the typed WhatsApp Cloud API client for managing a
 business phone number's blocked users.
 
 Meta's current Block Users API exposes three operations, all covered here:
@@ -17,7 +17,7 @@ and the corresponding request examples are checked in under
 ## Usage
 
 ```ts
-import { createWhatsAppModerationClient } from '@mba-demo/wa-moderation'
+import { createWhatsAppModerationClient } from '@mba-desk/wa-moderation'
 
 const moderation = createWhatsAppModerationClient({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,
@@ -56,7 +56,7 @@ Graph API error fields. Invalid successful responses throw
 ## Verification
 
 ```bash
-yarn workspace @mba-demo/wa-moderation typecheck
-yarn workspace @mba-demo/wa-moderation test
-yarn workspace @mba-demo/wa-moderation build
+yarn workspace @mba-desk/wa-moderation typecheck
+yarn workspace @mba-desk/wa-moderation test
+yarn workspace @mba-desk/wa-moderation build
 ```

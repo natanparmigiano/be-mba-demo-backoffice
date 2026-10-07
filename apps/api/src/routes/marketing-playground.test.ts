@@ -4,7 +4,7 @@ import {
   WhatsAppMarketingApiError,
   type SendMarketingMessageInput,
   type WhatsAppMarketingClientContract,
-} from '@mba-demo/wa-marketing'
+} from '@mba-desk/wa-marketing'
 import { createMarketingPlaygroundRoute } from './marketing-playground.js'
 
 const configuration = { phoneNumberId: 'phone-id', accessToken: 'token' }

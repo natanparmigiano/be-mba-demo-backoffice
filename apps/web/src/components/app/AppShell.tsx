@@ -16,12 +16,12 @@ import {
   SendHorizontal,
   ShieldCheck,
   Users,
+  UsersRound,
   Webhook,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import signifierUrl from '../../assets/signifier.png'
 import { authClient } from '../../auth/auth-client'
 import { useAuth } from '../../auth/AuthProvider'
 import { hasAdminRole } from '../../auth/roles'
@@ -38,6 +38,7 @@ import {
   MenuTrigger,
 } from '../ui'
 import { OrganizationGuard } from './OrganizationGuard'
+import { OrganizationLogo } from './OrganizationLogo'
 import { OrganizationSwitcher } from './OrganizationSwitcher'
 
 export function AppShell() {
@@ -45,6 +46,7 @@ export function AppShell() {
   const location = useLocation()
   const { t } = useTranslation()
   const { session, user, refetch } = useAuth()
+  const activeOrganizationQuery = authClient.useActiveOrganization()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const isChatRoute =
     location.pathname === '/chat' || location.pathname.startsWith('/chat/')
@@ -75,6 +77,14 @@ export function AppShell() {
       to: '/studio',
       label: t('shell.studio'),
       icon: PanelsTopLeft,
+      end: false,
+    },
+  ]
+  const handoffNavigation = [
+    {
+      to: '/teams',
+      label: t('shell.teams'),
+      icon: UsersRound,
       end: false,
     },
   ]
@@ -172,7 +182,10 @@ export function AppShell() {
     >
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r bg-card p-4 md:flex">
         <div className="flex items-center gap-3 px-2 py-1">
-          <img className="size-9 rounded-xl" src={signifierUrl} alt="" />
+          <OrganizationLogo
+            organization={activeOrganizationQuery.data}
+            className="size-9"
+          />
           <div>
             <p className="text-sm font-bold">{t('shell.productName')}</p>
             <p className="text-xs text-muted-foreground">
@@ -199,6 +212,38 @@ export function AppShell() {
               {label}
             </NavLink>
           ))}
+          <div
+            className="mt-4"
+            role="group"
+            aria-labelledby="handoff-navigation-label"
+          >
+            <p
+              id="handoff-navigation-label"
+              className="px-3 text-[11px] font-bold tracking-[0.12em] text-muted-foreground uppercase"
+            >
+              {t('shell.handoff')}
+            </p>
+            <div className="mt-1 grid gap-1 pl-2">
+              {handoffNavigation.map(({ to, label, icon: Icon, end }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors',
+                      isActive
+                        ? 'bg-primary/12 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )
+                  }
+                >
+                  <Icon className="size-4" />
+                  {label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
           <div
             className="mt-4"
             role="group"

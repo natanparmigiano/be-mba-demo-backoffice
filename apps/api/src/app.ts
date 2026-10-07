@@ -1,6 +1,6 @@
-import { auth, hasSsoProviders as defaultHasSsoProviders } from '@mba-demo/auth'
-import { events, type EventBus } from '@mba-demo/events'
-import { files, type FileStore } from '@mba-demo/files'
+import { auth, hasSsoProviders as defaultHasSsoProviders } from '@mba-desk/auth'
+import { events, type EventBus } from '@mba-desk/events'
+import { files, type FileStore } from '@mba-desk/files'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { cors } from 'hono/cors'
 import { Hono } from 'hono'
@@ -78,6 +78,8 @@ import {
 import { createAdminOrganizationsRoute } from './routes/admin-organizations.js'
 import { createFilesRoute } from './routes/files.js'
 import { createGroupsRoute, type GroupsRouteOptions } from './routes/groups.js'
+import { createTeamsRoute, type TeamsRouteOptions } from './routes/teams.js'
+import { createOrganizationLogosRoute } from './routes/organization-logos.js'
 import { createMcpRoute, type McpRouteOptions } from './routes/mcp.js'
 import { createRunnerRoute, type RunnerRouteOptions } from './routes/runner.js'
 import {
@@ -116,6 +118,7 @@ interface CreateAppOptions {
   eventBus?: EventBus
   fileStore?: FileStore
   groups?: GroupsRouteOptions
+  teams?: TeamsRouteOptions
   hasSsoProviders?: () => Promise<boolean>
   messagingPlayground?: MessagingPlaygroundRouteOptions
   marketingPlayground?: MarketingPlaygroundRouteOptions
@@ -150,6 +153,7 @@ export const createApp = ({
   eventBus = events,
   fileStore = files,
   groups,
+  teams,
   hasSsoProviders = defaultHasSsoProviders,
   messagingPlayground,
   marketingPlayground,
@@ -250,6 +254,11 @@ export const createApp = ({
     .route('/api/contacts', createContactsRoute(contacts))
     .route('/api/files', createFilesRoute(fileStore))
     .route('/api/groups', createGroupsRoute(groups))
+    .route('/api/teams', createTeamsRoute(teams))
+    .route(
+      '/api/organization-logos',
+      createOrganizationLogosRoute({ fileStore }),
+    )
     .route('/api/stickers', createStickersRoute({ fileStore, ...stickers }))
     .route(
       '/api/studio/projects',

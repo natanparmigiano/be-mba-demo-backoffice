@@ -11,15 +11,15 @@ import {
   runnerMcpFunctions,
   runnerMcps,
   runnerRevisionParameters,
-} from '@mba-demo/db'
+} from '@mba-desk/db'
 import { and, eq } from 'drizzle-orm'
-import { MemoryEventBus } from '@mba-demo/events'
+import { MemoryEventBus } from '@mba-desk/events'
 import {
   RUNNER_EXECUTION_REQUESTED_TOPIC,
   Runner,
   createRunnerExecutionPublisher,
   runnerExecutionRequestedSchema,
-} from '@mba-demo/runner'
+} from '@mba-desk/runner'
 import { createMcpRoute } from '../apps/api/src/routes/mcp.js'
 import { createRunnerRoute } from '../apps/api/src/routes/runner.js'
 

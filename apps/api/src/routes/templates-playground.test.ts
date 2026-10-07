@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import type { WhatsAppTemplatesClientContract } from '@mba-demo/wa-templates'
+import type { WhatsAppTemplatesClientContract } from '@mba-desk/wa-templates'
 import {
   createTemplatesPlaygroundRoute,
   type TemplatesPlaygroundRepository,

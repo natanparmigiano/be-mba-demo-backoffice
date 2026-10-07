@@ -1,6 +1,6 @@
 # WhatsApp Flows
 
-`@mba-demo/wa-flows` is the typed WhatsApp Flows management client. It covers
+`@mba-desk/wa-flows` is the typed WhatsApp Flows management client. It covers
 the complete Flow-owned lifecycle represented by Meta's checked-in Cloud API
 collection:
 
@@ -13,13 +13,13 @@ collection:
 - retrieve all documented endpoint metric types; and
 - get or set the phone-number-scoped endpoint encryption public key.
 
-Sending a Flow message is intentionally owned by `@mba-demo/wa-messaging`; this
+Sending a Flow message is intentionally owned by `@mba-desk/wa-messaging`; this
 package manages the Flow resource itself.
 
 ## Usage
 
 ```ts
-import { createWhatsAppFlowsClient } from '@mba-demo/wa-flows'
+import { createWhatsAppFlowsClient } from '@mba-desk/wa-flows'
 
 const flows = createWhatsAppFlowsClient({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN!,

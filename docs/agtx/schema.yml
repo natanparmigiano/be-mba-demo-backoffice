@@ -1,5 +1,5 @@
 $schema: 'https://json-schema.org/draft/2020-12/schema'
-$id: 'https://mba-demo.example/schemas/agtx/v1/agent.schema.json'
+$id: 'https://mba-desk.example/schemas/agtx/v1/agent.schema.json'
 title: 'AGTX agent manifest'
 description: 'Schema for agent.yaml inside an AGTX version 1 package.'
 type: object

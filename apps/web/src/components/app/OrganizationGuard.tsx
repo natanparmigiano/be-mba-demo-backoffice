@@ -10,6 +10,13 @@ import { useTranslation } from 'react-i18next'
 import { authClient } from '../../auth/auth-client'
 import { useAuth } from '../../auth/AuthProvider'
 import { Button, Dialog, Input } from '../ui'
+import {
+  applyOrganizationPrimaryColor,
+  DEFAULT_PRIMARY_COLOR,
+} from '../theme/organization-color'
+import { OrganizationLogo } from './OrganizationLogo'
+import { OrganizationLogoPicker } from './OrganizationLogoPicker'
+import { uploadOrganizationLogo } from './organization-logo-api'
 
 export function OrganizationGuard({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
@@ -24,9 +31,17 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
   const [activationError, setActivationError] = useState<string | null>(null)
   const [organizationName, setOrganizationName] = useState('')
   const [organizationSlug, setOrganizationSlug] = useState('')
+  const [primaryColor, setPrimaryColor] = useState(DEFAULT_PRIMARY_COLOR)
+  const [organizationLogo, setOrganizationLogo] = useState<Blob | null>(null)
   const [slugWasEdited, setSlugWasEdited] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [creationError, setCreationError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (activeOrganization) {
+      applyOrganizationPrimaryColor(activeOrganization.primaryColor)
+    }
+  }, [activeOrganization])
 
   useEffect(() => {
     if (activeOrganization) {
@@ -88,10 +103,15 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
       const result = await authClient.organization.create({
         name: organizationName.trim(),
         slug: organizationSlug.trim(),
+        primaryColor,
       })
       if (result.error) throw new Error(result.error.message)
       if (!result.data)
         throw new Error(t('organizations.organizationNotCreated'))
+
+      if (organizationLogo) {
+        await uploadOrganizationLogo(result.data.id, organizationLogo)
+      }
 
       const activeResult = await authClient.organization.setActive({
         organizationId: result.data.id,
@@ -106,6 +126,8 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
 
       setOrganizationName('')
       setOrganizationSlug('')
+      setPrimaryColor(DEFAULT_PRIMARY_COLOR)
+      setOrganizationLogo(null)
       setSlugWasEdited(false)
     } catch (reason) {
       setCreationError(
@@ -186,11 +208,7 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
         dismissible={false}
         title={t('organizations.createTitle')}
         description={t('organizations.requiredDescription')}
-        icon={
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
-            <Building2 className="size-5" aria-hidden />
-          </span>
-        }
+        icon={<OrganizationLogo organization={null} className="size-10" />}
       >
         <form className="grid w-full gap-4" onSubmit={createOrganization}>
           <Input
@@ -215,6 +233,19 @@ export function OrganizationGuard({ children }: { children: ReactNode }) {
             }}
             pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
             required
+            disabled={isCreating}
+          />
+          <Input
+            label={t('organizations.primaryColor')}
+            hint={t('organizations.primaryColorHint')}
+            type="color"
+            value={primaryColor}
+            onChange={(event) => setPrimaryColor(event.target.value)}
+            disabled={isCreating}
+          />
+          <OrganizationLogoPicker
+            value={organizationLogo}
+            onChange={(logo) => setOrganizationLogo(logo)}
             disabled={isCreating}
           />
           {creationError && (
