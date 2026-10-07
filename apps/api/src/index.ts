@@ -29,12 +29,18 @@ if (isInProcessWorkerEnabled()) {
   console.log('In-process event worker enabled')
 }
 
-const server = serve({
-  fetch: app.fetch,
-  port,
-})
-
-console.log(`API listening on http://localhost:${port}`)
+const server = serve(
+  {
+    fetch: app.fetch,
+    hostname: '0.0.0.0',
+    port,
+  },
+  (address) => {
+    const host = typeof address === 'string' ? address : address.address
+    const boundPort = typeof address === 'string' ? port : address.port
+    console.log(`API listening on http://${host}:${boundPort}`)
+  },
+)
 
 let isShuttingDown = false
 
