@@ -12,7 +12,7 @@ These instructions apply to every workspace below `lib/whatsapp`.
   parameters with generic JSON argument arrays or expose values supplied by
   the selected channel.
 - Update all visible playground copy in English, Brazilian Portuguese, and
-  Spanish in `apps/web/src/i18n.ts`.
+  Spanish in `lib/i18n/src/locales/es.ts`.
 - Keep each card's cURL, JavaScript fetch, Meta Hack, OpenAPI, and Postman
   representations aligned with the original Meta API request behind the
   library abstraction, never the application's internal wrapper route.

@@ -1,8 +1,8 @@
 # MBA Desk
 
-MBA Desk provides an organization-scoped React application and a
-typed Hono API for administering WhatsApp channels, contacts, groups, teams,
-chats, users, and SSO. The Yarn workspaces monorepo uses Better Auth,
+MBA Desk provides organization-scoped Workspace and Manager React applications
+with matching typed Hono APIs for administering WhatsApp channels, contacts,
+groups, teams, chats, users, and SSO. The Yarn workspaces monorepo uses Better Auth,
 Drizzle/PostgreSQL, Redis-compatible KV storage and Pub/Sub, Kafka-compatible
 events, and filesystem/PostgreSQL/S3-compatible object storage; Hono RPC keeps the browser
 and server contract aligned.
@@ -24,8 +24,9 @@ yarn dev
 
 Open the workspace app at <http://localhost:5173> or the manager app at
 <http://localhost:5174> after the commands complete. PostgreSQL, Redis, Kafka,
-and MinIO run in containers; the API and both frontends run locally in watch
-mode, and Vite proxies `/api` to Hono at <http://localhost:3000>.
+and MinIO run in containers; both APIs and both frontends run locally in watch
+mode. Workspace proxies `/api` to port `3000`; Manager proxies it to port
+`3001`.
 
 For the first sign-in, use the `admin@meta.com` credentials printed once in the
 API logs and immediately change the generated password on the Administration
@@ -48,6 +49,10 @@ The values in `.env.dev` are local-only credentials. See [`docker/README.md`](do
 - Docker or Podman with a Compose provider
 
 ## Choose a deployment mode
+
+> The Docker and Compose topology is intentionally unchanged during this split
+> and still references the removed combined applications. Use the host
+> development workflow above until the container topology is migrated.
 
 Use host development for normal editing, Simple Compose for the smallest
 self-contained demo, and Full Compose when you need to exercise a separate
@@ -86,7 +91,7 @@ development, set a high-entropy `BETTER_AUTH_SECRET` and deployment-correct
 ## Commands
 
 ```bash
-yarn dev        # run the API and both split frontends together
+yarn dev        # run both APIs and both split frontends together
 yarn format     # format the repository with Prettier
 yarn lint       # lint the repository with ESLint
 yarn typecheck  # type-check every workspace
@@ -102,7 +107,7 @@ yarn auth:create-admin --email admin@example.com --name "Admin" --role admin
 yarn sso help     # inspect SSO provider setup and lifecycle commands
 ```
 
-The database defaults to `postgresql://postgres:postgres@localhost:5432/mba_desk` in development. In production, `NODE_ENV=production` requires an explicit `DATABASE_URL` and a stable base64-encoded 256-bit `ENCRYPTION_KEY`. Set `PORT` to change the API port and `CORS_ORIGIN` to allow a different frontend origin.
+The database defaults to `postgresql://postgres:postgres@localhost:5432/mba_desk` in development. In production, `NODE_ENV=production` requires an explicit `DATABASE_URL` and a stable base64-encoded 256-bit `ENCRYPTION_KEY`.
 
 ## Configuration
 
@@ -113,9 +118,13 @@ The database defaults to `postgresql://postgres:postgres@localhost:5432/mba_desk
 | `BETTER_AUTH_SECRET`          | Production             | Better Auth signing secret                                  |
 | `BETTER_AUTH_URL`             | Production             | Public Better Auth base URL                                 |
 | `BETTER_AUTH_TRUSTED_ORIGINS` | With OIDC              | Comma-separated exact IdP endpoint origins                  |
-| `CORS_ORIGIN`                 | No                     | Trusted browser origin; defaults to `http://localhost:5173` |
-| `PORT`                        | No                     | Hono port; defaults to `3000`                               |
-| `WEB_ROOT`                    | No                     | Static build directory; defaults to `../web/dist`           |
+| `CORS_ORIGIN`                 | No                     | Workspace trusted origin fallback                           |
+| `WORKSPACE_API_PORT`          | No                     | Workspace API port; defaults to `3000`                      |
+| `MANAGER_API_PORT`            | No                     | Manager API port; defaults to `3001`                        |
+| `WORKSPACE_CORS_ORIGIN`       | No                     | Workspace trusted browser origin                            |
+| `MANAGER_CORS_ORIGIN`         | No                     | Manager trusted origin; defaults to `http://localhost:5174` |
+| `WORKSPACE_WEB_ROOT`          | No                     | Workspace static build directory                            |
+| `MANAGER_WEB_ROOT`            | No                     | Manager static build directory                              |
 | `KV_ADAPTER`                  | No                     | `memory`, `postgres` (default), or `redis`                  |
 | `REDIS_URL`                   | Redis KV / No          | Selects Redis KV when inferred; also enables Redis Pub/Sub  |
 | `KAFKA_CLIENT_ID`             | With brokers           | Selects Kafka together with `KAFKA_BROKERS`                 |
@@ -138,8 +147,8 @@ See `.env.example` for local values. The development auth secret and Compose cre
 
 ## Architecture and workspace boundaries
 
-The browser talks to one Hono API. The API owns authentication, process
-lifecycle, persistence, external integrations, and the shared RPC contract.
+Each browser application talks to its matching Hono API. The APIs share
+authentication and infrastructure but expose separate RPC contracts.
 Reusable capabilities live in `lib/*`; applications may import libraries, but
 libraries must never import applications.
 
@@ -164,18 +173,22 @@ flowchart LR
 
 ### What lives where?
 
-| Area           | Responsibility                                                            |
-| -------------- | ------------------------------------------------------------------------- |
-| `apps/api`     | Hono routes, lifecycle, workers, SPA delivery, and exported `AppType`     |
-| `apps/web`     | React/Vite browser application                                            |
-| `apps/sso-cli` | OIDC and SAML provider administration                                     |
-| `lib/*`        | Shared persistence, auth, messaging, storage, events, and runner packages |
+| Area                 | Responsibility                                                            |
+| -------------------- | ------------------------------------------------------------------------- |
+| `apps/api-workspace` | Workspace Hono composition, lifecycle entrypoint, and `AppType`           |
+| `apps/api-manager`   | Manager Hono composition, lifecycle entrypoint, and `AppType`             |
+| `apps/web-workspace` | Operational React/Vite application                                        |
+| `apps/web-manager`   | Management React/Vite application                                         |
+| `lib/api-core`       | Shared route factories, lifecycle helpers, and worker implementation      |
+| `lib/web-shared`     | Shared React shell, auth, organization, and administration UI             |
+| `apps/sso-cli`       | OIDC and SAML provider administration                                     |
+| `lib/*`              | Shared persistence, auth, messaging, storage, events, and runner packages |
 
 ### Which contracts matter most?
 
-1. **RPC types flow from the API to the browser.** The chained routes in
-   `apps/api/src/app.ts` produce `AppType`. The frontend imports it with
-   `import type`, so API runtime code stays out of the browser bundle.
+1. **RPC types flow from each API to its browser.** The chained routes in each
+   API application's `src/app.ts` produce its `AppType`; shared UI uses only
+   the common contract from `@mba-desk/api-core`.
 2. **External connections are lazy.** Shared packages do not connect during
    import. The API starts and closes resources explicitly during its lifecycle.
 3. **Workspace imports use package names.** Import through `@mba-desk/*`, never
@@ -332,8 +345,9 @@ Start with the document closest to the change you are making.
 ### Change an application
 
 - [`apps/README.md`](apps/README.md) — application boundaries
-- [`apps/api/README.md`](apps/api/README.md) — routes, lifecycle, SPA serving, and workers
-- [`apps/web/README.md`](apps/web/README.md) — frontend architecture and conventions
+- [`apps/api-workspace/README.md`](apps/api-workspace/README.md) — Workspace API surface
+- [`apps/api-manager/README.md`](apps/api-manager/README.md) — Manager API surface
+- [`lib/api-core/README.md`](lib/api-core/README.md) — shared routes, lifecycle, and workers
 - [`apps/sso-cli/README.md`](apps/sso-cli/README.md) — SSO administration CLI
 
 ### Change shared infrastructure

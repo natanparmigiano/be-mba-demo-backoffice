@@ -76,6 +76,19 @@ export class RedisKeyValueStore implements KeyValueStore {
     return (await this.connectedClient()).incrBy(key, increment)
   }
 
+  async incrementWithTtl(key: string, ttlSeconds: number): Promise<number> {
+    validatePositiveTtl(ttlSeconds)
+    const result = await (
+      await this.connectedClient()
+    ).eval(INCREMENT_WITH_TTL_SCRIPT, {
+      keys: [key],
+      arguments: [String(ttlSeconds)],
+    })
+    const value = Number(result)
+    validateInteger(value, 'result')
+    return value
+  }
+
   async decr(key: string): Promise<number> {
     return (await this.connectedClient()).decr(key)
   }
@@ -131,11 +144,14 @@ export class RedisKeyValueStore implements KeyValueStore {
 
 function validateSetOptions(options: SetOptions): void {
   if (options.ttlSeconds !== undefined) {
-    validateInteger(options.ttlSeconds, 'ttlSeconds')
+    validatePositiveTtl(options.ttlSeconds)
+  }
+}
 
-    if (options.ttlSeconds <= 0) {
-      throw new RangeError('ttlSeconds must be greater than zero')
-    }
+function validatePositiveTtl(ttlSeconds: number): void {
+  validateInteger(ttlSeconds, 'ttlSeconds')
+  if (ttlSeconds <= 0) {
+    throw new RangeError('ttlSeconds must be greater than zero')
   }
 }
 
@@ -144,3 +160,12 @@ function validateInteger(value: number, name: string): void {
     throw new TypeError(`${name} must be a safe integer`)
   }
 }
+
+const INCREMENT_WITH_TTL_SCRIPT = `
+local current_ttl = redis.call('TTL', KEYS[1])
+if current_ttl == -2 or current_ttl == -1 then
+  redis.call('SET', KEYS[1], '1', 'EX', ARGV[1])
+  return 1
+end
+return redis.call('INCR', KEYS[1])
+`

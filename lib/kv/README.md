@@ -29,7 +29,7 @@ The module-level `kv` export is created from the process environment.
 | ------------- | --------------------------------------- |
 | Read/write    | `get`, `getDel`, `set`, `del`, `exists` |
 | Multiple keys | `mGet`, `mSet`                          |
-| Counters      | `incr`, `incrBy`, `decr`, `decrBy`      |
+| Counters      | `incr`, `incrBy`, `incrementWithTtl`, `decr`, `decrBy` |
 | Expiration    | `expire`, `persist`, `ttl`              |
 | Lifecycle     | `ping`, `close`                         |
 
@@ -48,6 +48,11 @@ The Redis client connects lazily on the first operation, shares concurrent conne
 The PostgreSQL adapter stores values and expiration timestamps in `kv.entries`.
 Its atomic operations run in PostgreSQL, so multiple replicas can share it.
 `close()` is a no-op because the application owns the database lifecycle.
+
+`incrementWithTtl()` implements fixed-window counters atomically: a missing,
+expired, or legacy non-expiring counter starts at `1` with the requested TTL;
+later increments preserve the original expiration. Better Auth uses this
+operation for rate limiting.
 
 The memory adapter stores strings in a `Map` and lazily removes expired entries.
 It matches the exposed Redis semantics, including conditional writes and TTL

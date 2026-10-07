@@ -17,6 +17,7 @@ export interface KeyValueStore {
   mSet(entries: Readonly<Record<string, string>>): Promise<void>
   incr(key: string): Promise<number>
   incrBy(key: string, increment: number): Promise<number>
+  incrementWithTtl(key: string, ttlSeconds: number): Promise<number>
   decr(key: string): Promise<number>
   decrBy(key: string, decrement: number): Promise<number>
   expire(key: string, seconds: number): Promise<boolean>

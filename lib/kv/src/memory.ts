@@ -94,6 +94,24 @@ export class MemoryKeyValueStore implements KeyValueStore {
     return nextValue
   }
 
+  async incrementWithTtl(key: string, ttlSeconds: number): Promise<number> {
+    validatePositiveTtl(ttlSeconds)
+    const current = this.getLiveEntry(key)
+
+    if (!current || current.expiresAt === null) {
+      this.entries.set(key, {
+        value: '1',
+        expiresAt: this.now() + ttlSeconds * 1_000,
+      })
+      return 1
+    }
+
+    const nextValue = parseInteger(current.value) + 1
+    validateInteger(nextValue, 'result')
+    this.entries.set(key, { value: String(nextValue), expiresAt: current.expiresAt })
+    return nextValue
+  }
+
   async decr(key: string): Promise<number> {
     return this.decrBy(key, 1)
   }
@@ -158,11 +176,14 @@ export class MemoryKeyValueStore implements KeyValueStore {
 
 function validateSetOptions(options: SetOptions): void {
   if (options.ttlSeconds !== undefined) {
-    validateInteger(options.ttlSeconds, 'ttlSeconds')
+    validatePositiveTtl(options.ttlSeconds)
+  }
+}
 
-    if (options.ttlSeconds <= 0) {
-      throw new RangeError('ttlSeconds must be greater than zero')
-    }
+function validatePositiveTtl(ttlSeconds: number): void {
+  validateInteger(ttlSeconds, 'ttlSeconds')
+  if (ttlSeconds <= 0) {
+    throw new RangeError('ttlSeconds must be greater than zero')
   }
 }
 

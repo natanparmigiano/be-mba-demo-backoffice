@@ -25,6 +25,9 @@ class MemoryPostgresBackend implements PostgresKeyValueBackend {
   incrBy(key: string, increment: number) {
     return this.store.incrBy(key, increment)
   }
+  incrementWithTtl(key: string, ttlSeconds: number) {
+    return this.store.incrementWithTtl(key, ttlSeconds)
+  }
   mGet(keys: string[]) {
     return this.store.mGet(keys)
   }
@@ -61,6 +64,8 @@ describe('PostgresKeyValueStore', () => {
     assert.equal(await store.exists('one', 'missing', 'one'), 2)
     assert.equal(await store.incrBy('one', 4), 5)
     assert.equal(await store.decr('one'), 4)
+    assert.equal(await store.incrementWithTtl('rate-limit', 10), 1)
+    assert.equal(await store.ttl('rate-limit'), 10)
     assert.equal(await store.getDel('two'), '2')
     assert.equal(await store.get('two'), null)
     assert.equal(await store.ping(), 'PONG')
@@ -75,6 +80,10 @@ describe('PostgresKeyValueStore', () => {
       /greater than zero/,
     )
     await assert.rejects(() => store.incrBy('key', 0.5), /safe integer/)
+    await assert.rejects(
+      () => store.incrementWithTtl('key', 0),
+      /greater than zero/,
+    )
     await assert.rejects(() => store.expire('key', 0.5), /safe integer/)
   })
 })

@@ -20,8 +20,8 @@ import {
   createRunnerExecutionPublisher,
   runnerExecutionRequestedSchema,
 } from '@mba-desk/runner'
-import { createMcpRoute } from '../apps/api/src/routes/mcp.js'
-import { createRunnerRoute } from '../apps/api/src/routes/runner.js'
+import { createMcpRoute } from '@mba-desk/api-core/routes/mcp'
+import { createRunnerRoute } from '@mba-desk/api-core/routes/runner'
 
 const suffix = randomUUID()
 const organizationId = `runner-smoke-${suffix}`

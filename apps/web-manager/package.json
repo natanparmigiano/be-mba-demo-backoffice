@@ -28,6 +28,7 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@mba-desk/api-manager": "0.0.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.5.2",
     "@types/react": "^19.1.16",

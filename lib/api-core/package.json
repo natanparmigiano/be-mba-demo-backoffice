@@ -1,0 +1,72 @@
+{
+  "name": "@mba-desk/api-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./app": {
+      "types": "./src/app.ts",
+      "development": "./src/app.ts",
+      "default": "./dist/app.js"
+    },
+    "./routes/*": {
+      "types": "./src/routes/*.ts",
+      "development": "./src/routes/*.ts",
+      "default": "./dist/routes/*.js"
+    },
+    "./worker-config": {
+      "types": "./src/worker-config.ts",
+      "development": "./src/worker-config.ts",
+      "default": "./dist/worker-config.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start:worker": "node --no-node-snapshot --env-file-if-exists=../../.env dist/worker.js",
+    "typecheck": "tsc --noEmit",
+    "test": "NODE_OPTIONS=--no-node-snapshot tsx --conditions=development --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@ag-ui/core": "0.0.59",
+    "@ag-ui/encoder": "0.0.59",
+    "@hashbrownai/openai": "0.6.1",
+    "@hono/node-server": "^1.19.1",
+    "@hono/zod-validator": "^0.7.2",
+    "@mba-desk/auth": "0.0.0",
+    "@mba-desk/db": "0.0.0",
+    "@mba-desk/events": "0.0.0",
+    "@mba-desk/files": "0.0.0",
+    "@mba-desk/kv": "0.0.0",
+    "@mba-desk/pubsub": "0.0.0",
+    "@mba-desk/runner": "0.0.0",
+    "@mba-desk/wa-analytics": "0.0.0",
+    "@mba-desk/wa-components": "0.0.0",
+    "@mba-desk/wa-flows": "0.0.0",
+    "@mba-desk/wa-marketing": "0.0.0",
+    "@mba-desk/wa-mba": "0.0.0",
+    "@mba-desk/wa-media": "0.0.0",
+    "@mba-desk/wa-messaging": "0.0.0",
+    "@mba-desk/wa-moderation": "0.0.0",
+    "@mba-desk/wa-qr": "0.0.0",
+    "@mba-desk/wa-registration": "0.0.0",
+    "@mba-desk/wa-subscriptions": "0.0.0",
+    "@mba-desk/wa-templates": "0.0.0",
+    "@mba-desk/wa-waba": "0.0.0",
+    "@mba-desk/wa-webhooks": "0.0.0",
+    "@modelcontextprotocol/hono": "^2.0.1",
+    "@modelcontextprotocol/server": "^2.2.0",
+    "hono": "^4.13.12",
+    "openai": "6.10.0",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

@@ -19,7 +19,12 @@ describe('Better Auth secondary storage', () => {
     assert.equal(await storage.getAndDelete('session'), 'new-value')
     assert.equal(await storage.get('session'), null)
 
-    assert.equal(await storage.increment('attempts'), 1)
-    await storage.delete('attempts')
+    assert.equal(await storage.increment('attempts', 10), 1)
+    assert.equal(await kv.ttl('attempts'), 10)
+    now += 4_000
+    assert.equal(await storage.increment('attempts', 10), 2)
+    assert.equal(await kv.ttl('attempts'), 6)
+    now += 6_000
+    assert.equal(await storage.increment('attempts', 10), 1)
   })
 })

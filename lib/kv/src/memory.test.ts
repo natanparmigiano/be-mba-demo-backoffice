@@ -79,4 +79,28 @@ describe('MemoryKeyValueStore', () => {
     await store.set('not-a-number', 'value')
     await assert.rejects(() => store.incr('not-a-number'), /not an integer/)
   })
+
+  it('atomically increments fixed-window counters with expiration', async () => {
+    let now = 1_000
+    const store = new MemoryKeyValueStore(() => now)
+
+    assert.equal(await store.incrementWithTtl('rate-limit', 10), 1)
+    assert.equal(await store.ttl('rate-limit'), 10)
+
+    now += 4_000
+    assert.equal(await store.incrementWithTtl('rate-limit', 10), 2)
+    assert.equal(await store.ttl('rate-limit'), 6)
+
+    now += 6_000
+    assert.equal(await store.incrementWithTtl('rate-limit', 10), 1)
+    assert.equal(await store.ttl('rate-limit'), 10)
+  })
+
+  it('repairs legacy counters that have no expiration', async () => {
+    const store = new MemoryKeyValueStore()
+    await store.set('rate-limit', '99')
+
+    assert.equal(await store.incrementWithTtl('rate-limit', 10), 1)
+    assert.equal(await store.ttl('rate-limit'), 10)
+  })
 })

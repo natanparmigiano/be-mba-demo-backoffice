@@ -58,9 +58,12 @@ Durable auth entities live in PostgreSQL's `auth` schema:
 
 Sessions and verification state use Better Auth's secondary-storage bridge.
 The bridge supports reads, atomic read-and-delete, TTL-aware writes, deletion,
-and counters through the common KV interface. It uses Redis when configured and
-otherwise defaults to the shared PostgreSQL `kv.entries` table. Process-local
-memory requires `KV_ADAPTER=memory`.
+and atomic fixed-window counters through the common KV interface. Rate-limit
+counters receive their Better Auth window as a TTL, preserve that expiration
+across increments, and repair legacy counters that were created without an
+expiration. It uses Redis when configured and otherwise defaults to the shared
+PostgreSQL `kv.entries` table. Process-local memory requires
+`KV_ADAPTER=memory`.
 
 On an empty database, `bootstrapInitialAdmin()` creates the first application
 administrator before the API listens:

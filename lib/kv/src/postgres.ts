@@ -8,6 +8,7 @@ export interface PostgresKeyValueBackend {
   get(key: string): Promise<string | null>
   getDel(key: string): Promise<string | null>
   incrBy(key: string, increment: number): Promise<number>
+  incrementWithTtl(key: string, ttlSeconds: number): Promise<number>
   mGet(keys: string[]): Promise<Array<string | null>>
   mSet(entries: Readonly<Record<string, string>>): Promise<void>
   ping(): Promise<void>
@@ -66,6 +67,11 @@ export class PostgresKeyValueStore implements KeyValueStore {
   async incrBy(key: string, increment: number): Promise<number> {
     validateInteger(increment, 'increment')
     return await this.backend.incrBy(key, increment)
+  }
+
+  async incrementWithTtl(key: string, ttlSeconds: number): Promise<number> {
+    validatePositiveTtl(ttlSeconds)
+    return await this.backend.incrementWithTtl(key, ttlSeconds)
   }
 
   decr(key: string): Promise<number> {
@@ -214,6 +220,39 @@ class DrizzlePostgresKeyValueBackend implements PostgresKeyValueBackend {
     return parsed
   }
 
+  async incrementWithTtl(key: string, ttlSeconds: number): Promise<number> {
+    const result = await this.database.execute(sql`
+      INSERT INTO ${keyValueEntries} (key, value, expires_at)
+      VALUES (
+        ${key},
+        '1',
+        now() + ${ttlSeconds} * interval '1 second'
+      )
+      ON CONFLICT (key) DO UPDATE SET
+        value = CASE
+          WHEN expires_at IS NULL OR expires_at <= now()
+          THEN '1'
+          ELSE (value::bigint + 1)::text
+        END,
+        expires_at = CASE
+          WHEN expires_at IS NULL OR expires_at <= now()
+          THEN now() + ${ttlSeconds} * interval '1 second'
+          ELSE expires_at
+        END
+      WHERE expires_at IS NULL
+         OR expires_at <= now()
+         OR (value::numeric + 1)
+              BETWEEN ${Number.MIN_SAFE_INTEGER} AND ${Number.MAX_SAFE_INTEGER}
+      RETURNING value
+    `)
+    const value = rows<{ value: string }>(result)[0]?.value
+    if (value === undefined)
+      throw new RangeError('result must be a safe integer')
+    const parsed = Number(value)
+    validateInteger(parsed, 'result')
+    return parsed
+  }
+
   async expire(key: string, seconds: number): Promise<boolean> {
     if (seconds <= 0) return (await this.del([key])) === 1
     const updated = await this.database
@@ -269,10 +308,14 @@ function rows<T>(result: unknown): T[] {
 
 function validateSetOptions(options: SetOptions): void {
   if (options.ttlSeconds !== undefined) {
-    validateInteger(options.ttlSeconds, 'ttlSeconds')
-    if (options.ttlSeconds <= 0) {
-      throw new RangeError('ttlSeconds must be greater than zero')
-    }
+    validatePositiveTtl(options.ttlSeconds)
+  }
+}
+
+function validatePositiveTtl(ttlSeconds: number): void {
+  validateInteger(ttlSeconds, 'ttlSeconds')
+  if (ttlSeconds <= 0) {
+    throw new RangeError('ttlSeconds must be greater than zero')
   }
 }
 

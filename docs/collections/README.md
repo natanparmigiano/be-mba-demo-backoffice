@@ -31,11 +31,11 @@ For Postman exports, the flow is:
 
 The relevant implementation files are:
 
-- [`PlaygroundOperationCard.tsx`](../../apps/web/src/components/api-playground/PlaygroundOperationCard.tsx)
-- [`PlaygroundPostmanRegistry.tsx`](../../apps/web/src/components/api-playground/PlaygroundPostmanRegistry.tsx)
-- [`PlaygroundRequestActions.tsx`](../../apps/web/src/components/api-playground/PlaygroundRequestActions.tsx)
-- [`ApiPlaygroundPage.tsx`](../../apps/web/src/pages/ApiPlaygroundPage.tsx)
-- [`ApiPlaygroundMbaFolders.tsx`](../../apps/web/src/pages/ApiPlaygroundMbaFolders.tsx)
+- [`PlaygroundOperationCard.tsx`](../../apps/web-manager/src/components/api-playground/PlaygroundOperationCard.tsx)
+- [`PlaygroundPostmanRegistry.tsx`](../../apps/web-manager/src/components/api-playground/PlaygroundPostmanRegistry.tsx)
+- [`PlaygroundRequestActions.tsx`](../../apps/web-manager/src/components/api-playground/PlaygroundRequestActions.tsx)
+- [`ApiPlaygroundPage.tsx`](../../apps/web-manager/src/pages/ApiPlaygroundPage.tsx)
+- [`ApiPlaygroundMbaFolders.tsx`](../../apps/web-manager/src/pages/ApiPlaygroundMbaFolders.tsx)
 
 ## URLs and variables
 

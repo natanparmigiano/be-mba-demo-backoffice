@@ -80,7 +80,9 @@ replayed.
 
 ## Worker integration
 
-The event library does not decide which application handlers run. `apps/api/src/subscribers.ts` owns the handler registry, and the API's app or worker entrypoint registers the selected topics before starting this library.
+The event library does not decide which application handlers run.
+`lib/api-core/src/subscribers.ts` owns the handler registry, and the Manager API
+or worker entrypoint registers selected topics before starting this library.
 
 Runner calls publish `runner.execution.requested.v1` with a versioned payload
 containing only the durable execution-log ID. The subscriber atomically claims

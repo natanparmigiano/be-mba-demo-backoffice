@@ -14,6 +14,7 @@ export function createSecondaryStorage(store: KeyValueStore) {
     delete: async (key: string) => {
       await store.del(key)
     },
-    increment: (key: string) => store.incr(key),
+    increment: (key: string, ttl: number) =>
+      store.incrementWithTtl(key, ttl),
   }
 }
