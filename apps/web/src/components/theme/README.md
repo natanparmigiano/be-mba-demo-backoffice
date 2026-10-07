@@ -7,7 +7,7 @@ through component code.
 
 ## Runtime behavior
 
-`ThemeProvider`:
+`ThemeProvider`, exported by `@mba-desk/ui`:
 
 - reads `mba-theme` from local storage;
 - defaults to `system` when no valid preference exists;
@@ -17,7 +17,8 @@ through component code.
 
 `index.html` performs the initial theme resolution before React starts to prevent a flash of the wrong theme.
 
-The active organization's `primaryColor` overrides `--primary`. The last
+The shared organization-color helpers exported by `@mba-desk/ui` apply the
+active organization's `primaryColor` to `--primary`. The last
 resolved organization color is cached under `mba-desk-primary-color` and is
 also applied by the inline bootstrap before React starts, preventing a flash of
 the default primary color while the session loads.

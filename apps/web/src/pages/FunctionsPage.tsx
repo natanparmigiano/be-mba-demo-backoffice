@@ -27,7 +27,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
-import { useTheme } from '../components/theme/ThemeProvider'
 import {
   Button,
   Checkbox,
@@ -45,6 +44,7 @@ import {
   TableHeader,
   TableRow,
   Textarea,
+  useTheme,
 } from '@mba-desk/ui'
 
 const RunnerCodeEditor = lazy(async () => {

@@ -15,8 +15,14 @@ import { useTranslation } from 'react-i18next'
 import { apiClient } from '../api'
 import type { ChannelQrState } from '../channel-qr'
 import { ChannelQrCode } from './channel-qr-code'
-import { SettingsCard } from './settings-card'
-import { Button, Dialog, Input, Select, Textarea } from '@mba-desk/ui'
+import {
+  Button,
+  Dialog,
+  Input,
+  Select,
+  SettingsCard,
+  Textarea,
+} from '@mba-desk/ui'
 
 interface BusinessProfileForm {
   displayName: string

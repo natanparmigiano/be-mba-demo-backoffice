@@ -9,11 +9,13 @@ import {
 import { useTranslation } from 'react-i18next'
 import { authClient } from '../../auth/auth-client'
 import { useAuth } from '../../auth/AuthProvider'
-import { Button, Dialog, Input } from '@mba-desk/ui'
 import {
   applyOrganizationPrimaryColor,
+  Button,
   DEFAULT_PRIMARY_COLOR,
-} from '../theme/organization-color'
+  Dialog,
+  Input,
+} from '@mba-desk/ui'
 import { OrganizationLogo } from './OrganizationLogo'
 import { OrganizationLogoPicker } from './OrganizationLogoPicker'
 import { uploadOrganizationLogo } from './organization-logo-api'

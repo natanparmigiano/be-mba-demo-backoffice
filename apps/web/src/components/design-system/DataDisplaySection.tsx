@@ -18,6 +18,7 @@ import {
   SectionCard,
   SectionHeading,
   PageHeader,
+  SettingsCard,
   StatCard,
   Table,
   TableBody,
@@ -98,6 +99,18 @@ export function DataDisplaySection() {
           description={t('design.dataDescription')}
           actions={<Button>{t('design.addMember')}</Button>}
         />
+      </div>
+      <div className="mb-5">
+        <SettingsCard
+          icon={<Users className="size-5" aria-hidden />}
+          title={t('design.teamMembers')}
+          description={t('design.dataDescription')}
+          action={<Button size="sm">{t('design.addMember')}</Button>}
+        >
+          <p className="text-sm text-muted-foreground">
+            {t('design.noMembersHint')}
+          </p>
+        </SettingsCard>
       </div>
       <SectionCard
         title={t('design.teamMembers')}

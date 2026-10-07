@@ -66,8 +66,8 @@ import {
   Tabs,
   TagInput,
   Textarea,
+  useTheme,
 } from '@mba-desk/ui'
-import { useTheme } from '../components/theme/ThemeProvider'
 import {
   downloadAgtx,
   parseMcpxYaml,

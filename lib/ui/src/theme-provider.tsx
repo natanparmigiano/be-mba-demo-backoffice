@@ -17,7 +17,7 @@ interface ThemeContextValue {
   toggleTheme: () => void
 }
 
-const THEME_STORAGE_KEY = 'mba-theme'
+export const THEME_STORAGE_KEY = 'mba-theme'
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 function getStoredTheme(): Theme {

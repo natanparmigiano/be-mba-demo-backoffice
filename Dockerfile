@@ -16,9 +16,11 @@ COPY lib/db/package.json ./lib/db/package.json
 COPY lib/encryption/package.json ./lib/encryption/package.json
 COPY lib/events/package.json ./lib/events/package.json
 COPY lib/files/package.json ./lib/files/package.json
+COPY lib/i18n/package.json ./lib/i18n/package.json
 COPY lib/kv/package.json ./lib/kv/package.json
 COPY lib/pubsub/package.json ./lib/pubsub/package.json
 COPY lib/runner/package.json ./lib/runner/package.json
+COPY lib/ui/package.json ./lib/ui/package.json
 COPY lib/whatsapp/analytics/package.json ./lib/whatsapp/analytics/package.json
 COPY lib/whatsapp/components/package.json ./lib/whatsapp/components/package.json
 COPY lib/whatsapp/mba/package.json ./lib/whatsapp/mba/package.json
@@ -61,6 +63,7 @@ COPY --from=build --chown=node:node /app/apps/web/dist/ ./apps/web/dist/
 COPY --from=build --chown=node:node /app/lib/auth/dist/ ./lib/auth/dist/
 COPY --from=build --chown=node:node /app/lib/db/dist/ ./lib/db/dist/
 COPY --from=build --chown=node:node /app/lib/db/drizzle/ ./lib/db/drizzle/
+COPY --from=build --chown=node:node /app/lib/encryption/dist/ ./lib/encryption/dist/
 COPY --from=build --chown=node:node /app/lib/events/dist/ ./lib/events/dist/
 COPY --from=build --chown=node:node /app/lib/files/dist/ ./lib/files/dist/
 COPY --from=build --chown=node:node /app/lib/kv/dist/ ./lib/kv/dist/

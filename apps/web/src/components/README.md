@@ -12,7 +12,7 @@ then to pages or design-system examples—never in the opposite direction.
 | `api-playground/`      | Shared request cards, executable code examples, and OpenAPI downloads.  |
 | `runner/`              | Lazy Monaco editor and parameter-aware JavaScript language service.     |
 | `design-system/`       | Documentation sections that demonstrate the reusable primitives.        |
-| `theme/`               | Global theme provider and adaptive theme selector.                      |
+| `theme/`               | Localized adapter for the shared theme provider.                        |
 | `app/`                 | Application shell controls, organization logos, and logo cropper.       |
 | `LanguageSwitcher.tsx` | Language selector with explicit-override persistence.                   |
 
@@ -27,7 +27,7 @@ Keep dependencies flowing in this direction:
 ```
 
 UI primitives must not depend on pages, routes, API clients, or feature
-fixtures. Theme and language controls may depend on their global providers.
+fixtures. Theme and language controls may depend on their shared providers.
 
 ## Choosing component granularity
 

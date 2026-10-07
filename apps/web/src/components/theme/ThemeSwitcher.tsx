@@ -1,6 +1,6 @@
 import { Monitor, Moon, Sun } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useTheme } from './ThemeProvider'
+import { useTheme } from '@mba-desk/ui'
 
 export function ThemeSwitcher() {
   const { t } = useTranslation()

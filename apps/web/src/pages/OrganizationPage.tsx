@@ -21,6 +21,8 @@ import {
   InlineFeedback,
   PageHeader,
   Pill,
+  applyOrganizationPrimaryColor,
+  DEFAULT_PRIMARY_COLOR,
   Select,
   Table,
   TableBody,
@@ -29,10 +31,6 @@ import {
   TableHeader,
   TableRow,
 } from '@mba-desk/ui'
-import {
-  applyOrganizationPrimaryColor,
-  DEFAULT_PRIMARY_COLOR,
-} from '../components/theme/organization-color'
 import { OrganizationLogo } from '../components/app/OrganizationLogo'
 import { OrganizationLogoPicker } from '../components/app/OrganizationLogoPicker'
 import {

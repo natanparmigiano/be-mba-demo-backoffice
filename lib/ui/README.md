@@ -37,6 +37,7 @@ import '@mba-desk/ui/styles.css'
 | `SearchBox`               | Styled native search input with a leading search icon.                                                                    |
 | `SectionCard`             | Titled card used to organize design-system examples.                                                                      |
 | `SectionHeading`          | Eyebrow, title, and description for catalog sections.                                                                     |
+| `SettingsCard`            | Accessible fieldset surface with heading, action, body, error, disabled, and footer states.                               |
 | `Select`                  | Forwarded native select with label and hint.                                                                              |
 | `StatCard`                | Metric, label, change, and icon presentation.                                                                             |
 | `Switch`                  | Native checkbox rendered as a switch with label and optional description.                                                 |
@@ -45,7 +46,11 @@ import '@mba-desk/ui/styles.css'
 | `TagInput`                | Controlled string-list input with keyboard entry, paste, backspace, and removable tags.                                   |
 | `Textarea`                | Forwarded native textarea with label, hint, and error.                                                                    |
 | `Toast`                   | Presentational status notification.                                                                                       |
+| `ThemeProvider`           | Persists and resolves light, dark, or system theme state and exposes it through `useTheme`.                               |
 | `useTimedToast`           | Local toast lifecycle with configurable auto-dismiss duration.                                                            |
+
+The package also exports semantic primary-color helpers used to apply or reset
+organization branding without duplicating DOM and local-storage behavior.
 
 ## Usage patterns
 

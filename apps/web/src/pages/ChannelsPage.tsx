@@ -39,7 +39,6 @@ import {
   ConversationalComponentsSettingsCard,
   QrCodesSettingsCard,
 } from '../components/channel-management-cards'
-import { SettingsCard } from '../components/settings-card'
 import {
   Button,
   cn,
@@ -49,6 +48,7 @@ import {
   InlineFeedback,
   PageHeader,
   Pill,
+  SettingsCard,
   Tabs,
   Textarea,
 } from '@mba-desk/ui'
