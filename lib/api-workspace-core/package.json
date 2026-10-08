@@ -1,0 +1,52 @@
+{
+  "name": "@mba-desk/api-workspace-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./routes/*": {
+      "types": "./src/routes/*.ts",
+      "development": "./src/routes/*.ts",
+      "default": "./dist/routes/*.js"
+    },
+    "./worker-config": {
+      "types": "./src/worker-config.ts",
+      "development": "./src/worker-config.ts",
+      "default": "./dist/worker-config.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start:worker": "node --no-node-snapshot --env-file-if-exists=../../.env dist/worker.js",
+    "typecheck": "tsc --noEmit",
+    "test": "NODE_OPTIONS=--no-node-snapshot tsx --conditions=development --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.7.2",
+    "@mba-desk/auth": "0.0.0",
+    "@mba-desk/db": "0.0.0",
+    "@mba-desk/events": "0.0.0",
+    "@mba-desk/files": "0.0.0",
+    "@mba-desk/pubsub": "0.0.0",
+    "@mba-desk/wa-analytics": "0.0.0",
+    "@mba-desk/wa-marketing": "0.0.0",
+    "@mba-desk/wa-mba": "0.0.0",
+    "@mba-desk/wa-media": "0.0.0",
+    "@mba-desk/wa-messaging": "0.0.0",
+    "@mba-desk/wa-templates": "0.0.0",
+    "@mba-desk/wa-webhooks": "0.0.0",
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.13.12",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

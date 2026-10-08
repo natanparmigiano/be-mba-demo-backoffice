@@ -7,9 +7,11 @@ import {
   Package,
   PanelsTopLeft,
   ContactRound,
+  Cog,
   FlaskConical,
   FileText,
   Home,
+  Inbox,
   KeyRound,
   ListTodo,
   LogOut,
@@ -20,7 +22,7 @@ import {
   UsersRound,
   Webhook,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { authClient } from '../../auth/auth-client'
@@ -56,6 +58,7 @@ export function AppShell({ variant }: { variant: 'workspace' | 'manager' }) {
     location.pathname === '/studio' || location.pathname.startsWith('/studio/')
   const isWorkspaceRoute =
     variant === 'workspace' ? isChatRoute || isQueueRoute : isStudioRoute
+  const ProductBadgeIcon = variant === 'manager' ? Cog : Inbox
 
   const signOut = async () => {
     setIsSigningOut(true)
@@ -144,7 +147,14 @@ export function AppShell({ variant }: { variant: 'workspace' | 'manager' }) {
             end: false,
           },
         ]
-      : []
+      : [
+          {
+            to: '/channels',
+            label: t('shell.channels'),
+            icon: RadioTower,
+            end: false,
+          },
+        ]
   const customIntegrationNavigation =
     variant === 'manager'
       ? [
@@ -211,10 +221,15 @@ export function AppShell({ variant }: { variant: 'workspace' | 'manager' }) {
     >
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r bg-card p-4 md:flex">
         <div className="flex items-center gap-3 px-2 py-1">
-          <OrganizationLogo
-            organization={activeOrganizationQuery.data}
-            className="size-9"
-          />
+          <span className="relative shrink-0">
+            <OrganizationLogo
+              organization={activeOrganizationQuery.data}
+              className="size-9"
+            />
+            <span className="absolute -right-1 -bottom-1 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground ring-2 ring-card">
+              <ProductBadgeIcon className="size-2.5" aria-hidden />
+            </span>
+          </span>
           <div>
             <p className="text-sm font-bold">{t('shell.productName')}</p>
             <p className="text-xs text-muted-foreground">
@@ -309,41 +324,13 @@ export function AppShell({ variant }: { variant: 'workspace' | 'manager' }) {
               ))}
             </div>
           </div>
-          <div
-            className={cn(
-              'mt-4',
-              configurationNavigation.length === 0 && 'hidden',
-            )}
-            role="group"
-            aria-labelledby="configuration-navigation-label"
-          >
-            <p
+          {variant === 'manager' && (
+            <SidebarNavigationGroup
               id="configuration-navigation-label"
-              className="px-3 text-[11px] font-bold tracking-[0.12em] text-muted-foreground uppercase"
-            >
-              {t('shell.configuration')}
-            </p>
-            <div className="mt-1 grid gap-1 pl-2">
-              {configurationNavigation.map(({ to, label, icon: Icon, end }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={end}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors',
-                      isActive
-                        ? 'bg-primary/12 text-primary'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    )
-                  }
-                >
-                  <Icon className="size-4" />
-                  {label}
-                </NavLink>
-              ))}
-            </div>
-          </div>
+              label={t('shell.configuration')}
+              items={configurationNavigation}
+            />
+          )}
           <div
             className={cn(
               'mt-4',
@@ -413,6 +400,13 @@ export function AppShell({ variant }: { variant: 'workspace' | 'manager' }) {
               ))}
             </div>
           </div>
+          {variant === 'workspace' && (
+            <SidebarNavigationGroup
+              id="workspace-configuration-navigation-label"
+              label={t('shell.configuration')}
+              items={configurationNavigation}
+            />
+          )}
         </nav>
         <div className="mt-auto rounded-2xl border bg-card p-2 shadow-xs">
           <OrganizationSwitcher />
@@ -534,6 +528,52 @@ export function AppShell({ variant }: { variant: 'workspace' | 'manager' }) {
           </OrganizationGuard>
         </div>
       </main>
+    </div>
+  )
+}
+
+function SidebarNavigationGroup({
+  id,
+  label,
+  items,
+}: {
+  id: string
+  label: string
+  items: Array<{
+    to: string
+    label: string
+    icon: ComponentType<{ className?: string }>
+    end: boolean
+  }>
+}) {
+  return (
+    <div className="mt-4" role="group" aria-labelledby={id}>
+      <p
+        id={id}
+        className="px-3 text-[11px] font-bold tracking-[0.12em] text-muted-foreground uppercase"
+      >
+        {label}
+      </p>
+      <div className="mt-1 grid gap-1 pl-2">
+        {items.map(({ to, label: itemLabel, icon: Icon, end }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors',
+                isActive
+                  ? 'bg-primary/12 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              )
+            }
+          >
+            <Icon className="size-4" />
+            {itemLabel}
+          </NavLink>
+        ))}
+      </div>
     </div>
   )
 }

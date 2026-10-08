@@ -1,9 +1,5 @@
 x-app: &app
   image: mba-desk:local
-  build:
-    context: .
-    dockerfile: Dockerfile
-    target: runtime
   restart: unless-stopped
   read_only: true
   tmpfs:
@@ -91,16 +87,35 @@ services:
     volumes:
       - minio-data:/data
 
-  app:
+  migrate:
     <<: *app
-    command: ['app']
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    command: ['migrate']
+    restart: 'no'
     environment:
       NODE_ENV: production
-      PORT: 8080
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_desk
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  workspace-app:
+    <<: *app
+    command: ['workspace-app']
+    environment:
+      NODE_ENV: production
+      WORKSPACE_API_PORT: 8080
+      WORKSPACE_URL: ${COMPOSE_WORKSPACE_URL:-http://localhost:8080}
+      MANAGER_URL: ${COMPOSE_MANAGER_URL:-http://localhost:8081}
+      WEB_ROOT: /app/apps/web-workspace/dist
+      WORKSPACE_WEB_ROOT: /app/apps/web-workspace/dist
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_desk
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-bWJhLWRlc2stZGV2ZWxvcG1lbnQta2V5LTMyYnl0ZXM=}
       REDIS_URL: redis://redis:6379
-      KAFKA_CLIENT_ID: mba-desk-app
+      KAFKA_CLIENT_ID: mba-desk-workspace-app
       KAFKA_BROKERS: kafka:9092
       FILES_ADAPTER: s3
       FILES_S3_BUCKET: ${FILES_S3_BUCKET:-mba-desk-files}
@@ -113,12 +128,13 @@ services:
       FILES_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       ENABLE_WORKER_IN_PROCESS: 'false'
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-development-only-secret-change-before-production}
-      BETTER_AUTH_URL: ${COMPOSE_BETTER_AUTH_URL:-http://localhost:8080}
+      BETTER_AUTH_URL: ${COMPOSE_WORKSPACE_BETTER_AUTH_URL:-http://localhost:8080}
       BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-}
-      CORS_ORIGIN: ${COMPOSE_CORS_ORIGIN:-http://localhost:8080}
+      CORS_ORIGIN: ${COMPOSE_WORKSPACE_CORS_ORIGIN:-http://localhost:8080}
+      WORKSPACE_CORS_ORIGIN: ${COMPOSE_WORKSPACE_CORS_ORIGIN:-http://localhost:8080}
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       kafka:
@@ -126,7 +142,7 @@ services:
       minio:
         condition: service_healthy
     ports:
-      - '${WEB_PORT:-8080}:8080'
+      - '${WORKSPACE_WEB_PORT:-8080}:8080'
     healthcheck:
       test:
         - CMD
@@ -138,17 +154,70 @@ services:
       retries: 10
       start_period: 5s
 
-  worker:
+  manager-app:
     <<: *app
-    command: ['worker']
+    command: ['manager-app']
+    environment:
+      NODE_ENV: production
+      MANAGER_API_PORT: 8080
+      WORKSPACE_URL: ${COMPOSE_WORKSPACE_URL:-http://localhost:8080}
+      MANAGER_URL: ${COMPOSE_MANAGER_URL:-http://localhost:8081}
+      WEB_ROOT: /app/apps/web-manager/dist
+      MANAGER_WEB_ROOT: /app/apps/web-manager/dist
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_desk
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-bWJhLWRlc2stZGV2ZWxvcG1lbnQta2V5LTMyYnl0ZXM=}
+      REDIS_URL: redis://redis:6379
+      KAFKA_CLIENT_ID: mba-desk-manager-app
+      KAFKA_BROKERS: kafka:9092
+      FILES_ADAPTER: s3
+      FILES_S3_BUCKET: ${FILES_S3_BUCKET:-mba-desk-files}
+      FILES_S3_CREATE_BUCKET: 'true'
+      FILES_S3_REGION: us-east-1
+      FILES_S3_ENDPOINT: http://minio:9000
+      FILES_S3_PUBLIC_ENDPOINT: ${FILES_S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+      FILES_S3_FORCE_PATH_STYLE: 'true'
+      FILES_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      FILES_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      ENABLE_WORKER_IN_PROCESS: 'false'
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-development-only-secret-change-before-production}
+      BETTER_AUTH_URL: ${COMPOSE_MANAGER_BETTER_AUTH_URL:-http://localhost:8081}
+      BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-}
+      CORS_ORIGIN: ${COMPOSE_MANAGER_CORS_ORIGIN:-http://localhost:8081}
+      MANAGER_CORS_ORIGIN: ${COMPOSE_MANAGER_CORS_ORIGIN:-http://localhost:8081}
+    depends_on:
+      workspace-app:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - '${MANAGER_WEB_PORT:-8081}:8080'
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8080/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  workspace-worker:
+    <<: *app
+    command: ['workspace-worker']
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_desk
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-bWJhLWRlc2stZGV2ZWxvcG1lbnQta2V5LTMyYnl0ZXM=}
-      KAFKA_CLIENT_ID: mba-desk-worker
+      REDIS_URL: redis://redis:6379
+      KAFKA_CLIENT_ID: mba-desk-workspace-worker
       KAFKA_BROKERS: kafka:9092
-      KAFKA_GROUP_ID: mba-desk-worker-consumer
-      SUBSCRIBE_TO_TOPICS: ${SUBSCRIBE_TO_TOPICS:-all}
+      KAFKA_GROUP_ID: mba-desk-workspace-worker-consumer
+      SUBSCRIBE_TO_TOPICS: ${WORKSPACE_SUBSCRIBE_TO_TOPICS:-all}
       WA_WEBHOOK_MAX_RETRIES: ${WA_WEBHOOK_MAX_RETRIES:-5}
       WEBHOOK_ARCHIVE_ENABLED: ${WEBHOOK_ARCHIVE_ENABLED:-true}
       FILES_ADAPTER: s3
@@ -161,7 +230,40 @@ services:
       FILES_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
       FILES_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
     depends_on:
-      app:
+      workspace-app:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  manager-worker:
+    <<: *app
+    command: ['manager-worker']
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_desk
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-bWJhLWRlc2stZGV2ZWxvcG1lbnQta2V5LTMyYnl0ZXM=}
+      REDIS_URL: redis://redis:6379
+      KAFKA_CLIENT_ID: mba-desk-manager-worker
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_GROUP_ID: mba-desk-manager-worker-consumer
+      SUBSCRIBE_TO_TOPICS: ${MANAGER_SUBSCRIBE_TO_TOPICS:-all}
+      FILES_ADAPTER: s3
+      FILES_S3_BUCKET: ${FILES_S3_BUCKET:-mba-desk-files}
+      FILES_S3_CREATE_BUCKET: 'true'
+      FILES_S3_REGION: us-east-1
+      FILES_S3_ENDPOINT: http://minio:9000
+      FILES_S3_PUBLIC_ENDPOINT: ${FILES_S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+      FILES_S3_FORCE_PATH_STYLE: 'true'
+      FILES_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      FILES_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    depends_on:
+      manager-app:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       kafka:
         condition: service_healthy

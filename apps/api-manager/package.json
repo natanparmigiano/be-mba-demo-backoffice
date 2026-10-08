@@ -11,7 +11,7 @@
     }
   },
   "scripts": {
-    "dev": "NODE_OPTIONS=--no-node-snapshot tsx watch --conditions=development --env-file-if-exists=../../.env src/index.ts",
+    "dev": "MANAGER_API_PORT=3001 BETTER_AUTH_URL=http://localhost:5174 CORS_ORIGIN=http://localhost:5174 NODE_OPTIONS=--no-node-snapshot tsx watch --conditions=development --env-file-if-exists=../../.env src/index.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node --no-node-snapshot --env-file-if-exists=../../.env dist/index.js",
     "typecheck": "tsc --noEmit",
@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@mba-desk/api-core": "0.0.0",
-    "@mba-desk/events": "0.0.0",
+    "@mba-desk/api-manager-core": "0.0.0",
     "@mba-desk/files": "0.0.0",
     "hono": "^4.13.12"
   },

@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/app/AppShell'
+import { ChannelsPage } from '@mba-desk/web-shared'
 import { AdminPage } from '../pages/AdminPage'
 import { ChatPage } from '../pages/ChatPage'
 import { ContactsPage } from '../pages/ContactsPage'
@@ -34,6 +35,9 @@ export function AppRouter() {
               <Route path="/chat/:chatId" element={<ChatPage />} />
               <Route path="/queue" element={<QueuePage />} />
               <Route path="/organization" element={<OrganizationPage />} />
+              <Route path="/channels" element={<ChannelsPage />} />
+              <Route path="/channels/new" element={<ChannelsPage />} />
+              <Route path="/channels/:channelId" element={<ChannelsPage />} />
               <Route path="/contacts" element={<ContactsPage />} />
               <Route path="/groups" element={<GroupsPage />} />
               <Route path="/teams" element={<TeamsPage />} />

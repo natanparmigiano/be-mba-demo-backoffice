@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title">
+  <title id="title">MBA Desk</title>
+  <rect width="48" height="48" rx="12" fill="#3158d4"/>
+  <path d="M12 14h6l6 9 6-9h6v20h-6V23l-6 9-6-9v11h-6V14Z" fill="#fff"/>
+</svg>

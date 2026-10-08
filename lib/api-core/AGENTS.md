@@ -3,6 +3,16 @@
 This workspace owns HTTP routing, authentication mounting, event publication
 and subscription, process startup/shutdown, and production SPA delivery.
 
+## Documentation
+
+- Read and update `documentation/docs/archive/lib/api-core/` for changes to shared
+  routes, lifecycle behavior, configuration, error contracts, or public
+  exports. Also update the consuming application pages when a shared change
+  affects Workspace or Manager behavior.
+- Keep Docusaurus titles, navigation, and links accurate. Explain the common
+  path first, then route/configuration reference, lifecycle details, failure
+  modes, and troubleshooting; do not create a package-local README.
+
 ## HTTP and RPC contracts
 
 - Keep route composition chained in `src/app.ts`; `AppType` is inferred from

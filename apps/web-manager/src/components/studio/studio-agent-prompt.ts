@@ -1,5 +1,5 @@
-import agtxReadme from '../../../../../docs/agtx/README.md?raw'
-import mcpxReadme from '../../../../../docs/mcpx/README.md?raw'
+import agtxReadme from '../../../../../documentation/docs/archive/agtx/README.md?raw'
+import mcpxReadme from '../../../../../documentation/docs/archive/mcpx/README.md?raw'
 
 /** Builds the Studio agent's operating instructions and authoritative format docs. */
 export function buildStudioAgentSystemPrompt(packageName: string) {

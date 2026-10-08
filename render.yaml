@@ -1,50 +1,117 @@
 services:
   - type: web
-    name: mba-desk
+    name: mba-desk-workspace
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile
     dockerContext: .
+    dockerCommand: workspace-app
     healthCheckPath: /api/health
     envVars:
+      - fromGroup: mba-desk-shared
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
         fromDatabase:
           name: mba-desk-postgres
           property: connectionString
-      - key: ENCRYPTION_KEY
-        sync: false
       - key: REDIS_URL
         fromService:
           type: keyvalue
           name: mba-desk-redis
           property: connectionString
+      - key: WORKSPACE_API_PORT
+        value: '10000'
       - key: ENABLE_WORKER_IN_PROCESS
         value: 'true'
       - key: SUBSCRIBE_TO_TOPICS
         value: all
       - key: WA_WEBHOOK_MAX_RETRIES
         value: '5'
-      - key: BETTER_AUTH_SECRET
-        generateValue: true
+      - key: WORKSPACE_URL
+        sync: false
+      - key: MANAGER_URL
+        sync: false
       - key: BETTER_AUTH_URL
         sync: false
       - key: CORS_ORIGIN
         sync: false
-      - key: FILES_ADAPTER
-        # Demo-only fallback for a diskless Render service. Do not use the
-        # PostgreSQL blob driver for production; configure S3 instead.
-        value: postgres
+      - key: WORKSPACE_CORS_ORIGIN
+        sync: false
+      - key: WEB_ROOT
+        value: ../web-workspace/dist
+      - key: WORKSPACE_WEB_ROOT
+        value: ../web-workspace/dist
       - key: FILES_PUBLIC_URL
         sync: false
-      - key: FILES_SIGNING_SECRET
-        generateValue: true
+
+  - type: web
+    name: mba-desk-manager
+    runtime: docker
+    # Render pre-deploy commands require a paid web-service instance.
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: manager-app
+    preDeployCommand: /usr/local/bin/mba-desk-backend-entrypoint migrate
+    healthCheckPath: /api/health
+    envVars:
+      - fromGroup: mba-desk-shared
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mba-desk-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: mba-desk-redis
+          property: connectionString
+      - key: MANAGER_API_PORT
+        value: '10000'
+      - key: ENABLE_WORKER_IN_PROCESS
+        value: 'true'
+      - key: SUBSCRIBE_TO_TOPICS
+        value: all
+      - key: WORKSPACE_URL
+        sync: false
+      - key: MANAGER_URL
+        sync: false
+      - key: BETTER_AUTH_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: MANAGER_CORS_ORIGIN
+        sync: false
+      - key: WEB_ROOT
+        value: ../web-manager/dist
+      - key: MANAGER_WEB_ROOT
+        value: ../web-manager/dist
+      - key: FILES_PUBLIC_URL
+        sync: false
+
   - type: keyvalue
     name: mba-desk-redis
     plan: free
     maxmemoryPolicy: allkeys-lru
     ipAllowList: []
+
+envVarGroups:
+  - name: mba-desk-shared
+    envVars:
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: BETTER_AUTH_TRUSTED_ORIGINS
+        sync: false
+      - key: FILES_ADAPTER
+        # Demo-only fallback for diskless Render services. Do not use the
+        # PostgreSQL blob driver for production; configure shared S3 instead.
+        value: postgres
+      - key: FILES_SIGNING_SECRET
+        generateValue: true
 
 databases:
   - name: mba-desk-postgres

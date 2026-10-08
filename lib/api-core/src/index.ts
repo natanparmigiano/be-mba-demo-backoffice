@@ -4,3 +4,4 @@ export {
   type CommonAppType,
 } from './app.js'
 export { startApiServer, type StartApiServerOptions } from './start-server.js'
+export { getApplicationUrls, type ApplicationUrls } from './application-urls.js'

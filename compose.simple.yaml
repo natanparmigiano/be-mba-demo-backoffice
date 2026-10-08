@@ -1,3 +1,25 @@
+x-app: &app
+  image: mba-desk:local
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+
+x-app-environment: &app-environment
+  NODE_ENV: production
+  DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_desk
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:-bWJhLWRlc2stZGV2ZWxvcG1lbnQta2V5LTMyYnl0ZXM=}
+  KV_ADAPTER: postgres
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-development-only-secret-change-before-production}
+  BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-}
+  WORKSPACE_URL: ${COMPOSE_WORKSPACE_URL:-http://localhost:8080}
+  MANAGER_URL: ${COMPOSE_MANAGER_URL:-http://localhost:8081}
+  FILES_ADAPTER: fs
+  FILES_DIRECTORY: /var/lib/mba-desk/files
+  FILES_SIGNING_SECRET: ${FILES_SIGNING_SECRET:-development-only-files-signing-secret}
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -14,39 +36,71 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
-  app:
-    image: mba-desk:local
+  migrate:
+    <<: *app
     build: .
-    command: ['app']
-    restart: unless-stopped
-    read_only: true
-    tmpfs:
-      - /tmp
-    security_opt:
-      - no-new-privileges:true
+    command: ['migrate']
+    restart: 'no'
     environment:
       NODE_ENV: production
-      PORT: 8080
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mba_desk
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-bWJhLWRlc2stZGV2ZWxvcG1lbnQta2V5LTMyYnl0ZXM=}
-      KV_ADAPTER: memory
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  workspace:
+    <<: *app
+    command: ['workspace-app']
+    environment:
+      <<: *app-environment
+      WORKSPACE_API_PORT: 8080
       ENABLE_WORKER_IN_PROCESS: 'true'
       SUBSCRIBE_TO_TOPICS: ${SUBSCRIBE_TO_TOPICS:-all}
       WA_WEBHOOK_MAX_RETRIES: ${WA_WEBHOOK_MAX_RETRIES:-5}
       WEBHOOK_ARCHIVE_ENABLED: ${WEBHOOK_ARCHIVE_ENABLED:-true}
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-development-only-secret-change-before-production}
-      BETTER_AUTH_URL: ${COMPOSE_BETTER_AUTH_URL:-http://localhost:8080}
-      BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-}
-      CORS_ORIGIN: ${COMPOSE_CORS_ORIGIN:-http://localhost:8080}
-      FILES_ADAPTER: fs
-      FILES_DIRECTORY: /var/lib/mba-desk/files
-      FILES_PUBLIC_URL: ${COMPOSE_FILES_PUBLIC_URL:-http://localhost:8080}
-      FILES_SIGNING_SECRET: ${FILES_SIGNING_SECRET:-development-only-files-signing-secret}
+      BETTER_AUTH_URL: ${COMPOSE_WORKSPACE_BETTER_AUTH_URL:-http://localhost:8080}
+      CORS_ORIGIN: ${COMPOSE_WORKSPACE_CORS_ORIGIN:-http://localhost:8080}
+      WEB_ROOT: ../web-workspace/dist
+      WORKSPACE_CORS_ORIGIN: ${COMPOSE_WORKSPACE_CORS_ORIGIN:-http://localhost:8080}
+      WORKSPACE_WEB_ROOT: ../web-workspace/dist
+      FILES_PUBLIC_URL: ${COMPOSE_WORKSPACE_FILES_PUBLIC_URL:-http://localhost:8080}
     depends_on:
-      postgres:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - '${WORKSPACE_WEB_PORT:-8080}:8080'
+    volumes:
+      - files-data:/var/lib/mba-desk/files
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8080/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  manager:
+    <<: *app
+    command: ['manager-app']
+    environment:
+      <<: *app-environment
+      MANAGER_API_PORT: 8080
+      ENABLE_WORKER_IN_PROCESS: 'true'
+      SUBSCRIBE_TO_TOPICS: ${MANAGER_SUBSCRIBE_TO_TOPICS:-all}
+      BETTER_AUTH_URL: ${COMPOSE_MANAGER_BETTER_AUTH_URL:-http://localhost:8081}
+      CORS_ORIGIN: ${COMPOSE_MANAGER_CORS_ORIGIN:-http://localhost:8081}
+      WEB_ROOT: ../web-manager/dist
+      MANAGER_CORS_ORIGIN: ${COMPOSE_MANAGER_CORS_ORIGIN:-http://localhost:8081}
+      MANAGER_WEB_ROOT: ../web-manager/dist
+      FILES_PUBLIC_URL: ${COMPOSE_WORKSPACE_FILES_PUBLIC_URL:-http://localhost:8080}
+    depends_on:
+      workspace:
         condition: service_healthy
     ports:
-      - '${WEB_PORT:-8080}:8080'
+      - '${MANAGER_WEB_PORT:-8081}:8080'
     volumes:
       - files-data:/var/lib/mba-desk/files
     healthcheck:

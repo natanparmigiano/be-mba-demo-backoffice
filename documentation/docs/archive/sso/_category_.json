@@ -1,0 +1,5 @@
+{
+  "label": "Single sign-on",
+  "position": 6,
+  "link": { "type": "doc", "id": "archive/sso/README" }
+}

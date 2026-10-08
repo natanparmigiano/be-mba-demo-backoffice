@@ -5,11 +5,23 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { createAdminOrganizationsRoute } from './routes/admin-organizations.js'
+import {
+  createChannelOverviewRoute,
+  type ChannelOverviewRouteOptions,
+} from './routes/channels.js'
 import { createFilesRoute } from './routes/files.js'
 import { createOrganizationInvitationsRoute } from './routes/organization-invitations.js'
 import { createOrganizationLogosRoute } from './routes/organization-logos.js'
+import type { ApplicationUrls } from './application-urls.js'
+
+const defaultApplicationUrls: ApplicationUrls = {
+  manager: 'http://localhost:3001',
+  workspace: 'http://localhost:3000',
+}
 
 export interface CommonAppOptions {
+  applicationUrls?: ApplicationUrls
+  coreChannels?: ChannelOverviewRouteOptions
   corsOrigin?: string
   fileStore?: FileStore
   hasSsoProviders?: () => Promise<boolean>
@@ -17,6 +29,8 @@ export interface CommonAppOptions {
 }
 
 export const createCommonApp = ({
+  applicationUrls = defaultApplicationUrls,
+  coreChannels,
   corsOrigin = 'http://localhost:5173',
   fileStore = files,
   hasSsoProviders = defaultHasSsoProviders,
@@ -50,6 +64,17 @@ export const createCommonApp = ({
     .on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw))
     .get('/api/health', (c) =>
       c.json({ status: 'ok' as const, runtime: 'node' as const }),
+    )
+    .get('/api/application-urls', (c) => c.json(applicationUrls))
+    .route(
+      '/api/channels',
+      createChannelOverviewRoute({
+        applicationUrls,
+        deleteStoredFiles: async (paths) => {
+          await Promise.all(paths.map((path) => fileStore.delete(path)))
+        },
+        ...coreChannels,
+      }),
     )
     .route('/api/admin/organizations', createAdminOrganizationsRoute())
     .route(

@@ -8,9 +8,15 @@ RUN corepack enable \
   && corepack prepare yarn@1.22.22 --activate
 
 COPY package.json yarn.lock ./
-COPY apps/api/package.json ./apps/api/package.json
+COPY apps/api-manager/package.json ./apps/api-manager/package.json
+COPY apps/api-workspace/package.json ./apps/api-workspace/package.json
 COPY apps/sso-cli/package.json ./apps/sso-cli/package.json
-COPY apps/web/package.json ./apps/web/package.json
+COPY apps/web-manager/package.json ./apps/web-manager/package.json
+COPY apps/web-workspace/package.json ./apps/web-workspace/package.json
+COPY documentation/package.json ./documentation/package.json
+COPY lib/api-core/package.json ./lib/api-core/package.json
+COPY lib/api-workspace-core/package.json ./lib/api-workspace-core/package.json
+COPY lib/api-manager-core/package.json ./lib/api-manager-core/package.json
 COPY lib/auth/package.json ./lib/auth/package.json
 COPY lib/db/package.json ./lib/db/package.json
 COPY lib/encryption/package.json ./lib/encryption/package.json
@@ -21,6 +27,7 @@ COPY lib/kv/package.json ./lib/kv/package.json
 COPY lib/pubsub/package.json ./lib/pubsub/package.json
 COPY lib/runner/package.json ./lib/runner/package.json
 COPY lib/ui/package.json ./lib/ui/package.json
+COPY lib/web-shared/package.json ./lib/web-shared/package.json
 COPY lib/whatsapp/analytics/package.json ./lib/whatsapp/analytics/package.json
 COPY lib/whatsapp/components/package.json ./lib/whatsapp/components/package.json
 COPY lib/whatsapp/mba/package.json ./lib/whatsapp/mba/package.json
@@ -58,8 +65,13 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 COPY --from=production-dependencies --chown=node:node /app/ ./
-COPY --from=build --chown=node:node /app/apps/api/dist/ ./apps/api/dist/
-COPY --from=build --chown=node:node /app/apps/web/dist/ ./apps/web/dist/
+COPY --from=build --chown=node:node /app/apps/api-manager/dist/ ./apps/api-manager/dist/
+COPY --from=build --chown=node:node /app/apps/api-workspace/dist/ ./apps/api-workspace/dist/
+COPY --from=build --chown=node:node /app/apps/web-manager/dist/ ./apps/web-manager/dist/
+COPY --from=build --chown=node:node /app/apps/web-workspace/dist/ ./apps/web-workspace/dist/
+COPY --from=build --chown=node:node /app/lib/api-core/dist/ ./lib/api-core/dist/
+COPY --from=build --chown=node:node /app/lib/api-workspace-core/dist/ ./lib/api-workspace-core/dist/
+COPY --from=build --chown=node:node /app/lib/api-manager-core/dist/ ./lib/api-manager-core/dist/
 COPY --from=build --chown=node:node /app/lib/auth/dist/ ./lib/auth/dist/
 COPY --from=build --chown=node:node /app/lib/db/dist/ ./lib/db/dist/
 COPY --from=build --chown=node:node /app/lib/db/drizzle/ ./lib/db/drizzle/
@@ -95,4 +107,4 @@ EXPOSE 8080
 STOPSIGNAL SIGTERM
 
 ENTRYPOINT ["mba-desk-backend-entrypoint"]
-CMD ["app"]
+CMD ["workspace-app"]

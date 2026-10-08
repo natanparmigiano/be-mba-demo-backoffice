@@ -45,6 +45,10 @@ type McpImportInspection = InferResponseType<
   (typeof apiClient.api.runner.mcps)['import']['inspect']['$post'],
   200
 >['preview']
+type ApplicationUrls = InferResponseType<
+  (typeof apiClient.api)['application-urls']['$get'],
+  200
+>
 
 export function McpsPage() {
   const { t, i18n } = useTranslation()
@@ -57,6 +61,8 @@ export function McpsPage() {
     .some((role) => role === 'owner' || role === 'admin')
 
   const [mcps, setMcps] = useState<McpSummary[]>([])
+  const [applicationUrls, setApplicationUrls] =
+    useState<ApplicationUrls | null>(null)
   const [functions, setFunctions] = useState<FunctionSummary[]>([])
   const [selectedMcpId, setSelectedMcpId] = useState<number | 'new' | null>(
     null,
@@ -103,15 +109,22 @@ export function McpsPage() {
     setIsLoading(true)
     setError(null)
     try {
-      const [mcpsResponse, functionsResponse] = await Promise.all([
-        apiClient.api.runner.mcps.$get(),
-        apiClient.api.runner.functions.$get(),
-      ])
-      if (!mcpsResponse.ok || !functionsResponse.ok) {
+      const [mcpsResponse, functionsResponse, applicationUrlsResponse] =
+        await Promise.all([
+          apiClient.api.runner.mcps.$get(),
+          apiClient.api.runner.functions.$get(),
+          apiClient.api['application-urls'].$get(),
+        ])
+      if (
+        !mcpsResponse.ok ||
+        !functionsResponse.ok ||
+        !applicationUrlsResponse.ok
+      ) {
         throw new Error(t('mcps.loadFailed'))
       }
       setMcps((await mcpsResponse.json()).mcps)
       setFunctions((await functionsResponse.json()).functions)
+      setApplicationUrls(await applicationUrlsResponse.json())
     } catch (reason) {
       setError(getErrorMessage(reason, t('mcps.loadFailed')))
     } finally {
@@ -238,7 +251,7 @@ export function McpsPage() {
     if (typeof selectedMcpId !== 'number') return
     try {
       await navigator.clipboard.writeText(
-        `${window.location.origin}/api/mcp/${selectedMcpId}`,
+        `${applicationUrls?.manager ?? ''}/api/mcp/${selectedMcpId}`,
       )
       setEndpointCopied(true)
       window.setTimeout(() => setEndpointCopied(false), 2_000)
@@ -592,7 +605,7 @@ export function McpsPage() {
                     <Input
                       label={t('mcps.endpointLabel')}
                       readOnly
-                      value={`${window.location.origin}/api/mcp/${selectedMcpId}`}
+                      value={`${applicationUrls?.manager ?? ''}/api/mcp/${selectedMcpId}`}
                     />
                   </div>
                   <Button

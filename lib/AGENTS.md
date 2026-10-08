@@ -3,6 +3,18 @@
 Packages below `lib` are infrastructure or schema boundaries shared by
 applications.
 
+## Documentation
+
+- Human-facing library documentation lives under
+  `documentation/docs/archive/lib/<package>/`. Read that area before changing a
+  package, and update it whenever its public API, configuration, behavior,
+  persistence contract, or operational guidance changes.
+- New libraries need a discoverable Docusaurus landing page and friendly
+  navigation entry in the matching mirrored directory. Do not add README files
+  under `lib/`.
+- Lead with purpose and a quick start, then document common usage, API and
+  configuration reference, edge cases, and troubleshooting.
+
 ## Package contracts
 
 - Do not import from `apps/*`. Import peer libraries only through their

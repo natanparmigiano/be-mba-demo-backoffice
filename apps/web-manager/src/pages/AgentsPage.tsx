@@ -6,11 +6,11 @@ import { Link } from 'react-router-dom'
 import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
 import {
+  ChannelQrCode,
   emptyChannelQrState,
   fetchChannelQrState,
   type ChannelQrState,
-} from '../channel-qr'
-import { ChannelQrCode } from '../components/channel-qr-code'
+} from '@mba-desk/web-shared'
 import {
   Button,
   cn,
@@ -327,7 +327,7 @@ async function fetchRegistrationState(
       param: { id: String(channelId) },
     })
     if (!response.ok) return { status: 'error', providerStatus: null }
-    const registration = await response.json()
+    const registration = (await response.json()) as RegistrationState
     return {
       status: registration.status,
       providerStatus: registration.providerStatus,

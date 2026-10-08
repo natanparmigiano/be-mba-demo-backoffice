@@ -1,0 +1,5 @@
+{
+  "label": "WhatsApp integration",
+  "position": 20,
+  "link": { "type": "doc", "id": "archive/lib/whatsapp/README" }
+}

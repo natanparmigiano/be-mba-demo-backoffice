@@ -2,89 +2,84 @@ import { createCommonApp, type CommonAppOptions } from '@mba-desk/api-core'
 import {
   createAnalyticsPlaygroundRoute,
   type AnalyticsPlaygroundRouteOptions,
-} from '@mba-desk/api-core/routes/analytics-playground'
+} from '@mba-desk/api-manager-core/routes/analytics-playground'
 import {
   createApiPlaygroundRoute,
   type ApiPlaygroundRouteOptions,
-} from '@mba-desk/api-core/routes/api-playground'
+} from '@mba-desk/api-manager-core/routes/api-playground'
 import {
   createChannelManagementRoute,
   type ChannelManagementRouteOptions,
-} from '@mba-desk/api-core/routes/channels'
+} from '@mba-desk/api-manager-core/routes/channels'
 import {
   createComponentsPlaygroundRoute,
   type ComponentsPlaygroundRouteOptions,
-} from '@mba-desk/api-core/routes/components-playground'
+} from '@mba-desk/api-manager-core/routes/components-playground'
 import {
   createFlowsPlaygroundRoute,
   type FlowsPlaygroundRouteOptions,
-} from '@mba-desk/api-core/routes/flows-playground'
+} from '@mba-desk/api-manager-core/routes/flows-playground'
 import {
   createHashbrownRoute,
   type HashbrownRouteOptions,
-} from '@mba-desk/api-core/routes/hashbrown'
+} from '@mba-desk/api-manager-core/routes/hashbrown'
 import {
   createMarketingPlaygroundRoute,
   type MarketingPlaygroundRouteOptions,
-} from '@mba-desk/api-core/routes/marketing-playground'
+} from '@mba-desk/api-manager-core/routes/marketing-playground'
 import {
   createMbaPlaygroundRoute,
   type MbaPlaygroundRouteOptions,
-} from '@mba-desk/api-core/routes/mba-playground'
+} from '@mba-desk/api-manager-core/routes/mba-playground'
 import {
   createMcpRoute,
   type McpRouteOptions,
-} from '@mba-desk/api-core/routes/mcp'
+} from '@mba-desk/api-manager-core/routes/mcp'
 import {
   createMediaPlaygroundRoute,
   type MediaPlaygroundRouteOptions,
-} from '@mba-desk/api-core/routes/media-playground'
+} from '@mba-desk/api-manager-core/routes/media-playground'
 import {
   createMessagingPlaygroundRoute,
   type MessagingPlaygroundRouteOptions,
-} from '@mba-desk/api-core/routes/messaging-playground'
+} from '@mba-desk/api-manager-core/routes/messaging-playground'
 import {
   createModerationPlaygroundRoute,
   type ModerationPlaygroundRouteOptions,
-} from '@mba-desk/api-core/routes/moderation-playground'
+} from '@mba-desk/api-manager-core/routes/moderation-playground'
 import {
   createQrPlaygroundRoute,
   type QrPlaygroundRouteOptions,
-} from '@mba-desk/api-core/routes/qr-playground'
+} from '@mba-desk/api-manager-core/routes/qr-playground'
 import {
   createResponsesRoute,
   type ResponsesRouteOptions,
-} from '@mba-desk/api-core/routes/responses'
+} from '@mba-desk/api-manager-core/routes/responses'
 import {
   createRunnerRoute,
   type RunnerRouteOptions,
-} from '@mba-desk/api-core/routes/runner'
+} from '@mba-desk/api-manager-core/routes/runner'
 import {
   createStudioProjectsRoute,
   type StudioProjectsRouteOptions,
-} from '@mba-desk/api-core/routes/studio-projects'
+} from '@mba-desk/api-manager-core/routes/studio-projects'
 import {
   createSubscriptionsPlaygroundRoute,
   type SubscriptionsPlaygroundRouteOptions,
-} from '@mba-desk/api-core/routes/subscriptions-playground'
+} from '@mba-desk/api-manager-core/routes/subscriptions-playground'
 import {
   createTemplatesPlaygroundRoute,
   type TemplatesPlaygroundRouteOptions,
-} from '@mba-desk/api-core/routes/templates-playground'
-import {
-  createWaCloudWebhookRoute,
-  type WaCloudWebhookRouteOptions,
-} from '@mba-desk/api-core/routes/wa-cloud'
+} from '@mba-desk/api-manager-core/routes/templates-playground'
 import {
   createWabaPlaygroundRoute,
   type WabaPlaygroundRouteOptions,
-} from '@mba-desk/api-core/routes/waba-playground'
+} from '@mba-desk/api-manager-core/routes/waba-playground'
 import {
   createWebhooksPlaygroundRoute,
   type WebhooksPlaygroundRouteOptions,
-} from '@mba-desk/api-core/routes/webhooks-playground'
-import { createWebhooksRoute } from '@mba-desk/api-core/routes/webhooks'
-import { events, type EventBus } from '@mba-desk/events'
+} from '@mba-desk/api-manager-core/routes/webhooks-playground'
+import { createWebhooksRoute } from '@mba-desk/api-manager-core/routes/webhooks'
 import { files } from '@mba-desk/files'
 
 export interface CreateManagerAppOptions extends CommonAppOptions {
@@ -92,7 +87,6 @@ export interface CreateManagerAppOptions extends CommonAppOptions {
   apiPlayground?: ApiPlaygroundRouteOptions
   channels?: ChannelManagementRouteOptions
   componentsPlayground?: ComponentsPlaygroundRouteOptions
-  eventBus?: EventBus
   flowsPlayground?: FlowsPlaygroundRouteOptions
   hashbrown?: HashbrownRouteOptions
   marketingPlayground?: MarketingPlaygroundRouteOptions
@@ -107,17 +101,16 @@ export interface CreateManagerAppOptions extends CommonAppOptions {
   studioProjects?: StudioProjectsRouteOptions
   subscriptionsPlayground?: SubscriptionsPlaygroundRouteOptions
   templatesPlayground?: TemplatesPlaygroundRouteOptions
-  waCloudWebhook?: WaCloudWebhookRouteOptions
   wabaPlayground?: WabaPlaygroundRouteOptions
   webhooksPlayground?: WebhooksPlaygroundRouteOptions
 }
 
 export const createManagerApp = ({
+  applicationUrls,
   analyticsPlayground,
   apiPlayground,
   channels,
   componentsPlayground,
-  eventBus = events,
   fileStore = files,
   flowsPlayground,
   hashbrown,
@@ -133,12 +126,11 @@ export const createManagerApp = ({
   studioProjects,
   subscriptionsPlayground,
   templatesPlayground,
-  waCloudWebhook,
   wabaPlayground,
   webhooksPlayground,
   ...common
 }: CreateManagerAppOptions = {}) =>
-  createCommonApp({ ...common, fileStore })
+  createCommonApp({ ...common, applicationUrls, fileStore })
     .route('/api/playground', createApiPlaygroundRoute(apiPlayground))
     .route(
       '/api/playground/analytics',
@@ -177,7 +169,10 @@ export const createManagerApp = ({
       '/api/playground/webhooks',
       createWebhooksPlaygroundRoute(webhooksPlayground),
     )
-    .route('/api/channels', createChannelManagementRoute(channels))
+    .route(
+      '/api/channels',
+      createChannelManagementRoute({ applicationUrls, ...channels }),
+    )
     .route('/api/webhooks', createWebhooksRoute())
     .route('/api/responses/v1', createResponsesRoute(responses))
     .route('/api/hashbrown', createHashbrownRoute(hashbrown))
@@ -187,10 +182,6 @@ export const createManagerApp = ({
     )
     .route('/api/mcp', createMcpRoute(mcp))
     .route('/api/runner', createRunnerRoute(runner))
-    .route(
-      '/api/wa-cloud/webhook',
-      createWaCloudWebhookRoute(eventBus, waCloudWebhook),
-    )
 
 export const app = createManagerApp()
 export type AppType = typeof app

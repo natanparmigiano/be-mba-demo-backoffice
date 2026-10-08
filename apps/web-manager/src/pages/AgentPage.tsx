@@ -43,15 +43,13 @@ import {
 } from '../agent-import-preview'
 import { authClient } from '../auth/auth-client'
 import {
+  ChannelQrCode,
+  ConversationalComponentsSettingsCard,
   emptyChannelQrState,
   fetchChannelQrState,
-  type ChannelQrState,
-} from '../channel-qr'
-import { ChannelQrCode } from '../components/channel-qr-code'
-import {
-  ConversationalComponentsSettingsCard,
   QrCodesSettingsCard,
-} from '../components/channel-management-cards'
+  type ChannelQrState,
+} from '@mba-desk/web-shared'
 import {
   Button,
   Checkbox,
@@ -472,7 +470,10 @@ export function AgentPage() {
           ':id'
         ].registration.$get({ param: { id: String(channelId) } })
         if (registrationResponse.ok) {
-          const registration = await registrationResponse.json()
+          const registration = (await registrationResponse.json()) as {
+            status: RegistrationStatus
+            providerStatus: string | null
+          }
           setRegistrationStatus(registration.status)
           setRegistrationProviderStatus(registration.providerStatus)
           isNumberRegistered = registration.status === 'registered'

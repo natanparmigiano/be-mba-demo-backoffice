@@ -3,6 +3,17 @@
 This workspace is a React 19/Vite 7 application using typed Hono RPC, Better
 Auth, React Router, i18next, Tailwind CSS 4, and semantic theme tokens.
 
+## Documentation
+
+- Read and update `documentation/docs/archive/apps/web-manager/` for changes to routes,
+  screens, user workflows, permissions, configuration, or development
+  commands.
+- Keep page titles, Docusaurus front matter, links, screenshots, and navigation
+  labels aligned with the UI. Add new features to the appropriate workflow and
+  reference pages rather than creating source-adjacent README files.
+- Structure documentation from introduction and quick start through normal
+  usage, detailed behavior, and troubleshooting.
+
 ## Boundaries and data flow
 
 - Keep route-level orchestration in `src/pages`, reusable presentation in

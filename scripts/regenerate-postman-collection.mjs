@@ -8,7 +8,7 @@ const repositoryRoot = path.resolve(
 )
 const outputPath = path.join(
   repositoryRoot,
-  'docs/collections/mba_wa_cloud_be.postman_collection.json',
+  'documentation/docs/archive/collections/mba_wa_cloud_be.postman_collection.json',
 )
 const sourceArgument = process.argv[2]
 

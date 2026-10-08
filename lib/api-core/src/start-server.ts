@@ -1,18 +1,18 @@
 import { serve } from '@hono/node-server'
 import { bootstrapInitialAdmin } from '@mba-desk/auth'
 import { closeDatabase } from '@mba-desk/db'
-import { events, type Unsubscribe } from '@mba-desk/events'
+import { events, type EventBus, type Unsubscribe } from '@mba-desk/events'
 import { files } from '@mba-desk/files'
 import { kv } from '@mba-desk/kv'
 import { pubsub } from '@mba-desk/pubsub'
 import type { Hono } from 'hono'
-import { registerSubscribers } from './subscribers.js'
 
 export interface StartApiServerOptions {
   app: Hono
   name: string
   port: number
   enableInProcessWorker?: boolean
+  registerInProcessSubscribers?: (events: EventBus) => Unsubscribe
 }
 
 export async function startApiServer({
@@ -20,6 +20,7 @@ export async function startApiServer({
   name,
   port,
   enableInProcessWorker = false,
+  registerInProcessSubscribers,
 }: StartApiServerOptions) {
   if (!Number.isSafeInteger(port) || port <= 0 || port > 65_535) {
     throw new Error(`${name} API port must be a number between 1 and 65535`)
@@ -28,7 +29,12 @@ export async function startApiServer({
 
   let unregisterSubscribers: Unsubscribe = () => undefined
   if (enableInProcessWorker) {
-    unregisterSubscribers = registerSubscribers(events)
+    if (!registerInProcessSubscribers) {
+      throw new Error(
+        `${name} API cannot enable its in-process worker without a subscriber registry`,
+      )
+    }
+    unregisterSubscribers = registerInProcessSubscribers(events)
     await events.start()
     console.log(`${name} in-process event worker enabled`)
   }

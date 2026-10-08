@@ -20,9 +20,7 @@ interface OrganizationInvitationRecord extends OrganizationInvitationSummary {
   status: string
 }
 
-function uniqueCurrentInvitations(
-  invitations: OrganizationInvitationRecord[],
-) {
+function uniqueCurrentInvitations(invitations: OrganizationInvitationRecord[]) {
   const byOrganization = new Map<string, OrganizationInvitationSummary>()
   const now = Date.now()
 

@@ -3,6 +3,16 @@
 This package owns reusable React presentation primitives and the shared
 Tailwind theme, base styles, semantic tokens, and utilities.
 
+## Documentation
+
+- Read and update `documentation/docs/archive/lib/ui/` when components, props,
+  variants, accessibility behavior, theme tokens, styles, or integration steps
+  change.
+- Document the installation and common examples first, followed by component
+  and token reference, accessibility guidance, and troubleshooting. Keep
+  Docusaurus titles, navigation, and links current; do not add a package-local
+  README.
+
 ## Package contract
 
 - Keep components application-agnostic and free of API, routing, and feature

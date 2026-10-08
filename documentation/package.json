@@ -1,0 +1,30 @@
+{
+  "name": "@mba-desk/documentation",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "docusaurus build",
+    "clear": "docusaurus clear",
+    "dev": "docusaurus start --port 3100 --no-open",
+    "serve": "docusaurus serve --port 3100 --no-open",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@docusaurus/core": "3.9.2",
+    "@docusaurus/module-type-aliases": "3.9.2",
+    "@docusaurus/preset-classic": "3.9.2",
+    "@docusaurus/theme-mermaid": "3.9.2",
+    "@docusaurus/tsconfig": "3.9.2",
+    "@docusaurus/types": "3.9.2",
+    "@mdx-js/react": "^3.1.1",
+    "clsx": "^2.1.1",
+    "prism-react-renderer": "^2.4.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "typescript": "^5.9.2",
+    "webpack": "5.99.9"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

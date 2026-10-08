@@ -16,6 +16,19 @@ export { ThemeSwitcher } from './components/theme/ThemeSwitcher'
 export { AdminPage } from './pages/AdminPage'
 export { LoginPage } from './pages/LoginPage'
 export { OrganizationPage } from './pages/OrganizationPage'
+export { ChannelsPage } from './pages/ChannelsPage'
+export {
+  emptyChannelQrState,
+  fetchChannelQrState,
+  type ChannelQrState,
+  type ChannelQrStatus,
+} from './channel-qr'
+export { ChannelQrCode } from './components/channel-qr-code'
+export {
+  BusinessProfileSettingsCard,
+  ConversationalComponentsSettingsCard,
+  QrCodesSettingsCard,
+} from './components/channel-management-cards'
 export {
   AdminRoute,
   AuthSessionRoute,

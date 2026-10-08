@@ -1,0 +1,5 @@
+{
+  "label": "SSO administration CLI",
+  "position": 5,
+  "link": { "type": "doc", "id": "archive/apps/sso-cli/README" }
+}
