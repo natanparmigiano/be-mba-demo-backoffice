@@ -2,6 +2,14 @@ import type { Config } from '@docusaurus/types'
 import type { Options, ThemeConfig } from '@docusaurus/preset-classic'
 import { themes as prismThemes } from 'prism-react-renderer'
 
+const audience = process.env.DOCUSAURUS_AUDIENCE ?? 'external'
+
+if (audience !== 'external' && audience !== 'internal') {
+  throw new Error(
+    `Invalid DOCUSAURUS_AUDIENCE "${audience}". Expected "external" or "internal".`,
+  )
+}
+
 const config: Config = {
   title: 'MBA Desk Documentation',
   tagline: 'Build, operate, and deploy MBA Desk with confidence.',
@@ -41,6 +49,11 @@ const config: Config = {
           path: 'docs',
           routeBasePath: '/',
           sidebarPath: './sidebars.ts',
+          include: [
+            audience === 'internal'
+              ? '**/!(*.external).{md,mdx}'
+              : '**/!(*.internal).{md,mdx}',
+          ],
           showLastUpdateAuthor: true,
           showLastUpdateTime: true,
           breadcrumbs: true,

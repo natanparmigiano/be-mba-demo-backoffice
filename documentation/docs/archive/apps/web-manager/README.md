@@ -24,7 +24,7 @@ yarn workspace @mba-desk/api-manager dev
 yarn workspace @mba-desk/web-manager dev
 ```
 
-Open <http://localhost:5174>. Vite forwards relative `/api` requests to the
+Open <http://localhost:44101>. Vite forwards relative `/api` requests to the
 Manager API on port `3001`.
 
 ## Application boundaries

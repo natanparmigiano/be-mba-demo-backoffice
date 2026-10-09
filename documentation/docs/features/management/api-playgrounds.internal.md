@@ -1,9 +1,9 @@
 ---
-title: API playgrounds [INTERNAL]
+title: API playgrounds
 slug: /internal/features/management/api-playgrounds
 ---
 
-# API playgrounds [INTERNAL]
+# API playgrounds
 
 :::warning Internal documentation
 

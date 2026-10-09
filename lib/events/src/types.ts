@@ -1,4 +1,4 @@
-export type EventBusMode = 'kafka' | 'memory'
+export type EventBusMode = 'kafka' | 'memory' | 'sqs'
 export type EventHeaders = Readonly<Record<string, string>>
 
 export interface PublishOptions {

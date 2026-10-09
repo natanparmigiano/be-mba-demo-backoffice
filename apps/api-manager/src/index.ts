@@ -9,7 +9,7 @@ const port = Number.parseInt(
 )
 const app = createManagerApp({
   applicationUrls: getApplicationUrls(),
-  corsOrigin: process.env.MANAGER_CORS_ORIGIN ?? 'http://localhost:5174',
+  corsOrigin: process.env.MANAGER_CORS_ORIGIN ?? 'http://localhost:44101',
   webRoot: process.env.MANAGER_WEB_ROOT ?? '../web-manager/dist',
 })
 

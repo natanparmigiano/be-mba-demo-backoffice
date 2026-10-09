@@ -1,9 +1,9 @@
 ---
-title: Agent lifecycle management [INTERNAL]
+title: Agent lifecycle management
 slug: /internal/features/management/agent-lifecycle-management
 ---
 
-# Agent lifecycle management [INTERNAL]
+# Agent lifecycle management
 
 :::warning Internal documentation
 

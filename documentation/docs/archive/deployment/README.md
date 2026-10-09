@@ -9,17 +9,17 @@ delivery.
 
 ## Quick start
 
-| Mode              | Best for                                                      | Application processes                          | PostgreSQL              | KV adapter               | Event adapter            | File storage          |
-| ----------------- | ------------------------------------------------------------- | ---------------------------------------------- | ----------------------- | ------------------------ | ------------------------ | --------------------- |
-| Local development | Editing with hot reload and production-like dependencies      | Two APIs and two Vite servers on host          | Compose container       | Redis container          | Kafka container          | MinIO                 |
-| Simple Compose    | Smallest self-contained split-app demo                        | `workspace`, `manager`, and one-shot `migrate` | Compose container       | PostgreSQL               | Process memory           | Filesystem volume     |
-| Full Compose      | Testing the production process split locally                  | Two apps, two workers, and one-shot `migrate`  | Compose container       | Redis container          | Kafka container          | MinIO                 |
-| Render Blueprint  | Small hosted demo                                             | Two application services                       | Managed Render database | Managed Render Key Value | Process memory           | PostgreSQL demo blobs |
-| Generic Docker    | Kubernetes, ECS, another PaaS, or manually managed containers | Two app roles, migration job, optional workers | External service        | PostgreSQL or Redis      | Memory or external Kafka | Filesystem or S3      |
+| Mode              | Best for                                                      | Application processes                          | PostgreSQL              | KV adapter               | Event adapter              | File storage          |
+| ----------------- | ------------------------------------------------------------- | ---------------------------------------------- | ----------------------- | ------------------------ | -------------------------- | --------------------- |
+| Local development | Editing with hot reload and production-like dependencies      | Two APIs and two Vite servers on host          | Compose container       | Redis container          | Kafka container            | MinIO                 |
+| Simple Compose    | Smallest self-contained split-app demo                        | `workspace`, `manager`, and one-shot `migrate` | Compose container       | PostgreSQL               | Process memory             | Filesystem volume     |
+| Full Compose      | Testing the production process split locally                  | Two apps, two workers, and one-shot `migrate`  | Compose container       | Redis container          | Kafka container            | MinIO                 |
+| Render Blueprint  | Small hosted demo                                             | Two application services                       | Managed Render database | Managed Render Key Value | Process memory             | PostgreSQL demo blobs |
+| Generic Docker    | Kubernetes, ECS, another PaaS, or manually managed containers | Two app roles, migration job, optional workers | External service        | PostgreSQL or Redis      | Memory, Kafka, or SQS FIFO | Filesystem or S3      |
 
 All modes use PostgreSQL as the authoritative data store. Redis provides
-secondary auth and KV state; it does not replace PostgreSQL. Kafka is the only
-included event adapter that connects separate publisher and subscriber
+secondary auth and KV state; it does not replace PostgreSQL. Kafka and SQS FIFO
+are the included event adapters that connect separate publisher and subscriber
 processes.
 
 Do not horizontally scale an explicitly memory-backed deployment. By default,
@@ -72,11 +72,15 @@ The adapter choices come entirely from environment variables:
 - `KV_ADAPTER=postgres`: use the shared PostgreSQL `kv.entries` table.
   `KV_ADAPTER=memory|redis` selects those adapters explicitly. When unset,
   `REDIS_URL` selects Redis and its absence selects PostgreSQL.
-- Both `KAFKA_CLIENT_ID` and `KAFKA_BROKERS` set: use Kafka. Both unset: use process-local events. Setting only one is a startup error.
+- Both `KAFKA_CLIENT_ID` and `KAFKA_BROKERS` set: use Kafka.
+- `SQS_QUEUE_URL` set to a queue ending in `.fifo`: use SQS. Use a dedicated
+  queue for each publisher/subscriber workload.
+- Neither adapter configured: use process-local events. Kafka and SQS cannot be
+  configured together, and partial configuration is a startup error.
 - `ENABLE_WORKER_IN_PROCESS=true`: register subscribers in the web application. This is required when using memory events and no separate worker.
 - `ENABLE_WORKER_IN_PROCESS=false`: the web application only publishes. Run
   its matching `workspace-worker` or `manager-worker` process using the same
-  Kafka brokers.
+  Kafka brokers or SQS queue.
 - `FILES_ADAPTER=fs`: store files below `FILES_DIRECTORY` and route signed
   transfers through Hono. `FILES_ADAPTER=s3`: store objects in S3 and return
   native SigV4 URLs. `FILES_ADAPTER=postgres`: store blobs in
@@ -142,6 +146,9 @@ yarn install --frozen-lockfile
 | `KAFKA_CLIENT_ID`                    | With `KAFKA_BROKERS`   | App and worker        | Kafka client identity                                                                |
 | `KAFKA_BROKERS`                      | With `KAFKA_CLIENT_ID` | App and worker        | Comma-separated Kafka broker addresses                                               |
 | `KAFKA_GROUP_ID`                     | No                     | Subscriber process    | Consumer group; defaults to `<client-id>-consumer`                                   |
+| `SQS_QUEUE_URL`                      | SQS                    | App and worker        | Existing FIFO queue URL; Kafka variables must be unset                               |
+| `SQS_REGION`                         | No                     | App and worker        | AWS region; defaults to `us-east-1`                                                  |
+| `SQS_ENDPOINT`                       | SQS-compatible         | App and worker        | Optional HTTP(S) endpoint override                                                   |
 | `ENABLE_WORKER_IN_PROCESS`           | No                     | App                   | Enables registered subscribers inside the HTTP process                               |
 | `SUBSCRIBE_TO_TOPICS`                | No                     | Subscriber process    | `all` or a comma-separated list of registered topics                                 |
 | `WA_WEBHOOK_MAX_RETRIES`             | No                     | Subscriber process    | Webhook retries before dead-lettering; defaults to `5` and accepts `0` through `100` |
@@ -195,8 +202,8 @@ yarn db:migrate
 yarn dev
 ```
 
-Open the workspace at <http://localhost:5173> and the manager at
-<http://localhost:5174>. Their Vite servers proxy `/api` to the workspace API
+Open the workspace at <http://localhost:44100> and the manager at
+<http://localhost:44101>. Their Vite servers proxy `/api` to the workspace API
 at <http://localhost:3000> and manager API at <http://localhost:3001>,
 respectively.
 

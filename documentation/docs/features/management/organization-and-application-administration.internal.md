@@ -1,9 +1,9 @@
 ---
-title: Organization and application administration [INTERNAL]
+title: Organization and application administration
 slug: /internal/features/management/organization-and-application-administration
 ---
 
-# Organization and application administration [INTERNAL]
+# Organization and application administration
 
 :::warning Internal documentation
 

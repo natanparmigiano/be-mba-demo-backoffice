@@ -26,7 +26,7 @@ export function getAuthEnvironment(
   }
 
   const resolvedBaseURL = baseURL || DEVELOPMENT_AUTH_URL
-  const frontendOrigin = env.CORS_ORIGIN?.trim() || 'http://localhost:5173'
+  const frontendOrigin = env.CORS_ORIGIN?.trim() || 'http://localhost:44100'
 
   return {
     baseURL: validateHttpUrl(resolvedBaseURL, 'BETTER_AUTH_URL'),

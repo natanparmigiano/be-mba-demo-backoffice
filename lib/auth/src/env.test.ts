@@ -11,7 +11,7 @@ describe('auth environment', () => {
     assert.deepEqual(getAuthEnvironment({ NODE_ENV: 'development' }), {
       baseURL: DEVELOPMENT_AUTH_URL,
       secret: DEVELOPMENT_AUTH_SECRET,
-      trustedOrigins: ['http://localhost:5173'],
+      trustedOrigins: ['http://localhost:44100'],
     })
   })
 

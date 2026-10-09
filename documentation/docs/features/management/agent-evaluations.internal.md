@@ -1,9 +1,9 @@
 ---
-title: Agent evaluations [INTERNAL]
+title: Agent evaluations
 slug: /internal/features/management/agent-evaluations
 ---
 
-# Agent evaluations [INTERNAL]
+# Agent evaluations
 
 :::warning Internal documentation
 

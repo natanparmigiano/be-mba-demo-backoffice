@@ -14,8 +14,8 @@ yarn install
 yarn dev
 ```
 
-The Workspace UI runs at <http://localhost:5173> and the Manager UI at
-<http://localhost:5174>. Their Vite proxies forward `/api` to ports `3000` and
+The Workspace UI runs at <http://localhost:44100> and the Manager UI at
+<http://localhost:44101>. Their Vite proxies forward `/api` to ports `3000` and
 `3001`, respectively.
 
 ## Application map

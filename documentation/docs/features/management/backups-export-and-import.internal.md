@@ -1,9 +1,9 @@
 ---
-title: Backups, export, and import [INTERNAL]
+title: Backups, export, and import
 slug: /internal/features/management/backups-export-and-import
 ---
 
-# Backups, export, and import [INTERNAL]
+# Backups, export, and import
 
 :::warning Internal documentation
 

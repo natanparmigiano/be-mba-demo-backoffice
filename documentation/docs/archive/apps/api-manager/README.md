@@ -11,7 +11,7 @@ yarn workspace @mba-desk/api-manager dev
 ```
 
 The development server listens on <http://localhost:3001>. Pair it with the
-Manager frontend at <http://localhost:5174>.
+Manager frontend at <http://localhost:44101>.
 
 ## Boundaries and composition
 
@@ -28,11 +28,11 @@ Workspace API.
 
 ## Configuration
 
-| Variable              | Default                 | Purpose                        |
-| --------------------- | ----------------------- | ------------------------------ |
-| `MANAGER_API_PORT`    | `3001`                  | HTTP listening port            |
-| `MANAGER_CORS_ORIGIN` | `http://localhost:5174` | Allowed Manager browser origin |
-| `MANAGER_WEB_ROOT`    | `../web-manager/dist`   | Compiled Manager SPA directory |
+| Variable              | Default                  | Purpose                        |
+| --------------------- | ------------------------ | ------------------------------ |
+| `MANAGER_API_PORT`    | `3001`                   | HTTP listening port            |
+| `MANAGER_CORS_ORIGIN` | `http://localhost:44101` | Allowed Manager browser origin |
+| `MANAGER_WEB_ROOT`    | `../web-manager/dist`    | Compiled Manager SPA directory |
 
 The development script also sets Better Auth's public URL and CORS origin to
 the proxied Manager browser origin.

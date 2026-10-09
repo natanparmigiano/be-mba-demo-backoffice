@@ -46,7 +46,7 @@ The API mounts the resulting `auth.handler` at `/api/auth/*`.
 | `BETTER_AUTH_SECRET`          | Falls back to an unsafe development-only secret | Required                                |
 | `BETTER_AUTH_URL`             | Defaults to `http://localhost:3000`             | Required                                |
 | `BETTER_AUTH_TRUSTED_ORIGINS` | Optional comma-separated IdP origins            | Required for every OIDC endpoint origin |
-| `CORS_ORIGIN`                 | Defaults to `http://localhost:5173`             | Used as the trusted browser origin      |
+| `CORS_ORIGIN`                 | Defaults to `http://localhost:44100`            | Used as the trusted browser origin      |
 
 URLs must use `http://` or `https://`. Generate a high-entropy secret for every deployed environment and never rely on the development fallback in production.
 

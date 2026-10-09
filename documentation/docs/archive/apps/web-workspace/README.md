@@ -24,7 +24,7 @@ yarn workspace @mba-desk/api-workspace dev
 yarn workspace @mba-desk/web-workspace dev
 ```
 
-Open <http://localhost:5173>. Vite forwards relative `/api` requests to the
+Open <http://localhost:44100>. Vite forwards relative `/api` requests to the
 Workspace API on port `3000`.
 
 ## Application boundaries

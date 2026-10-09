@@ -1,9 +1,9 @@
 ---
-title: Agent skills and knowledge [INTERNAL]
+title: Agent skills and knowledge
 slug: /internal/features/management/agent-skills-and-knowledge
 ---
 
-# Agent skills and knowledge [INTERNAL]
+# Agent skills and knowledge
 
 :::warning Internal documentation
 

@@ -1,7 +1,7 @@
 # `@mba-desk/events`
 
 Use one event-bus interface for publishing, subscription, startup, and
-shutdown. Configure Kafka whenever publishers and subscribers run in different
+shutdown. Configure Kafka or SQS whenever publishers and subscribers run in different
 processes; the memory adapter is process-local, non-durable, and cannot replay
 events.
 
@@ -10,19 +10,25 @@ closed after `close()`.
 
 ## Quick start
 
-Use Kafka across processes. Register all application subscribers before
+Use Kafka or an SQS FIFO queue across processes. Register all application subscribers before
 `start()`, publish versioned topics, and close the bus during graceful
 shutdown.
 
 ## Adapter selection
 
-`createEventBus()` selects Kafka only when both `KAFKA_CLIENT_ID` and `KAFKA_BROKERS` are set. When neither is set, it creates a `MemoryEventBus`. Providing only one Kafka variable fails immediately.
+`createEventBus()` selects Kafka when both `KAFKA_CLIENT_ID` and
+`KAFKA_BROKERS` are set, or SQS when `SQS_QUEUE_URL` is set. Kafka and SQS are
+mutually exclusive. With neither configured it creates a `MemoryEventBus`.
+Providing partial external-adapter configuration fails immediately.
 
-| Variable          | Description                                        |
-| ----------------- | -------------------------------------------------- |
-| `KAFKA_CLIENT_ID` | Kafka client identifier                            |
-| `KAFKA_BROKERS`   | Comma-separated broker addresses                   |
-| `KAFKA_GROUP_ID`  | Consumer group; defaults to `<client-id>-consumer` |
+| Variable          | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `KAFKA_CLIENT_ID` | Kafka client identifier                                 |
+| `KAFKA_BROKERS`   | Comma-separated broker addresses                        |
+| `KAFKA_GROUP_ID`  | Consumer group; defaults to `<client-id>-consumer`      |
+| `SQS_QUEUE_URL`   | Full URL of an existing FIFO queue ending in `.fifo`    |
+| `SQS_REGION`      | AWS region; defaults to `us-east-1`                     |
+| `SQS_ENDPOINT`    | Optional HTTP(S) endpoint for an SQS-compatible service |
 
 The module-level `events` export is created from the current process environment.
 
@@ -30,7 +36,7 @@ The module-level `events` export is created from the current process environment
 
 ```ts
 interface EventBus {
-  readonly mode: 'kafka' | 'memory'
+  readonly mode: 'kafka' | 'memory' | 'sqs'
   subscribe(topic: string, handler: EventHandler): Unsubscribe
   start(): Promise<void>
   publish(topic: string, value: string, options?: PublishOptions): Promise<void>
@@ -79,6 +85,15 @@ The Confluent package installs a platform-specific native binary. Supported
 Node.js and container platforms use its published prebuilt binaries; other
 platforms require the documented C++ and `librdkafka` build toolchain.
 
+The SQS adapter uses an existing FIFO queue and the standard AWS credential
+provider chain. It preserves the event envelope in the message body, groups
+messages by a hash of the event key (or topic when no key is present), and
+deletes each message only after every matching handler succeeds. Delivery is
+at least once, so handlers must tolerate redelivery. Use a dedicated queue for
+each publisher/subscriber workload; multiple unrelated worker types sharing a
+queue can consume one another's messages. The queue must have a visibility
+timeout longer than the maximum handler duration.
+
 The memory adapter uses Node's `EventEmitter` and awaits every handler while
 preserving the Kafka message shape. Use it only when the publisher and all
 subscribers share one process; events disappear on restart and are never
@@ -95,7 +110,7 @@ Runner calls publish `runner.execution.requested.v1` with a versioned payload
 containing only the durable execution-log ID. The subscriber atomically claims
 the queued PostgreSQL row and executes it through `@mba-desk/runner`. Memory
 mode therefore requires the in-process worker; separate API and worker
-processes require Kafka.
+processes require Kafka or SQS.
 
 ## Verification
 
@@ -105,4 +120,5 @@ yarn workspace @mba-desk/events test
 yarn workspace @mba-desk/events build
 ```
 
-Unit tests cover adapter selection and in-memory delivery. The full Compose smoke path exercises Kafka across separate app and worker containers.
+Unit tests cover configuration and memory/SQS delivery. The full Compose smoke
+path exercises Kafka across separate app and worker containers.

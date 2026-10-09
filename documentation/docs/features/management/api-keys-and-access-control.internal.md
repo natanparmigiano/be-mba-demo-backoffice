@@ -1,9 +1,9 @@
 ---
-title: API keys and access control [INTERNAL]
+title: API keys and access control
 slug: /internal/features/management/api-keys-and-access-control
 ---
 
-# API keys and access control [INTERNAL]
+# API keys and access control
 
 :::warning Internal documentation
 

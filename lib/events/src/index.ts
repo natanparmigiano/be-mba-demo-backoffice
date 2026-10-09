@@ -1,19 +1,41 @@
-import { getKafkaConfiguration } from './env.js'
+import { getKafkaConfiguration, getSqsConfiguration } from './env.js'
 import { KafkaEventBus } from './kafka.js'
 import { MemoryEventBus } from './memory.js'
+import { SqsEventBus } from './sqs.js'
+import type { KafkaConfiguration, SqsConfiguration } from './env.js'
 import type { EventBus } from './types.js'
 
 export function createEventBus(
-  configuration = getKafkaConfiguration(),
+  configuration?: KafkaConfiguration | SqsConfiguration,
 ): EventBus {
-  return configuration ? new KafkaEventBus(configuration) : new MemoryEventBus()
+  if (configuration) {
+    return 'queueUrl' in configuration
+      ? new SqsEventBus(configuration)
+      : new KafkaEventBus(configuration)
+  }
+
+  const kafka = getKafkaConfiguration()
+  const sqs = getSqsConfiguration()
+
+  if (kafka && sqs) {
+    throw new Error('Kafka and SQS event adapters cannot both be configured')
+  }
+  if (kafka) return new KafkaEventBus(kafka)
+  if (sqs) return new SqsEventBus(sqs)
+  return new MemoryEventBus()
 }
 
 export const events = createEventBus()
 
-export { getKafkaConfiguration, type KafkaConfiguration } from './env.js'
+export {
+  getKafkaConfiguration,
+  getSqsConfiguration,
+  type KafkaConfiguration,
+  type SqsConfiguration,
+} from './env.js'
 export { KafkaEventBus } from './kafka.js'
 export { MemoryEventBus } from './memory.js'
+export { SqsEventBus } from './sqs.js'
 export type {
   EventBus,
   EventBusMode,

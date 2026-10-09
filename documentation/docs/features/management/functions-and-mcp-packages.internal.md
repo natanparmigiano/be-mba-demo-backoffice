@@ -1,9 +1,9 @@
 ---
-title: Functions and MCP packages [INTERNAL]
+title: Functions and MCP packages
 slug: /internal/features/management/functions-and-mcp-packages
 ---
 
-# Functions and MCP packages [INTERNAL]
+# Functions and MCP packages
 
 :::warning Internal documentation
 

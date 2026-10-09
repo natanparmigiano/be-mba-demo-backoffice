@@ -11,7 +11,7 @@ yarn workspace @mba-desk/api-workspace dev
 ```
 
 The development server listens on <http://localhost:3000>. Pair it with the
-Workspace frontend at <http://localhost:5173>.
+Workspace frontend at <http://localhost:44100>.
 
 ## Boundaries and composition
 

@@ -1,9 +1,17 @@
 import type { SidebarsConfig } from '@docusaurus/plugin-content-docs'
 
+const audience = process.env.DOCUSAURUS_AUDIENCE ?? 'external'
+const isInternal = audience === 'internal'
+
+if (!isInternal && audience !== 'external') {
+  throw new Error(
+    `Invalid DOCUSAURUS_AUDIENCE "${audience}". Expected "external" or "internal".`,
+  )
+}
+
 const sidebars: SidebarsConfig = {
   documentationSidebar: [
-    'internal',
-    'home',
+    isInternal ? 'internal' : 'home',
     {
       type: 'category',
       label: 'Features',
@@ -26,22 +34,27 @@ const sidebars: SidebarsConfig = {
             'features/workspace/user-administration',
           ],
         },
-        {
-          type: 'category',
-          label: 'Management [INTERNAL]',
-          items: [
-            'features/management/agent-lifecycle-management.internal',
-            'features/management/agent-skills-and-knowledge.internal',
-            'features/management/agent-evaluations.internal',
-            'features/management/backups-export-and-import.internal',
-            'features/management/agent-studio.internal',
-            'features/management/webhook-visibility.internal',
-            'features/management/functions-and-mcp-packages.internal',
-            'features/management/api-keys-and-access-control.internal',
-            'features/management/api-playgrounds.internal',
-            'features/management/organization-and-application-administration.internal',
-          ],
-        },
+        ...(isInternal
+          ? [
+              {
+                type: 'category' as const,
+                label: 'Management',
+                items: [
+                  'features/management/home-and-performance-overview.internal',
+                  'features/management/agent-lifecycle-management.internal',
+                  'features/management/agent-skills-and-knowledge.internal',
+                  'features/management/agent-evaluations.internal',
+                  'features/management/backups-export-and-import.internal',
+                  'features/management/agent-studio.internal',
+                  'features/management/webhook-visibility.internal',
+                  'features/management/functions-and-mcp-packages.internal',
+                  'features/management/api-keys-and-access-control.internal',
+                  'features/management/api-playgrounds.internal',
+                  'features/management/organization-and-application-administration.internal',
+                ],
+              },
+            ]
+          : []),
       ],
     },
     {

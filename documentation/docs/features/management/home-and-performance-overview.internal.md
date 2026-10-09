@@ -1,9 +1,9 @@
 ---
-title: Management home and performance overview [INTERNAL]
+title: Management home and performance overview
 slug: /internal/features/management/home-and-performance-overview
 ---
 
-# Management home and performance overview [INTERNAL]
+# Management home and performance overview
 
 :::warning Internal documentation
 

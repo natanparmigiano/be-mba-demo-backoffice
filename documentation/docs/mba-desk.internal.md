@@ -1,8 +1,8 @@
 ---
 id: internal
-title: MBA Desk [INTERNAL]
-sidebar_label: MBA Desk [INTERNAL]
-slug: /internal
+title: MBA Desk
+sidebar_label: MBA Desk
+slug: /
 hide_table_of_contents: true
 pagination_prev: null
 pagination_next: null

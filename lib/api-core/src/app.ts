@@ -31,7 +31,7 @@ export interface CommonAppOptions {
 export const createCommonApp = ({
   applicationUrls = defaultApplicationUrls,
   coreChannels,
-  corsOrigin = 'http://localhost:5173',
+  corsOrigin = 'http://localhost:44100',
   fileStore = files,
   hasSsoProviders = defaultHasSsoProviders,
   webRoot,

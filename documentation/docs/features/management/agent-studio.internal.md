@@ -1,9 +1,9 @@
 ---
-title: Agent Studio [INTERNAL]
+title: Agent Studio
 slug: /internal/features/management/agent-studio
 ---
 
-# Agent Studio [INTERNAL]
+# Agent Studio
 
 :::warning Internal documentation
 

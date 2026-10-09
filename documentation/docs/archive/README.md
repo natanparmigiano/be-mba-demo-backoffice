@@ -29,8 +29,8 @@ yarn db:migrate
 yarn dev
 ```
 
-Open the workspace app at <http://localhost:5173> or the manager app at
-<http://localhost:5174> after the commands complete. PostgreSQL, Redis, Kafka,
+Open the workspace app at <http://localhost:44100> or the manager app at
+<http://localhost:44101> after the commands complete. PostgreSQL, Redis, Kafka,
 and MinIO run in containers; both APIs and both frontends run locally in watch
 mode. Workspace proxies `/api` to port `3000`; Manager proxies it to port
 `3001`.
@@ -63,7 +63,8 @@ Start Docusaurus with live reload from the repository root:
 yarn docs:dev
 ```
 
-The site opens at <http://localhost:3100>. Create and validate the production
+The external site opens at <http://localhost:44102>; the internal site uses
+<http://localhost:44103>. Create and validate the production
 HTML bundle with `yarn docs:build`, then preview it locally with
 `yarn docs:serve`. Generated files are written to `documentation/build/` and
 are not committed.
@@ -146,7 +147,7 @@ The database defaults to `postgresql://postgres:postgres@localhost:5432/mba_desk
 | `WORKSPACE_URL`                     | Production             | Canonical public Workspace origin; owns webhook ingress      |
 | `MANAGER_URL`                       | Production             | Canonical public Manager origin; owns internal MCP endpoints |
 | `WORKSPACE_CORS_ORIGIN`             | No                     | Workspace trusted browser origin                             |
-| `MANAGER_CORS_ORIGIN`               | No                     | Manager trusted origin; defaults to `http://localhost:5174`  |
+| `MANAGER_CORS_ORIGIN`               | No                     | Manager trusted origin; defaults to `http://localhost:44101` |
 | `WORKSPACE_WEB_ROOT`                | No                     | Workspace static build directory                             |
 | `MANAGER_WEB_ROOT`                  | No                     | Manager static build directory                               |
 | `KV_ADAPTER`                        | No                     | `memory`, `postgres` (default), or `redis`                   |
@@ -282,11 +283,12 @@ runs dedicated Workspace and Manager worker roles instead.
 | ---------------------------------- | ------------------ | -------------- | ------------------- |
 | Store values, counters, or TTLs    | `@mba-desk/kv`     | Memory         | Redis               |
 | Broadcast transient updates        | `@mba-desk/pubsub` | EventEmitter   | Redis Pub/Sub       |
-| Process durable or replayable work | `@mba-desk/events` | In-process bus | Kafka               |
+| Process durable or replayable work | `@mba-desk/events` | In-process bus | Kafka or SQS FIFO   |
 
 Use Pub/Sub when missing an event during a restart is acceptable. Use the event
-bus when work must survive process boundaries or use consumer groups. Kafka is
-selected only when both `KAFKA_CLIENT_ID` and `KAFKA_BROKERS` are configured.
+bus when work must survive process boundaries. Kafka is selected only when both
+`KAFKA_CLIENT_ID` and `KAFKA_BROKERS` are configured; alternatively,
+`SQS_QUEUE_URL` selects SQS FIFO. The external adapters are mutually exclusive.
 
 ### Where should files be stored?
 

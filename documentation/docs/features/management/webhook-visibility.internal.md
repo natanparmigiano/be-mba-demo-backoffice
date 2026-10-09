@@ -1,9 +1,9 @@
 ---
-title: Webhook visibility [INTERNAL]
+title: Webhook visibility
 slug: /internal/features/management/webhook-visibility
 ---
 
-# Webhook visibility [INTERNAL]
+# Webhook visibility
 
 :::warning Internal documentation
 
