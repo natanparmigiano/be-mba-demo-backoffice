@@ -5,6 +5,16 @@ provides Home, Queue, Chat, Teams, Contacts, Groups, Templates, and Sending.
 Organization management, invitation acceptance, and application
 administration are intentionally available through shared UI.
 
+The Home dashboard reads tenant-scoped local data for the selected channel. It
+shows conversation, contact, unread, queue, delivery, and message totals plus
+seven-day activity and message-type charts. Meta analytics can still augment
+the response, but the operational overview remains useful when Meta analytics
+are unavailable. Dashboard snapshots can be up to five minutes old.
+Precomputed statistics add the agent-versus-human outbound-message share,
+average handoff-to-first-human-reply time, and conversation assignments ranked
+by team and user. These event-based metrics start when migration `0044` is
+applied; historical activity is not backfilled.
+
 ## Quick start
 
 Start the Workspace API, then the browser application:

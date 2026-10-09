@@ -67,6 +67,10 @@ processes.
 
 Better Auth uses this package for secondary storage. Full Compose configures
 Redis, while Simple Compose explicitly selects process-local memory.
+The shared channel dashboard also stores its organization/channel/period
+snapshots here with a five-minute TTL. Memory mode therefore caches dashboard
+data per API process, while PostgreSQL and Redis share snapshots across API
+replicas.
 
 ## Verification
 

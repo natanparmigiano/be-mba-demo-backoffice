@@ -19,6 +19,7 @@ import {
   runnerAgentMcpConnectors,
   runnerFunctionApiKeys,
   runnerMcps,
+  statsEvents,
   webhooks,
 } from '@mba-desk/db'
 import {
@@ -1450,6 +1451,9 @@ const databaseRepository: ChannelManagementRepository = {
         .from(messages)
         .where(inArray(messages.chatId, channelChatIds))
 
+      await transaction
+        .delete(statsEvents)
+        .where(eq(statsEvents.channelId, channelId))
       await transaction
         .delete(messageStatusEvents)
         .where(inArray(messageStatusEvents.messageId, channelMessageIds))

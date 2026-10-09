@@ -3,6 +3,8 @@
 `@mba-desk/web-shared` contains browser orchestration used by both split
 frontends: the typed API and auth clients, session guards, login,
 organization management, administration, and shared shell building blocks.
+It also exports the accessible activity and distribution charts used by both
+Home dashboards.
 
 It lives under `lib/web-shared`; generic presentation remains in
 `@mba-desk/ui`. Application-specific pages and navigation remain in their

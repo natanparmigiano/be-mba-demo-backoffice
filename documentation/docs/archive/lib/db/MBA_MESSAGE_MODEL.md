@@ -347,6 +347,14 @@ For inbound messages, standby, history, message echoes, or outbound sends:
 7. Project UI-facing text, media metadata, the pre-archived media file key when supplied, and structured variant data into dedicated nullable columns.
 8. Store the exact typed object in `raw_message` as the lossless source payload.
 9. Advance `chats.latest_message_id` in the same transaction when the inserted message is newer.
+10. For a newly inserted Business Agent message, append the idempotent
+    `stats.events` `agent_message` fact in the same transaction.
+
+Human composer sends append an idempotent `human_message` fact after the
+outbound row is persisted. The first such send after a handoff also appends one
+`first_human_response` fact keyed by the chat and handoff timestamp, with the
+elapsed milliseconds. Handoff and assignment state changes append their
+corresponding statistics fact inside the same transaction as the chat update.
 
 ## Field mapping
 

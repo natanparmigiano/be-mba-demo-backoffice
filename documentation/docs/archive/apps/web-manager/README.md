@@ -5,6 +5,16 @@ the Manager home dashboard, Agents, Channels, Webhooks, Functions, MCPs, API
 Keys, Studio, and API Playground. Organization management and application
 administration are intentionally available here through shared UI.
 
+The Home dashboard combines tenant-scoped local conversation and message data
+with Meta Business Agent analytics for the selected channel. It includes local
+AI-message, handoff, human-queue, conversation, and message counters as well as
+seven-day activity and message-type charts. Dashboard snapshots can be up to
+five minutes old.
+Precomputed statistics also show the agent-versus-human outbound-message
+share, average handoff-to-first-human-reply time, and conversation assignments
+ranked by team and user. These event-based metrics start when migration `0044`
+is applied; historical activity is not backfilled.
+
 ## Quick start
 
 Start the Manager API, then the browser application:

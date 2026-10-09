@@ -14,8 +14,12 @@ import {
   runnerAgentMcpConnectors,
   runnerFunctionApiKeys,
   runnerMcps,
+  statsEvents,
+  team,
+  user,
   webhooks,
 } from '@mba-desk/db'
+import { kv, type KeyValueStore } from '@mba-desk/kv'
 import { createWhatsAppAnalyticsClient } from '@mba-desk/wa-analytics'
 import { createWhatsAppComponentsClient } from '@mba-desk/wa-components'
 import { createWhatsAppMbaClient } from '@mba-desk/wa-mba'
@@ -25,7 +29,7 @@ import {
   createWhatsAppWebhookRegistrationClient,
   MBA_WEBHOOK_SUBSCRIPTION_FIELDS,
 } from '@mba-desk/wa-subscriptions'
-import { and, count, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, count, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
 
@@ -140,7 +144,7 @@ export interface ChannelAgentConfiguration {
   waAppId?: string
 }
 
-export interface ChannelDashboardAnalytics {
+export interface ChannelProviderAnalytics {
   period: { start: string; end: string; days: number }
   messaging: {
     sent: number
@@ -157,6 +161,35 @@ export interface ChannelDashboardAnalytics {
     averageToolLatencyMs: number | null
   } | null
   unavailable: Array<'messaging' | 'agent'>
+}
+
+export interface ChannelDashboardAnalytics extends ChannelProviderAnalytics {
+  generatedAt: string
+  cacheTtlSeconds: number
+  local: {
+    contacts: number
+    groups: number
+    conversations: number
+    humanQueue: number
+    unreadMessages: number
+    handoffs: number
+    messages: number
+    inboundMessages: number
+    outboundMessages: number
+    aiMessages: number
+    deliveredMessages: number
+    failedMessages: number
+    deliveryRate: number | null
+    agentMessages: number
+    humanMessages: number
+    agentMessageRate: number | null
+    humanMessageRate: number | null
+    averageHandoffResponseMs: number | null
+    series: Array<{ date: string; inbound: number; outbound: number }>
+    messageTypes: Array<{ type: string; count: number }>
+    teamActivity: Array<{ id: string; name: string; conversations: number }>
+    userActivity: Array<{ id: string; name: string; conversations: number }>
+  }
 }
 
 export interface ChannelOverviewRepository {
@@ -228,8 +261,16 @@ export interface ChannelOverviewRouteOptions {
   getDashboardAnalytics?: (
     configuration: ChannelAgentConfiguration,
     days: number,
-  ) => Promise<ChannelDashboardAnalytics>
+  ) => Promise<ChannelProviderAnalytics>
+  getLocalDashboardAnalytics?: (
+    organizationId: string,
+    channelId: number,
+    days: number,
+  ) => Promise<ChannelDashboardAnalytics['local']>
+  dashboardCache?: KeyValueStore
 }
+
+const DASHBOARD_CACHE_TTL_SECONDS = 5 * 60
 
 const safeChannelSelection = {
   id: channels.id,
@@ -394,6 +435,9 @@ const databaseRepository: ChannelOverviewRepository = {
         .from(messages)
         .where(inArray(messages.chatId, channelChatIds))
       await transaction
+        .delete(statsEvents)
+        .where(eq(statsEvents.channelId, channelId))
+      await transaction
         .delete(messageStatusEvents)
         .where(inArray(messageStatusEvents.messageId, channelMessageIds))
       await transaction
@@ -495,6 +539,8 @@ export const createChannelOverviewRoute = ({
   getAccess = getOrganizationAccess,
   repository = databaseRepository,
   getDashboardAnalytics = getMetaDashboardAnalytics,
+  getLocalDashboardAnalytics = getDatabaseDashboardAnalytics,
+  dashboardCache = kv,
 }: ChannelOverviewRouteOptions = {}) =>
   new Hono()
     .get('/', async (c) => {
@@ -894,7 +940,13 @@ export const createChannelOverviewRoute = ({
       '/:id/dashboard',
       zValidator(
         'query',
-        z.object({ days: z.coerce.number().int().min(1).max(30).default(7) }),
+        z.object({
+          days: z.coerce.number().int().min(1).max(30).default(7),
+          refresh: z
+            .enum(['true', 'false'])
+            .default('false')
+            .transform((value) => value === 'true'),
+        }),
         (result, c) =>
           result.success
             ? undefined
@@ -910,9 +962,24 @@ export const createChannelOverviewRoute = ({
           channelId,
         )
         if (!configuration) return c.json({ message: 'Channel not found' }, 404)
-        return c.json(
-          await getDashboardAnalytics(configuration, c.req.valid('query').days),
-        )
+        const { days, refresh } = c.req.valid('query')
+        const cacheKey = `dashboard:v3:${access.organizationId}:${channelId}:${days}`
+        const cached = refresh
+          ? null
+          : await readDashboardCache(dashboardCache, cacheKey)
+        if (cached) return c.json(cached)
+        const [provider, local] = await Promise.all([
+          getDashboardAnalytics(configuration, days),
+          getLocalDashboardAnalytics(access.organizationId, channelId, days),
+        ])
+        const dashboard: ChannelDashboardAnalytics = {
+          ...provider,
+          generatedAt: new Date().toISOString(),
+          cacheTtlSeconds: DASHBOARD_CACHE_TTL_SECONDS,
+          local,
+        }
+        await writeDashboardCache(dashboardCache, cacheKey, dashboard)
+        return c.json(dashboard)
       },
     )
     .get('/:id/deletion-impact', async (c) => {
@@ -1139,7 +1206,7 @@ async function getBusinessProfile(configuration: ChannelAgentConfiguration) {
   ])
   const profile =
     isRecord(profileBody) && Array.isArray(profileBody.data)
-      ? profileBody.data[0]
+      ? (profileBody.data as unknown[])[0]
       : undefined
   if (!isRecord(profile))
     throw new Error('Meta returned an invalid business profile')
@@ -1379,11 +1446,276 @@ function toChannelSummary(row: {
   }
 }
 
+export async function getDatabaseDashboardAnalytics(
+  organizationId: string,
+  channelId: number,
+  days: number,
+): Promise<ChannelDashboardAnalytics['local']> {
+  const start = new Date()
+  start.setUTCHours(0, 0, 0, 0)
+  start.setUTCDate(start.getUTCDate() - days + 1)
+  const messageScope = and(
+    eq(chats.organizationId, organizationId),
+    eq(chats.channelId, channelId),
+    gte(messages.receivedAt, start),
+  )
+  const [
+    contactRows,
+    groupRows,
+    conversationRows,
+    messageRows,
+    dailyRows,
+    typeRows,
+    statsRows,
+    teamActivity,
+    userActivity,
+  ] = await Promise.all([
+    db
+      .select({ value: count() })
+      .from(contacts)
+      .where(eq(contacts.channelId, channelId)),
+    db
+      .select({ value: count() })
+      .from(groups)
+      .where(eq(groups.channelId, channelId)),
+    db
+      .select({
+        conversations: count(),
+        humanQueue:
+          sql<number>`count(*) filter (where ${chats.handledBy} = 'application' and ${chats.handoffAt} is not null)`.mapWith(
+            Number,
+          ),
+        unreadMessages:
+          sql<number>`coalesce(sum(${chats.unreadMessageCount}), 0)`.mapWith(
+            Number,
+          ),
+        handoffs:
+          sql<number>`count(*) filter (where ${chats.handoffAt} is not null)`.mapWith(
+            Number,
+          ),
+      })
+      .from(chats)
+      .where(
+        and(
+          eq(chats.organizationId, organizationId),
+          eq(chats.channelId, channelId),
+        ),
+      ),
+    db
+      .select({
+        messages: count(),
+        inboundMessages:
+          sql<number>`count(*) filter (where ${messages.direction} = 'inbound')`.mapWith(
+            Number,
+          ),
+        outboundMessages:
+          sql<number>`count(*) filter (where ${messages.direction} = 'outbound')`.mapWith(
+            Number,
+          ),
+        aiMessages:
+          sql<number>`count(*) filter (where ${messages.aiGenerated} = true)`.mapWith(
+            Number,
+          ),
+        deliveredMessages:
+          sql<number>`count(*) filter (where ${messages.direction} = 'outbound' and ${messages.status} in ('delivered', 'read', 'played'))`.mapWith(
+            Number,
+          ),
+        failedMessages:
+          sql<number>`count(*) filter (where ${messages.direction} = 'outbound' and ${messages.status} = 'failed')`.mapWith(
+            Number,
+          ),
+      })
+      .from(messages)
+      .innerJoin(chats, eq(messages.chatId, chats.id))
+      .where(messageScope),
+    db
+      .select({
+        date: sql<string>`to_char(date_trunc('day', ${messages.receivedAt} at time zone 'UTC'), 'YYYY-MM-DD')`,
+        inbound:
+          sql<number>`count(*) filter (where ${messages.direction} = 'inbound')`.mapWith(
+            Number,
+          ),
+        outbound:
+          sql<number>`count(*) filter (where ${messages.direction} = 'outbound')`.mapWith(
+            Number,
+          ),
+      })
+      .from(messages)
+      .innerJoin(chats, eq(messages.chatId, chats.id))
+      .where(messageScope)
+      .groupBy(
+        sql`date_trunc('day', ${messages.receivedAt} at time zone 'UTC')`,
+      )
+      .orderBy(
+        asc(sql`date_trunc('day', ${messages.receivedAt} at time zone 'UTC')`),
+      ),
+    db
+      .select({
+        type: sql<string>`coalesce(${messages.messageType}, 'unknown')`,
+        count: count(),
+      })
+      .from(messages)
+      .innerJoin(chats, eq(messages.chatId, chats.id))
+      .where(messageScope)
+      .groupBy(messages.messageType)
+      .orderBy(sql`count(*) desc`),
+    db
+      .select({
+        agentMessages:
+          sql<number>`count(*) filter (where ${statsEvents.eventType} = 'agent_message')`.mapWith(
+            Number,
+          ),
+        humanMessages:
+          sql<number>`count(*) filter (where ${statsEvents.eventType} = 'human_message')`.mapWith(
+            Number,
+          ),
+        averageHandoffResponseMs: sql<
+          number | null
+        >`avg(${statsEvents.durationMs}) filter (where ${statsEvents.eventType} = 'first_human_response')`.mapWith(
+          (value) => (value == null ? null : Number(value)),
+        ),
+      })
+      .from(statsEvents)
+      .where(
+        and(
+          eq(statsEvents.organizationId, organizationId),
+          eq(statsEvents.channelId, channelId),
+          gte(statsEvents.occurredAt, start),
+        ),
+      ),
+    db
+      .select({
+        id: statsEvents.teamId,
+        name: team.name,
+        conversations: count(),
+      })
+      .from(statsEvents)
+      .innerJoin(team, eq(statsEvents.teamId, team.id))
+      .where(
+        and(
+          eq(statsEvents.organizationId, organizationId),
+          eq(statsEvents.channelId, channelId),
+          gte(statsEvents.occurredAt, start),
+          inArray(statsEvents.eventType, [
+            'handoff_started',
+            'conversation_assigned',
+          ]),
+          isNotNull(statsEvents.teamId),
+        ),
+      )
+      .groupBy(statsEvents.teamId, team.name)
+      .orderBy(sql`count(*) desc`),
+    db
+      .select({
+        id: statsEvents.userId,
+        name: user.name,
+        conversations: count(),
+      })
+      .from(statsEvents)
+      .innerJoin(user, eq(statsEvents.userId, user.id))
+      .where(
+        and(
+          eq(statsEvents.organizationId, organizationId),
+          eq(statsEvents.channelId, channelId),
+          gte(statsEvents.occurredAt, start),
+          inArray(statsEvents.eventType, [
+            'handoff_started',
+            'conversation_assigned',
+          ]),
+          isNotNull(statsEvents.userId),
+        ),
+      )
+      .groupBy(statsEvents.userId, user.name)
+      .orderBy(sql`count(*) desc`),
+  ])
+
+  const conversations = conversationRows[0]
+  const messageTotals = messageRows[0]
+  const outboundMessages = messageTotals?.outboundMessages ?? 0
+  const deliveredMessages = messageTotals?.deliveredMessages ?? 0
+  const agentMessages = statsRows[0]?.agentMessages ?? 0
+  const humanMessages = statsRows[0]?.humanMessages ?? 0
+  const attributedMessages = agentMessages + humanMessages
+  const points = new Map(dailyRows.map((point) => [point.date, point]))
+  const series = Array.from({ length: days }, (_, offset) => {
+    const date = new Date(start)
+    date.setUTCDate(date.getUTCDate() + offset)
+    const key = date.toISOString().slice(0, 10)
+    const point = points.get(key)
+    return {
+      date: key,
+      inbound: point?.inbound ?? 0,
+      outbound: point?.outbound ?? 0,
+    }
+  })
+
+  return {
+    contacts: contactRows[0]?.value ?? 0,
+    groups: groupRows[0]?.value ?? 0,
+    conversations: conversations?.conversations ?? 0,
+    humanQueue: conversations?.humanQueue ?? 0,
+    unreadMessages: conversations?.unreadMessages ?? 0,
+    handoffs: conversations?.handoffs ?? 0,
+    messages: messageTotals?.messages ?? 0,
+    inboundMessages: messageTotals?.inboundMessages ?? 0,
+    outboundMessages,
+    aiMessages: messageTotals?.aiMessages ?? 0,
+    deliveredMessages,
+    failedMessages: messageTotals?.failedMessages ?? 0,
+    deliveryRate:
+      outboundMessages > 0 ? deliveredMessages / outboundMessages : null,
+    agentMessages,
+    humanMessages,
+    agentMessageRate:
+      attributedMessages > 0 ? agentMessages / attributedMessages : null,
+    humanMessageRate:
+      attributedMessages > 0 ? humanMessages / attributedMessages : null,
+    averageHandoffResponseMs: statsRows[0]?.averageHandoffResponseMs ?? null,
+    series,
+    messageTypes: typeRows,
+    teamActivity: teamActivity.flatMap((row) =>
+      row.id && row.name ? [{ ...row, id: row.id, name: row.name }] : [],
+    ),
+    userActivity: userActivity.flatMap((row) =>
+      row.id && row.name ? [{ ...row, id: row.id, name: row.name }] : [],
+    ),
+  }
+}
+
+async function readDashboardCache(
+  store: KeyValueStore,
+  key: string,
+): Promise<ChannelDashboardAnalytics | null> {
+  try {
+    const cached = await store.get(key)
+    if (!cached) return null
+    const parsed: unknown = JSON.parse(cached)
+    return parsed as ChannelDashboardAnalytics
+  } catch (error) {
+    console.warn('Could not read dashboard cache', error)
+    return null
+  }
+}
+
+async function writeDashboardCache(
+  store: KeyValueStore,
+  key: string,
+  dashboard: ChannelDashboardAnalytics,
+): Promise<void> {
+  try {
+    await store.set(key, JSON.stringify(dashboard), {
+      ttlSeconds: DASHBOARD_CACHE_TTL_SECONDS,
+    })
+  } catch (error) {
+    console.warn('Could not write dashboard cache', error)
+  }
+}
+
 export async function getMetaDashboardAnalytics(
   configuration: ChannelAgentConfiguration,
   days: number,
   request: typeof fetch = fetch,
-): Promise<ChannelDashboardAnalytics> {
+): Promise<ChannelProviderAnalytics> {
   const end = new Date()
   const start = new Date(end)
   start.setUTCDate(start.getUTCDate() - days)

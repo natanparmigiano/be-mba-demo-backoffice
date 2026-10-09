@@ -13,6 +13,10 @@ export {
   uploadOrganizationLogo,
 } from './components/app/organization-logo-api'
 export { ThemeSwitcher } from './components/theme/ThemeSwitcher'
+export {
+  ActivityChart,
+  DistributionChart,
+} from './components/dashboard/DashboardCharts'
 export { AdminPage } from './pages/AdminPage'
 export { LoginPage } from './pages/LoginPage'
 export { OrganizationPage } from './pages/OrganizationPage'

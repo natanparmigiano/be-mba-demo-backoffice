@@ -1,10 +1,14 @@
 import type { InferResponseType } from 'hono/client'
 import {
   ArrowRight,
+  Bot,
   CheckCheck,
   ContactRound,
+  Inbox,
+  MessageCircleMore,
   MessagesSquare,
   RefreshCw,
+  Timer,
   Users,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -13,6 +17,7 @@ import { Link } from 'react-router-dom'
 import { apiClient } from '../api'
 import { authClient } from '../auth/auth-client'
 import { Button, cn, InlineFeedback, Select } from '@mba-desk/ui'
+import { ActivityChart, DistributionChart } from '@mba-desk/web-shared'
 
 type ChannelsResponse = InferResponseType<
   typeof apiClient.api.channels.$get,
@@ -66,28 +71,31 @@ export function HomePage() {
     void loadChannels()
   }, [loadChannels])
 
-  const loadDashboard = useCallback(async () => {
-    if (!selectedChannelId) {
-      setDashboard(null)
-      setIsLoading(false)
-      return
-    }
-    setIsLoading(true)
-    setError(null)
-    try {
-      const response = await apiClient.api.channels[':id'].dashboard.$get({
-        param: { id: String(selectedChannelId) },
-        query: { days: '7' },
-      })
-      if (!response.ok) throw new Error()
-      setDashboard(await response.json())
-    } catch {
-      setDashboard(null)
-      setError(t('home.loadFailed'))
-    } finally {
-      setIsLoading(false)
-    }
-  }, [organization?.id, selectedChannelId, t])
+  const loadDashboard = useCallback(
+    async (refresh = false) => {
+      if (!selectedChannelId) {
+        setDashboard(null)
+        setIsLoading(false)
+        return
+      }
+      setIsLoading(true)
+      setError(null)
+      try {
+        const response = await apiClient.api.channels[':id'].dashboard.$get({
+          param: { id: String(selectedChannelId) },
+          query: { days: '7', refresh: refresh ? 'true' : 'false' },
+        })
+        if (!response.ok) throw new Error()
+        setDashboard(await response.json())
+      } catch {
+        setDashboard(null)
+        setError(t('home.loadFailed'))
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [organization?.id, selectedChannelId, t],
+  )
 
   useEffect(() => {
     void loadDashboard()
@@ -104,25 +112,84 @@ export function HomePage() {
           style: 'percent',
           maximumFractionDigits: 1,
         }).format(value)
+  const duration = (value: number | null | undefined) => {
+    if (value == null) return t('home.notAvailable')
+    const minutes = value / 60_000
+    return new Intl.NumberFormat(i18n.language, {
+      style: 'unit',
+      unit: minutes < 1 ? 'second' : 'minute',
+      maximumFractionDigits: 1,
+    }).format(minutes < 1 ? value / 1_000 : minutes)
+  }
 
   const stats = [
     {
       icon: MessagesSquare,
       label: t('home.stats.messagesSent'),
-      value: dashboard?.messaging
-        ? number.format(dashboard.messaging.sent)
+      value: dashboard
+        ? number.format(dashboard.local.outboundMessages)
         : t('home.notAvailable'),
       detail: t('home.stats.lastSevenDays'),
     },
     {
       icon: CheckCheck,
       label: t('home.stats.deliveryRate'),
-      value: percent(dashboard?.messaging?.deliveryRate),
-      detail: dashboard?.messaging
+      value: percent(dashboard?.local.deliveryRate),
+      detail: dashboard
         ? t('home.stats.deliveredCount', {
-            count: number.format(dashboard.messaging.delivered),
+            count: number.format(dashboard.local.deliveredMessages),
           })
-        : t('home.stats.providerUnavailable'),
+        : t('home.notAvailable'),
+    },
+    {
+      icon: MessageCircleMore,
+      label: t('home.local.conversations'),
+      value: dashboard
+        ? number.format(dashboard.local.conversations)
+        : t('home.notAvailable'),
+      detail: t('home.stats.lastSevenDays'),
+    },
+    {
+      icon: ContactRound,
+      label: t('home.local.contacts'),
+      value: dashboard
+        ? number.format(dashboard.local.contacts)
+        : t('home.notAvailable'),
+      detail: t('home.local.allTime'),
+    },
+    {
+      icon: Inbox,
+      label: t('home.local.unread'),
+      value: dashboard
+        ? number.format(dashboard.local.unreadMessages)
+        : t('home.notAvailable'),
+      detail: t('home.local.current'),
+    },
+    {
+      icon: Users,
+      label: t('home.local.humanQueue'),
+      value: dashboard
+        ? number.format(dashboard.local.humanQueue)
+        : t('home.notAvailable'),
+      detail: t('home.local.current'),
+    },
+    {
+      icon: Bot,
+      label: t('home.local.agentShare'),
+      value: percent(dashboard?.local.agentMessageRate),
+      detail: t('home.local.attributedMessages'),
+    },
+    {
+      icon: Users,
+      label: t('home.local.humanShare'),
+      value: percent(dashboard?.local.humanMessageRate),
+      detail: t('home.local.attributedMessages'),
+    },
+    {
+      icon: Timer,
+      label: t('home.local.averageResponse'),
+      value: duration(dashboard?.local.averageHandoffResponseMs),
+      detail: t('home.local.firstHumanResponse'),
     },
   ]
 
@@ -174,7 +241,7 @@ export function HomePage() {
             </Select>
             <Button
               variant="outline"
-              onClick={() => void loadDashboard()}
+              onClick={() => void loadDashboard(true)}
               disabled={!selectedChannelId || isLoading}
             >
               <RefreshCw
@@ -202,11 +269,18 @@ export function HomePage() {
               {t('home.overviewTitle')}
             </h2>
           </div>
-          <span className="text-xs text-muted-foreground">
-            {t('home.lastUpdatedNow')}
-          </span>
+          {dashboard && (
+            <span className="text-xs text-muted-foreground">
+              {t('home.local.cachedAt', {
+                date: new Intl.DateTimeFormat(i18n.language, {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                }).format(new Date(dashboard.generatedAt)),
+              })}
+            </span>
+          )}
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {stats.map(({ icon: Icon, label, value, detail }) => (
             <article
               key={label}
@@ -227,6 +301,75 @@ export function HomePage() {
           ))}
         </div>
       </section>
+
+      {dashboard && (
+        <section
+          className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]"
+          aria-label={t('home.local.analytics')}
+        >
+          <article className="rounded-2xl border bg-card p-5 shadow-xs sm:p-6">
+            <h2 className="mb-1 text-lg font-extrabold">
+              {t('home.local.activity')}
+            </h2>
+            <p className="mb-5 text-xs text-muted-foreground">
+              {t('home.stats.lastSevenDays')}
+            </p>
+            <ActivityChart
+              data={dashboard.local.series}
+              inboundLabel={t('home.local.inbound')}
+              outboundLabel={t('home.local.outbound')}
+              label={t('home.local.activity')}
+            />
+          </article>
+          <article className="rounded-2xl border bg-card p-5 shadow-xs sm:p-6">
+            <h2 className="mb-1 text-lg font-extrabold">
+              {t('home.local.messageTypes')}
+            </h2>
+            <p className="mb-5 text-xs text-muted-foreground">
+              {t('home.stats.lastSevenDays')}
+            </p>
+            <DistributionChart
+              data={dashboard.local.messageTypes}
+              label={t('home.local.messageTypes')}
+              emptyLabel={t('home.local.empty')}
+            />
+          </article>
+        </section>
+      )}
+
+      {dashboard && (
+        <section
+          className="grid gap-4 lg:grid-cols-2"
+          aria-label={t('home.local.assignmentAnalytics')}
+        >
+          <article className="rounded-2xl border bg-card p-5 shadow-xs sm:p-6">
+            <h2 className="mb-5 text-lg font-extrabold">
+              {t('home.local.teamActivity')}
+            </h2>
+            <DistributionChart
+              data={dashboard.local.teamActivity.map((item) => ({
+                type: item.name,
+                count: item.conversations,
+              }))}
+              label={t('home.local.teamActivity')}
+              emptyLabel={t('home.local.empty')}
+            />
+          </article>
+          <article className="rounded-2xl border bg-card p-5 shadow-xs sm:p-6">
+            <h2 className="mb-5 text-lg font-extrabold">
+              {t('home.local.userActivity')}
+            </h2>
+            <DistributionChart
+              data={dashboard.local.userActivity.map((item) => ({
+                type: item.name,
+                count: item.conversations,
+              }))}
+              label={t('home.local.userActivity')}
+              emptyLabel={t('home.local.empty')}
+            />
+          </article>
+        </section>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
         <section

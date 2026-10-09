@@ -47,6 +47,7 @@ Each file under `src/schema` represents a PostgreSQL schema or schema group:
 | `mba.ts`      | `mba`             | Webhooks, archives, backups, and agent-owned data            |
 | `runner.ts`   | `runner`          | Versioned functions, MCP packs, API keys, and execution logs |
 | `studio.ts`   | `studio`          | Organization-scoped AGTX Studio projects                     |
+| `stats.ts`    | `stats`           | Append-only dashboard measurement events                     |
 | `whatsapp.ts` | `whatsapp`        | Archived WhatsApp webhook envelopes and processing metadata  |
 | `index.ts`    | —                 | Re-exports the complete registry for Drizzle                 |
 
@@ -107,6 +108,15 @@ durable `@mba-desk/files` key for each AGTX document. Its recent-project order
 uses `last_opened_at`; `last_edited_at` advances when AGTX bytes are saved.
 
 ### MBA channels and chats
+
+`stats.events` is an append-only, organization/channel/chat-scoped measurement
+stream. Idempotent event keys prevent webhook or request retries from
+double-counting agent messages, human messages, handoffs, assignments, and the
+first human response after each handoff. Assignment events snapshot nullable
+team and user IDs; first-response events store the measured duration in
+milliseconds. Indexed event time supports bounded dashboard aggregation.
+Migration `0044` creates the schema and intentionally does not infer or
+backfill historical events.
 
 `chats.channels` owns a human-readable channel name, WhatsApp phone-number configuration, and sensitive credentials for an application agent. Every channel belongs to exactly one Better Auth `auth.organization`; the indexed foreign key is the tenant boundary. `chats.contacts` and `chats.groups` reference their channel and store provider identities plus current metadata. Both feed `chats.chats`, which gives every direct or group message stream a durable application identity. Chats also retain channel and organization foreign keys as deliberate denormalizations for indexed tenant inbox pagination, plus nullable assigned-team and assigned-user relationships whose references clear when the assignee is deleted. `handoff_at` records when a conversation most recently entered human handling so the indexed unassigned queue can order by wait time without scanning chat events. Neither group webhook state nor chat activity deletes these records.
 

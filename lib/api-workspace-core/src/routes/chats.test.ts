@@ -582,6 +582,7 @@ describe('chats route', () => {
     const published: Array<{ channel: string; value: string }> = []
     let sentTo: string | undefined
     let persistedClientMessageId: string | undefined
+    let recordedUserId: string | undefined
     const route = createChatsRoute({
       getAccess: async () => ({ organizationId: 'org-one', userId: 'user-1' }),
       sendMessage: async (_context, message) => {
@@ -594,6 +595,7 @@ describe('chats route', () => {
       },
       persistMessage: async (input) => {
         persistedClientMessageId = input.clientMessageId
+        recordedUserId = input.humanStats?.userId
         assert.equal(input.message.to, sendContext.recipient)
         assert.equal(input.message.type, 'text')
         return {
@@ -632,6 +634,7 @@ describe('chats route', () => {
     )
     assert.equal(published[0]?.channel, 'chats.31')
     assert.equal(published[1]?.channel, 'organizations.org-one.chats')
+    assert.equal(recordedUserId, 'user-1')
   })
 
   it('returns and logs Meta template-send failure details', async () => {
@@ -1273,7 +1276,10 @@ const readContext = {
 const sendContext = {
   accessToken: 'secret-token',
   assignedUserId: 'user-1',
+  assignedTeamId: 'team-1',
+  channelId: 7,
   contactId: 17,
+  handoffAt: new Date('2026-09-30T11:30:00.000Z'),
   handledBy: 'application' as const,
   kind: 'direct' as const,
   organizationId: 'org-one',

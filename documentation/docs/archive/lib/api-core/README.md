@@ -18,6 +18,18 @@ This package contains the common Better Auth mount, health and application URL
 routes, user and organization administration, organization invitations and
 logos, signed file delivery, static SPA fallback, and process lifecycle.
 
+The common channel dashboard route combines provider analytics with
+organization- and channel-scoped local database aggregates. Local aggregates
+cover contacts, groups, conversations, handoffs, the human queue, unread and
+directional messages, delivery outcomes, daily activity, and message types.
+The response also aggregates `stats.events` into agent/human message rates,
+average first-human-response duration, and team/user assignment rankings.
+The combined JSON response is cached in `@mba-desk/kv` for 300 seconds using a
+key scoped by organization, channel, and requested period. Cache failures fall
+back to a fresh response rather than failing the dashboard request.
+The optional `refresh=true` query bypasses the current snapshot and replaces
+it, which is what the Home dashboard's Refresh action uses.
+
 Feature routes and event subscribers intentionally do not live here:
 
 - `@mba-desk/api-workspace-core` owns operational routes, WhatsApp webhook

@@ -10,6 +10,7 @@ import {
   member,
   messages,
   persistWhatsAppOutboundMessage,
+  statsEvents,
   team,
   user,
 } from '@mba-desk/db'
@@ -344,7 +345,10 @@ export interface ChatReadContext {
 export interface ChatSendContext {
   accessToken: string
   assignedUserId: string | null
+  assignedTeamId?: string | null
+  channelId?: number
   contactId: number | null
+  handoffAt?: Date | null
   handledBy: 'mba' | 'application'
   kind: 'direct' | 'group'
   organizationId: string
@@ -969,6 +973,17 @@ export const createChatsRoute = ({
             message: outbound,
             recipientType: context.kind === 'group' ? 'group' : 'individual',
             response,
+            ...(context.channelId
+              ? {
+                  humanStats: {
+                    organizationId: access.organizationId,
+                    channelId: context.channelId,
+                    teamId: context.assignedTeamId,
+                    userId: access.userId,
+                    handoffAt: context.handoffAt,
+                  },
+                }
+              : {}),
           })
           await publishChatRealtimeEventSafely(
             realtime,
@@ -1522,7 +1537,10 @@ async function getChatSendContext(
     .select({
       accessToken: channels.waSystemUserAccessToken,
       assignedUserId: chats.assignedUserId,
+      assignedTeamId: chats.assignedTeamId,
+      channelId: chats.channelId,
       contactId: chats.contactId,
+      handoffAt: chats.handoffAt,
       contactWaId: contacts.waId,
       contactUserId: contacts.userId,
       groupProviderId: groups.providerGroupId,
@@ -1541,7 +1559,10 @@ async function getChatSendContext(
     ? {
         accessToken: row.accessToken,
         assignedUserId: row.assignedUserId,
+        assignedTeamId: row.assignedTeamId,
+        channelId: row.channelId,
         contactId: row.contactId,
+        handoffAt: row.handoffAt,
         handledBy: row.handledBy,
         kind: row.kind,
         organizationId,
@@ -1619,11 +1640,12 @@ async function setChatHandler(
             )
             .limit(1)
         : []
+    const handoffAt = handledBy === 'application' ? new Date() : null
     const [updated] = await transaction
       .update(chats)
       .set({
         handledBy,
-        handoffAt: handledBy === 'application' ? new Date() : null,
+        handoffAt,
         assignedTeamId:
           handledBy === 'application' ? (defaultTeam?.id ?? null) : null,
         assignedUserId: handledBy === 'application' ? userId : null,
@@ -1632,7 +1654,23 @@ async function setChatHandler(
       .where(
         and(eq(chats.id, chatId), eq(chats.organizationId, organizationId)),
       )
-      .returning({ id: chats.id })
+      .returning({ id: chats.id, channelId: chats.channelId })
+
+    if (updated && handoffAt) {
+      await transaction
+        .insert(statsEvents)
+        .values({
+          eventKey: `handoff:${chatId}:${handoffAt.toISOString()}`,
+          eventType: 'handoff_started',
+          organizationId,
+          channelId: updated.channelId,
+          chatId,
+          teamId: defaultTeam?.id,
+          userId: userId || undefined,
+          occurredAt: handoffAt,
+        })
+        .onConflictDoNothing({ target: statsEvents.eventKey })
+    }
 
     return Boolean(updated)
   })
@@ -1648,6 +1686,7 @@ async function assignChatToUser(
     const [chat] = await transaction
       .select({
         assignedUserId: chats.assignedUserId,
+        channelId: chats.channelId,
         handledBy: chats.handledBy,
       })
       .from(chats)
@@ -1658,6 +1697,7 @@ async function assignChatToUser(
       .for('update')
     if (!chat) return 'not_found'
     if (chat.handledBy !== 'application') return 'conflict'
+    if (chat.assignedUserId === userId) return 'ok'
     if (chat.assignedUserId && chat.assignedUserId !== userId && !force) {
       return 'conflict'
     }
@@ -1674,10 +1714,23 @@ async function assignChatToUser(
       .limit(1)
     if (!organizationMember) return 'not_found'
 
+    const assignedAt = new Date()
     await transaction
       .update(chats)
-      .set({ assignedUserId: userId, updatedAt: new Date() })
+      .set({ assignedUserId: userId, updatedAt: assignedAt })
       .where(eq(chats.id, chatId))
+    await transaction
+      .insert(statsEvents)
+      .values({
+        eventKey: `assignment:user:${chatId}:${userId}:${assignedAt.toISOString()}`,
+        eventType: 'conversation_assigned',
+        organizationId,
+        channelId: chat.channelId,
+        chatId,
+        userId,
+        occurredAt: assignedAt,
+      })
+      .onConflictDoNothing({ target: statsEvents.eventKey })
     return 'ok'
   })
 }
@@ -1720,17 +1773,32 @@ async function assignChatToTeam(
       .limit(1)
     if (!ownedTeam) return 'team_not_found'
 
+    const assignedAt = new Date()
     const [updated] = await transaction
       .update(chats)
       .set({
         assignedTeamId: teamId,
         assignedUserId: null,
-        updatedAt: new Date(),
+        updatedAt: assignedAt,
       })
       .where(
         and(eq(chats.id, chatId), eq(chats.organizationId, organizationId)),
       )
-      .returning({ id: chats.id })
+      .returning({ id: chats.id, channelId: chats.channelId })
+    if (updated) {
+      await transaction
+        .insert(statsEvents)
+        .values({
+          eventKey: `assignment:team:${chatId}:${teamId}:${assignedAt.toISOString()}`,
+          eventType: 'conversation_assigned',
+          organizationId,
+          channelId: updated.channelId,
+          chatId,
+          teamId,
+          occurredAt: assignedAt,
+        })
+        .onConflictDoNothing({ target: statsEvents.eventKey })
+    }
     return updated ? 'ok' : 'chat_not_found'
   })
 }

@@ -24,6 +24,7 @@ import type {
 import { and, eq, isNull, lt, lte, ne, or, sql } from 'drizzle-orm'
 import { db, type Database } from './client.js'
 import { team } from './schema/auth.js'
+import { statsEvents } from './schema/stats.js'
 import {
   channels,
   chatEvents,
@@ -130,6 +131,13 @@ export interface PersistWhatsAppOutboundMessageInput {
   message: WhatsAppOutboundMessage
   recipientType?: 'group' | 'individual'
   response: WhatsAppSendMessageResponse
+  humanStats?: {
+    organizationId: string
+    channelId: number
+    teamId?: string | null
+    userId: string
+    handoffAt?: Date | null
+  }
 }
 
 export interface PersistedWhatsAppOutboundMessage {
@@ -336,6 +344,44 @@ export async function persistWhatsAppOutboundMessage(
         updatedAt: now,
       })
       .where(eq(chats.id, input.chatId))
+
+    if (input.humanStats) {
+      await transaction
+        .insert(statsEvents)
+        .values({
+          eventKey: `human-message:${stored.id}`,
+          eventType: 'human_message',
+          organizationId: input.humanStats.organizationId,
+          channelId: input.humanStats.channelId,
+          chatId: input.chatId,
+          messageId: stored.id,
+          teamId: input.humanStats.teamId,
+          userId: input.humanStats.userId,
+          occurredAt: now,
+        })
+        .onConflictDoNothing({ target: statsEvents.eventKey })
+
+      if (input.humanStats.handoffAt) {
+        await transaction
+          .insert(statsEvents)
+          .values({
+            eventKey: `first-human-response:${input.chatId}:${input.humanStats.handoffAt.toISOString()}`,
+            eventType: 'first_human_response',
+            organizationId: input.humanStats.organizationId,
+            channelId: input.humanStats.channelId,
+            chatId: input.chatId,
+            messageId: stored.id,
+            teamId: input.humanStats.teamId,
+            userId: input.humanStats.userId,
+            durationMs: Math.min(
+              2_147_483_647,
+              Math.max(0, now.getTime() - input.humanStats.handoffAt.getTime()),
+            ),
+            occurredAt: now,
+          })
+          .onConflictDoNothing({ target: statsEvents.eventKey })
+      }
+    }
 
     return {
       chatId: stored.chatId,
@@ -867,6 +913,20 @@ class IngestionContext {
         wasInserted && direction === 'inbound' && !isReadByAgent,
         isReadByAgent,
       )
+    }
+    if (wasInserted && aiGenerated) {
+      await this.transaction
+        .insert(statsEvents)
+        .values({
+          eventKey: `agent-message:${storedMessage.id}`,
+          eventType: 'agent_message',
+          organizationId: this.channel.organizationId,
+          channelId: this.channel.id,
+          chatId: storedMessage.chatId,
+          messageId: storedMessage.id,
+          occurredAt: occurredAt ?? now,
+        })
+        .onConflictDoNothing({ target: statsEvents.eventKey })
     }
     this.summary.messages += 1
     this.recordUpdate(storedMessage.chatId, 'message.created')
@@ -1461,11 +1521,12 @@ class IngestionContext {
             .limit(1)
         : []
 
-    await this.transaction
+    const handoffAt = handledBy === 'application' ? new Date() : null
+    const [updated] = await this.transaction
       .update(chats)
       .set({
         handledBy,
-        handoffAt: handledBy === 'application' ? new Date() : null,
+        handoffAt,
         assignedTeamId:
           handledBy === 'application' ? (defaultTeam?.id ?? null) : null,
         assignedUserId:
@@ -1473,6 +1534,23 @@ class IngestionContext {
         updatedAt: new Date(),
       })
       .where(and(eq(chats.id, chatId), ne(chats.handledBy, handledBy)))
+      .returning({ assignedUserId: chats.assignedUserId })
+
+    if (updated && handoffAt) {
+      await this.transaction
+        .insert(statsEvents)
+        .values({
+          eventKey: `handoff:${chatId}:${handoffAt.toISOString()}`,
+          eventType: 'handoff_started',
+          organizationId: this.channel.organizationId,
+          channelId: this.channel.id,
+          chatId,
+          teamId: defaultTeam?.id,
+          userId: updated.assignedUserId,
+          occurredAt: handoffAt,
+        })
+        .onConflictDoNothing({ target: statsEvents.eventKey })
+    }
   }
 
   private async advanceLatestMessage(
